@@ -42,7 +42,6 @@ const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
-  tax: z.coerce.number().min(0).optional(),
 });
 
 const formSchema = z.object({
@@ -67,6 +66,9 @@ const formSchema = z.object({
   placeOfSupply: z.string().optional(),
   transportDate: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
+  cgstRate: z.coerce.number().min(0).optional(),
+  sgstRate: z.coerce.number().min(0).optional(),
+  igstRate: z.coerce.number().min(0).optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
@@ -92,7 +94,10 @@ export function InvoiceForm() {
       businessGstin: "09AGZPA5852F1Z0",
       invoiceDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-      items: [{ name: "", quantity: 1, price: 0, tax: 18 }],
+      items: [{ name: "", quantity: 1, price: 0 }],
+      cgstRate: 9,
+      sgstRate: 9,
+      igstRate: 0,
     },
   });
 
@@ -109,22 +114,25 @@ export function InvoiceForm() {
   });
 
   const watchedItems = watch("items");
+  const cgstRate = watch("cgstRate");
+  const sgstRate = watch("sgstRate");
+  const igstRate = watch("igstRate");
 
   useEffect(() => {
     const newSubtotal = watchedItems.reduce(
       (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
       0
     );
-    const newTotalTaxes = watchedItems.reduce((acc, item) => {
-      const itemTotal = (item.quantity || 0) * (item.price || 0);
-      const taxAmount = itemTotal * ((item.tax || 0) / 100);
-      return acc + taxAmount;
-    }, 0);
+    const cgst = newSubtotal * ((cgstRate || 0) / 100);
+    const sgst = newSubtotal * ((sgstRate || 0) / 100);
+    const igst = newSubtotal * ((igstRate || 0) / 100);
+
+    const newTotalTaxes = cgst + sgst + igst;
 
     setSubtotal(newSubtotal);
     setTotalTaxes(newTotalTaxes);
     setTotal(newSubtotal + newTotalTaxes);
-  }, [watchedItems]);
+  }, [watchedItems, cgstRate, sgstRate, igstRate]);
 
   const handleCreateSale = (data: InvoiceFormValues) => {
     const newSale: Sale = {
@@ -159,10 +167,6 @@ export function InvoiceForm() {
       const input: GenerateInvoicePdfInput = {
         ...data,
         items: data.items.map((item) => ({ ...item })),
-        taxes: {
-          "CGST (9%)": totalTaxes / 2,
-          "SGST (9%)": totalTaxes / 2,
-        },
         total: total,
         currency: currency,
       };
@@ -379,10 +383,9 @@ export function InvoiceForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Item</TableHead>
+                  <TableHead className="w-[50%]">Item</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Tax (%)</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -416,13 +419,6 @@ export function InvoiceForm() {
                         {...methods.register(`items.${index}.price`)}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...methods.register(`items.${index}.tax`)}
-                      />
-                    </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrencyValue(
                         (watchedItems[index]?.quantity || 0) *
@@ -448,7 +444,7 @@ export function InvoiceForm() {
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => append({ name: "", quantity: 1, price: 0, tax: 18 })}
+              onClick={() => append({ name: "", quantity: 1, price: 0 })}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -457,7 +453,21 @@ export function InvoiceForm() {
                 <p className="text-sm text-destructive mt-2">{errors.items.message}</p>
               )}
           </CardContent>
-          <CardFooter className="flex justify-end">
+          <CardFooter className="flex flex-col items-end space-y-4">
+            <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
+                <div className="space-y-2">
+                    <Label htmlFor="cgstRate">CGST (%)</Label>
+                    <Input id="cgstRate" type="number" {...methods.register("cgstRate")} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="sgstRate">SGST (%)</Label>
+                    <Input id="sgstRate" type="number" {...methods.register("sgstRate")} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="igstRate">IGST (%)</Label>
+                    <Input id="igstRate" type="number" {...methods.register("igstRate")} />
+                </div>
+            </div>
             <div className="w-full max-w-sm space-y-2">
                 <div className="flex justify-between">
                     <span>Subtotal</span>

@@ -19,7 +19,6 @@ export type Sale = {
     name: string;
     quantity: number;
     price: number;
-    tax?: number;
   }[];
   customerAddress: string;
   customerPhone: string;
@@ -33,6 +32,9 @@ export type Sale = {
   transporterVehicleNumber?: string;
   placeOfSupply?: string;
   transportDate?: string;
+  cgstRate?: number;
+  sgstRate?: number;
+  igstRate?: number;
 };
 
 export type Purchase = {
@@ -75,27 +77,31 @@ export const salesData: Sale[] = [
     id: 'INV-2024-001', 
     customer: 'Prestige Construction', 
     date: '2024-06-01', 
-    amount: 4500.00, 
+    amount: 5310.00, 
     status: 'Paid',
     items: [{ name: 'Italian Marble Slab', quantity: 30, price: 150 }],
     customerAddress: '123 Prestige Plaza, Builderville',
     customerPhone: '555-111-2222',
+    cgstRate: 9,
+    sgstRate: 9,
   },
   { 
     id: 'INV-2024-002', 
     customer: 'Dream Homes Pvt. Ltd.', 
     date: '2024-06-05', 
-    amount: 12500.50, 
+    amount: 14750.59, 
     status: 'Paid',
     items: [{ name: 'Black Granite Countertop', quantity: 50, price: 250.01 }],
     customerAddress: '456 Dream Avenue, Real Estate City',
     customerPhone: '555-333-4444',
+    cgstRate: 9,
+    sgstRate: 9,
   },
   { 
     id: 'INV-2024-003', 
     customer: 'Mr. John Smith', 
     date: '2024-06-12', 
-    amount: 850.75, 
+    amount: 943.08, 
     status: 'Pending',
     items: [
         { name: 'White Quartz Tile', quantity: 25, price: 25.50 },
@@ -103,12 +109,14 @@ export const salesData: Sale[] = [
     ],
     customerAddress: '789 Residential Way, Suburbia',
     customerPhone: '555-555-5555',
+    cgstRate: 9,
+    sgstRate: 9,
   },
   { 
     id: 'INV-2024-004', 
     customer: 'Modern Architects', 
     date: '2024-06-20', 
-    amount: 22300.00, 
+    amount: 26314.00, 
     status: 'Paid',
     items: [{ name: 'Slate Roofing Tile', quantity: 2000, price: 8.20 }, { name: 'Italian Marble Slab', quantity: 40, price: 150 }],
     customerAddress: '101 Innovation Tower, Archburg',
@@ -119,16 +127,20 @@ export const salesData: Sale[] = [
     transporterVehicleNumber: 'UP80-AB-1234',
     placeOfSupply: 'Archburg',
     transportDate: '2024-06-21',
+    cgstRate: 9,
+    sgstRate: 9,
   },
   { 
     id: 'INV-2024-005', 
     customer: 'City Mall Project', 
     date: '2024-06-25', 
-    amount: 75000.00, 
+    amount: 88500.00, 
     status: 'Overdue',
     items: [{ name: 'Travertine Floor Tile', quantity: 2000, price: 35.00 }, { name: 'Onyx Decorative Piece', quantity: 10, price: 500.00 }],
     customerAddress: '202 Commerce Center, Downtown',
     customerPhone: '555-888-9999',
+    cgstRate: 9,
+    sgstRate: 9,
   },
 ];
 

@@ -49,11 +49,10 @@ export default function InvoiceDetailsPage() {
     }
 
     const subtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
-    const totalTaxes = invoice.items.reduce((acc, item) => {
-        const itemTotal = item.quantity * item.price;
-        const taxAmount = itemTotal * ((item.tax || 18) / 100);
-        return acc + taxAmount;
-    }, 0);
+    const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
+    const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
+    const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
+    const totalTaxes = cgstAmount + sgstAmount + igstAmount;
 
     const handleGeneratePdf = async () => {
         setIsGenerating(true);
@@ -80,10 +79,9 @@ export default function InvoiceDetailsPage() {
             placeOfSupply: invoice.placeOfSupply,
             transportDate: invoice.transportDate,
             items: invoice.items.map((item) => ({ ...item })),
-            taxes: {
-              "CGST (9%)": totalTaxes / 2,
-              "SGST (9%)": totalTaxes / 2,
-            },
+            cgstRate: invoice.cgstRate,
+            sgstRate: invoice.sgstRate,
+            igstRate: invoice.igstRate,
             total: invoice.amount,
             currency: currency,
           };

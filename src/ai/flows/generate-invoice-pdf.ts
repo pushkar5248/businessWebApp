@@ -40,10 +40,11 @@ const GenerateInvoicePdfInputSchema = z.object({
       name: z.string().describe('The name of the item.'),
       quantity: z.number().describe('The quantity of the item.'),
       price: z.number().describe('The price of the item.'),
-      tax: z.number().optional().describe('The tax applied to the item, if any.'),
     })
   ).describe('An array of items in the invoice.'),
-  taxes: z.record(z.number()).describe('A map of tax names to tax amounts.'),
+  cgstRate: z.number().optional().describe('The CGST rate percentage.'),
+  sgstRate: z.number().optional().describe('The SGST rate percentage.'),
+  igstRate: z.number().optional().describe('The IGST rate percentage.'),
   total: z.number().describe('The total amount of the invoice.'),
   currency: z.string().describe('The currency symbol to use for the invoice.'),
 });
@@ -333,18 +334,21 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                         <tr>
                             <td><span>Total Value of Supply of Goods Before GST</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
                         </tr>
+                        {{#if sgst}}
                         <tr>
-                            <td><span>SGST @ 9%</span> <span>{{{currency}}}{{{sgst}}}</span></td>
+                            <td><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></td>
                         </tr>
+                        {{/if}}
+                        {{#if cgst}}
                         <tr>
-                            <td><span>CGST @ 9%</span> <span>{{{currency}}}{{{cgst}}}</span></td>
+                            <td><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></td>
                         </tr>
+                        {{/if}}
+                        {{#if igst}}
                         <tr>
-                            <td><span>IGST @ ___%</span> <span></span></td>
+                            <td><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></td>
                         </tr>
-                        <tr>
-                          <td><span>Tax payable on Reverse Charge, If Any</span> <span></span></td>
-                        </tr>
+                        {{/if}}
                         <tr>
                           <td><span>Round Off / Other Charge, If Any</span> <span></span></td>
                         </tr>
@@ -376,17 +380,16 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
 
     const subtotal = input.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
-    const totalTaxes = input.items.reduce((acc, item) => {
-        const itemTotal = (item.quantity || 0) * (item.price || 0);
-        const taxAmount = itemTotal * ((item.tax || 0) / 100);
-        return acc + taxAmount;
-    }, 0);
-    
+    const cgstAmount = subtotal * ((input.cgstRate || 0) / 100);
+    const sgstAmount = subtotal * ((input.sgstRate || 0) / 100);
+    const igstAmount = subtotal * ((input.igstRate || 0) / 100);
+
     const templateData = {
         ...input,
         subtotal: subtotal.toFixed(2),
-        sgst: (totalTaxes / 2).toFixed(2),
-        cgst: (totalTaxes / 2).toFixed(2),
+        cgst: cgstAmount > 0 ? cgstAmount.toFixed(2) : null,
+        sgst: sgstAmount > 0 ? sgstAmount.toFixed(2) : null,
+        igst: igstAmount > 0 ? igstAmount.toFixed(2) : null,
         items: input.items.map(item => ({
             ...item,
             itemTotal: ((item.quantity || 0) * (item.price || 0)).toFixed(2)
