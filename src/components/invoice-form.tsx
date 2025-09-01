@@ -1,0 +1,499 @@
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useForm, useFieldArray, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useRouter } from "next/navigation";
+import {
+  generateInvoicePdf,
+  type GenerateInvoicePdfInput,
+} from "@/ai/flows/generate-invoice-pdf";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { inventoryData, salesData, type Sale } from "@/lib/data";
+import { useCurrency } from "@/context/currency-context";
+
+const lineItemSchema = z.object({
+  name: z.string().min(1, "Item name is required."),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
+  price: z.coerce.number().min(0, "Price cannot be negative."),
+  tax: z.coerce.number().min(0).optional(),
+});
+
+const formSchema = z.object({
+  businessName: z.string().default("Adhunik Marbles"),
+  businessAddress: z.string().default("New Suraksha Vihar Colony, Gwalior Road, Agra 282 009"),
+  businessPhone: z.string().default("9760026605, 6396871665"),
+  businessEmail: z.string().default("contact@adhunikmarbles.com"),
+  businessGstin: z.string().default("09AGZPA5852F1Z0"),
+  invoiceNumber: z.string().min(1, "Invoice number is required."),
+  invoiceDate: z.string().min(1, "Invoice date is required."),
+  customerName: z.string().min(1, "Customer name is required."),
+  customerAddress: z.string().min(1, "Customer address is required."),
+  customerPhone: z.string().min(1, "Customer phone is required."),
+  customerState: z.string().optional(),
+  customerGstin: z.string().optional(),
+  deliveryPlaceName: z.string().optional(),
+  deliveryAddress: z.string().optional(),
+  deliveryState: z.string().optional(),
+  deliveryGstin: z.string().optional(),
+  transporterName: z.string().optional(),
+  transporterVehicleNumber: z.string().optional(),
+  placeOfSupply: z.string().optional(),
+  transportDate: z.string().optional(),
+  items: z.array(lineItemSchema).min(1, "At least one item is required."),
+});
+
+type InvoiceFormValues = z.infer<typeof formSchema>;
+
+type ActionType = "create" | "generate" | "create_and_generate";
+
+export function InvoiceForm() {
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+  const [subtotal, setSubtotal] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [totalTaxes, setTotalTaxes] = useState(0);
+  const { currency, formatCurrencyValue } = useCurrency();
+
+  const methods = useForm<InvoiceFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      businessName: "Adhunik Marbles",
+      businessAddress: "New Suraksha Vihar Colony, Gwalior Road, Agra 282 009",
+      businessPhone: "9760026605, 6396871665",
+      businessEmail: "contact@adhunikmarbles.com",
+      businessGstin: "09AGZPA5852F1Z0",
+      invoiceDate: new Date().toISOString().split("T")[0],
+      invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+      items: [{ name: "", quantity: 1, price: 0, tax: 18 }],
+    },
+  });
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = methods;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+
+  const watchedItems = watch("items");
+
+  useEffect(() => {
+    const newSubtotal = watchedItems.reduce(
+      (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
+      0
+    );
+    const newTotalTaxes = watchedItems.reduce((acc, item) => {
+      const itemTotal = (item.quantity || 0) * (item.price || 0);
+      const taxAmount = itemTotal * ((item.tax || 0) / 100);
+      return acc + taxAmount;
+    }, 0);
+
+    setSubtotal(newSubtotal);
+    setTotalTaxes(newTotalTaxes);
+    setTotal(newSubtotal + newTotalTaxes);
+  }, [watchedItems]);
+
+  const handleCreateSale = (data: InvoiceFormValues) => {
+    const newSale: Sale = {
+      id: data.invoiceNumber,
+      customer: data.customerName,
+      date: data.invoiceDate,
+      amount: total,
+      status: "Pending", // Default status
+      items: data.items,
+      customerAddress: data.customerAddress,
+      customerPhone: data.customerPhone,
+      customerState: data.customerState,
+      customerGstin: data.customerGstin,
+      deliveryPlaceName: data.deliveryPlaceName,
+      deliveryAddress: data.deliveryAddress,
+      deliveryState: data.deliveryState,
+      deliveryGstin: data.deliveryGstin,
+      transporterName: data.transporterName,
+      transporterVehicleNumber: data.transporterVehicleNumber,
+      placeOfSupply: data.placeOfSupply,
+      transportDate: data.transportDate,
+    };
+    salesData.unshift(newSale); // Add to the beginning of the array
+    toast({
+      title: "Sale Created",
+      description: `Invoice #${data.invoiceNumber} has been successfully created.`,
+    });
+  };
+
+  const handleGeneratePdf = async (data: InvoiceFormValues) => {
+    try {
+      const input: GenerateInvoicePdfInput = {
+        ...data,
+        items: data.items.map((item) => ({ ...item })),
+        taxes: {
+          "CGST (9%)": totalTaxes / 2,
+          "SGST (9%)": totalTaxes / 2,
+        },
+        total: total,
+        currency: currency,
+      };
+
+      const result = await generateInvoicePdf(input);
+      
+      if (result && result.html) {
+          const invoiceElement = document.createElement('div');
+          invoiceElement.innerHTML = result.html;
+          document.body.appendChild(invoiceElement);
+          
+          const canvas = await html2canvas(invoiceElement.querySelector('.invoice-container')!, { scale: 2 });
+          const imgData = canvas.toDataURL('image/png');
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          
+          document.body.removeChild(invoiceElement);
+          
+          pdf.save(`invoice-${data.invoiceNumber}.pdf`);
+
+        toast({
+          title: "Success",
+          description: "Invoice PDF has been generated successfully.",
+        });
+      } else {
+        throw new Error("PDF generation failed, no HTML returned.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate invoice. Please try again.",
+      });
+      throw error; // re-throw to stop processing in combined action
+    }
+  };
+
+  const onSubmit = async (data: InvoiceFormValues, action: ActionType) => {
+    setIsLoading(true);
+    try {
+      if (action === 'create' || action === 'create_and_generate') {
+        handleCreateSale(data);
+      }
+      if (action === 'generate' || action === 'create_and_generate') {
+        await handleGeneratePdf(data);
+      }
+      if (action === 'create') {
+        router.push('/sales');
+      }
+    } catch (error) {
+      // Error is already toasted in handleGeneratePdf
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  return (
+    <FormProvider {...methods}>
+      <form className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recipient Details</CardTitle>
+            <CardDescription>
+              Enter the recipient's information for the invoice.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="customerName">Name</Label>
+              <Input
+                id="customerName"
+                {...methods.register("customerName")}
+                placeholder="John Doe"
+              />
+              {errors.customerName && (
+                <p className="text-sm text-destructive">{errors.customerName.message}</p>
+              )}
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="customerPhone">Phone</Label>
+              <Input
+                id="customerPhone"
+                {...methods.register("customerPhone")}
+                placeholder="e.g. 999-999-9999"
+              />
+              {errors.customerPhone && (
+                <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
+              )}
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="customerAddress">Address</Label>
+              <Textarea
+                id="customerAddress"
+                {...methods.register("customerAddress")}
+                placeholder="123 Main St, Anytown, USA"
+              />
+               {errors.customerAddress && (
+                <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customerState">State</Label>
+              <Input
+                id="customerState"
+                {...methods.register("customerState")}
+                placeholder="e.g. California"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customerGstin">GSTIN/UIN</Label>
+              <Input
+                id="customerGstin"
+                {...methods.register("customerGstin")}
+                placeholder="e.g. 27ABCDE1234F1Z5"
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Delivery Place of Supply</CardTitle>
+            <CardDescription>
+              Enter the delivery information. Leave blank if same as recipient.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+             <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="deliveryPlaceName">Name (optional)</Label>
+              <Input
+                id="deliveryPlaceName"
+                {...methods.register("deliveryPlaceName")}
+                placeholder="e.g. Warehouse, Site Office"
+              />
+            </div>
+             <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="deliveryAddress">Address (optional)</Label>
+              <Textarea
+                id="deliveryAddress"
+                {...methods.register("deliveryAddress")}
+                placeholder="Leave blank if same as recipient address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deliveryState">State (optional)</Label>
+              <Input
+                id="deliveryState"
+                {...methods.register("deliveryState")}
+                placeholder="e.g. California"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deliveryGstin">GSTIN/UIN (optional)</Label>
+              <Input
+                id="deliveryGstin"
+                {...methods.register("deliveryGstin")}
+                placeholder="e.g. 27ABCDE1234F1Z5"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Transporter Details</CardTitle>
+            <CardDescription>
+              Enter the transporter information (optional).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+             <div className="space-y-2">
+              <Label htmlFor="transporterName">Transporter Name</Label>
+              <Input
+                id="transporterName"
+                {...methods.register("transporterName")}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="transporterVehicleNumber">Vehicle No.</Label>
+              <Input
+                id="transporterVehicleNumber"
+                {...methods.register("transporterVehicleNumber")}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="placeOfSupply">Place of Supply</Label>
+              <Input
+                id="placeOfSupply"
+                {...methods.register("placeOfSupply")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transportDate">Date</Label>
+              <Input
+                id="transportDate"
+                type="date"
+                {...methods.register("transportDate")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice Items</CardTitle>
+            <CardDescription>Add the items for this invoice.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%]">Item</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Tax (%)</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fields.map((field, index) => (
+                  <TableRow key={field.id}>
+                    <TableCell>
+                      <Input
+                        {...methods.register(`items.${index}.name`)}
+                        placeholder="e.g. Italian Marble Slab"
+                        list="inventory-items"
+                      />
+                       <datalist id="inventory-items">
+                        {inventoryData.map(item => <option key={item.id} value={item.name} />)}
+                       </datalist>
+                      {errors.items?.[index]?.name && (
+                        <p className="text-sm text-destructive">{errors.items[index].name.message}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        {...methods.register(`items.${index}.quantity`)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...methods.register(`items.${index}.price`)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...methods.register(`items.${index}.tax`)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrencyValue(
+                        (watchedItems[index]?.quantity || 0) *
+                        (watchedItems[index]?.price || 0)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => append({ name: "", quantity: 1, price: 0, tax: 18 })}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+             {errors.items && typeof errors.items === 'object' && !Array.isArray(errors.items) && (
+                <p className="text-sm text-destructive mt-2">{errors.items.message}</p>
+              )}
+          </CardContent>
+          <CardFooter className="flex justify-end">
+            <div className="w-full max-w-sm space-y-2">
+                <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>{formatCurrencyValue(subtotal)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span>Taxes</span>
+                    <span>{formatCurrencyValue(totalTaxes)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg">
+                    <span>Total</span>
+                    <span>{formatCurrencyValue(total)}</span>
+                </div>
+            </div>
+          </CardFooter>
+        </Card>
+        
+        <div className="flex justify-end gap-4">
+             <Button type="button" size="lg" variant="outline" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'create'))}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Create Sale
+             </Button>
+             <Button type="button" size="lg" variant="outline" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'generate'))}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Generate Invoice PDF
+             </Button>
+             <Button type="button" size="lg" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'create_and_generate'))}>
+                {isLoading ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                    </>
+                ) : "Create Sale and Generate PDF"}
+             </Button>
+        </div>
+      </form>
+    </FormProvider>
+  );
+}
