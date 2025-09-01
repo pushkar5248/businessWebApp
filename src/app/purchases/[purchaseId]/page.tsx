@@ -2,17 +2,25 @@
 "use client";
 
 import { useParams } from 'next/navigation';
-import React from 'react';
+import React, { useState } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { purchasesData } from '@/lib/data';
+import { purchasesData, type Purchase, type PurchaseStatus } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCurrency } from '@/context/currency-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -25,16 +33,38 @@ const getBadgeVariant = (status: string) => {
   }
 };
 
+const purchaseStatuses: PurchaseStatus[] = ['Received', 'Pending'];
+
 export default function PurchaseDetailsPage() {
     const params = useParams();
     const { purchaseId } = params;
     const { formatCurrency, formatCurrencyValue } = useCurrency();
+    const { toast } = useToast();
 
-    const purchase = purchasesData.find(p => p.id === purchaseId);
+    const [purchase, setPurchase] = useState<Purchase | undefined>(
+        purchasesData.find(p => p.id === purchaseId)
+    );
 
     if (!purchase) {
         notFound();
     }
+
+    const handleStatusChange = (newStatus: PurchaseStatus) => {
+        if (purchase) {
+            const updatedPurchase = { ...purchase, status: newStatus };
+            setPurchase(updatedPurchase);
+            
+            const index = purchasesData.findIndex(p => p.id === purchase.id);
+            if (index !== -1) {
+                purchasesData[index] = updatedPurchase;
+            }
+
+            toast({
+                title: "Status Updated",
+                description: `Purchase order status changed to ${newStatus}.`
+            });
+        }
+    };
     
     const subtotal = purchase.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
 
@@ -53,7 +83,21 @@ export default function PurchaseDetailsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={getBadgeVariant(purchase.status)} className="text-base px-4 py-2">{purchase.status}</Badge>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex items-center gap-2">
+                             <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
+                             <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    {purchaseStatuses.map(status => (
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
+                            {status}
+                        </DropdownMenuItem>
+                    ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             

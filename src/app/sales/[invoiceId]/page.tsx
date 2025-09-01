@@ -1,17 +1,23 @@
 
 "use client";
 
-import { useParams } from 'next/navigation';
-import React, { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useMemo } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { salesData } from '@/lib/data';
+import { salesData, SaleStatus, Sale } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCurrency } from '@/context/currency-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, FileDown } from 'lucide-react';
+import { ArrowLeft, Loader2, FileDown, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -35,14 +41,17 @@ const getBadgeVariant = (status: string) => {
   }
 };
 
+const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
+
 export default function InvoiceDetailsPage() {
     const params = useParams();
     const { invoiceId } = params;
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
-
-    const invoice = salesData.find(sale => sale.id === invoiceId);
+    
+    // In a real app, you'd fetch this from a state management solution or API
+    const [invoice, setInvoice] = useState<Sale | undefined>(salesData.find(sale => sale.id === invoiceId));
 
     if (!invoice) {
         notFound();
@@ -54,6 +63,23 @@ export default function InvoiceDetailsPage() {
     const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
     const totalTaxes = cgstAmount + sgstAmount + igstAmount;
 
+    const handleStatusChange = (newStatus: SaleStatus) => {
+        if (invoice) {
+            const updatedInvoice = { ...invoice, status: newStatus };
+            setInvoice(updatedInvoice);
+            
+            const index = salesData.findIndex(s => s.id === invoice.id);
+            if (index !== -1) {
+                salesData[index] = updatedInvoice;
+            }
+
+            toast({
+                title: "Status Updated",
+                description: `Invoice status changed to ${newStatus}.`
+            });
+        }
+    };
+    
     const handleGeneratePdf = async () => {
         setIsGenerating(true);
         try {
@@ -143,7 +169,21 @@ export default function InvoiceDetailsPage() {
                     {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <FileDown className="mr-2" />}
                     Generate Invoice PDF
                 </Button>
-                <Badge variant={getBadgeVariant(invoice.status)} className="text-base px-4 py-2">{invoice.status}</Badge>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex items-center gap-2">
+                             <Badge variant={getBadgeVariant(invoice.status)}>{invoice.status}</Badge>
+                             <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    {saleStatuses.map(status => (
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
+                            {status}
+                        </DropdownMenuItem>
+                    ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             

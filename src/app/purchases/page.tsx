@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -25,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
 import { purchasesData as initialPurchasesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2 } from "lucide-react";
+import { PlusCircle, Search, Trash2, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import Link from "next/link";
@@ -49,6 +50,7 @@ export default function PurchasesPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [purchases, setPurchases] = useState(initialPurchasesData);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const handleRowClick = (purchaseId: string) => {
         router.push(`/purchases/${purchaseId}`);
@@ -56,12 +58,21 @@ export default function PurchasesPage() {
 
     const handleDeletePurchase = (e: React.MouseEvent, purchaseId: string) => {
         e.stopPropagation(); // Prevent row click event
-        setPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
+        setPurchases(currentPurchases => currentPurchases.map(p => 
+            p.id === purchaseId ? { ...p, deletedAt: new Date().toISOString() } : p
+        ));
         toast({
-          title: "Purchase Deleted",
-          description: "The purchase order has been successfully deleted.",
+          title: "Purchase Moved to Bin",
+          description: "The purchase order has been successfully moved to the bin.",
         });
     };
+
+    const filteredPurchases = useMemo(() => {
+        return purchases.filter(purchase => !purchase.deletedAt && (
+            purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            purchase.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
+    }, [purchases, searchTerm]);
 
   return (
     <MainLayout>
@@ -70,9 +81,14 @@ export default function PurchasesPage() {
           <h1 className="text-2xl font-bold font-headline">Purchases</h1>
           <p className="text-muted-foreground">Keep track of your stock purchases.</p>
         </div>
-        <Link href="/purchases/new">
-            <Button><PlusCircle className="mr-2" /> New Purchase</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+            <Link href="/purchases/bin">
+                <Button variant="outline"><Archive className="mr-2"/> View Bin</Button>
+            </Link>
+            <Link href="/purchases/new">
+                <Button><PlusCircle className="mr-2" /> New Purchase</Button>
+            </Link>
+        </div>
       </div>
 
       <Card>
@@ -84,7 +100,12 @@ export default function PurchasesPage() {
             </div>
              <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search purchases..." className="pl-8 w-64" />
+              <Input 
+                placeholder="Search purchases..." 
+                className="pl-8 w-64"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
@@ -101,7 +122,7 @@ export default function PurchasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {purchases.map((purchase) => (
+              {filteredPurchases.map((purchase) => (
                 <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{purchase.id}</TableCell>
                   <TableCell>{purchase.vendor}</TableCell>
@@ -119,15 +140,15 @@ export default function PurchasesPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete this purchase order.
+                                    This will move the purchase order to the bin. You can restore it later.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={(e) => handleDeletePurchase(e, purchase.id)}>
-                                    Delete
+                                    Move to Bin
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>

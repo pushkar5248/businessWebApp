@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -25,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
 import { salesData as initialSalesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2 } from "lucide-react";
+import { PlusCircle, Search, Trash2, Archive } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
@@ -51,6 +52,7 @@ export default function SalesPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [sales, setSales] = useState(initialSalesData);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const handleRowClick = (invoiceId: string) => {
         router.push(`/sales/${invoiceId}`);
@@ -58,12 +60,21 @@ export default function SalesPage() {
 
     const handleDeleteSale = (e: React.MouseEvent, saleId: string) => {
         e.stopPropagation(); // Prevent row click event from firing
-        setSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+        setSales(currentSales => currentSales.map(sale => 
+            sale.id === saleId ? { ...sale, deletedAt: new Date().toISOString() } : sale
+        ));
         toast({
-          title: "Sale Deleted",
-          description: "The sale has been successfully deleted.",
+          title: "Sale Moved to Bin",
+          description: "The sale has been successfully moved to the bin.",
         });
     };
+
+    const filteredSales = useMemo(() => {
+        return sales.filter(sale => !sale.deletedAt && (
+            sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sale.customer.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
+    }, [sales, searchTerm]);
 
   return (
     <MainLayout>
@@ -72,9 +83,14 @@ export default function SalesPage() {
           <h1 className="text-2xl font-bold font-headline">Sales</h1>
           <p className="text-muted-foreground">Track and manage your sales invoices.</p>
         </div>
-        <Link href="/sales/new">
-          <Button><PlusCircle className="mr-2" /> New Sale</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+            <Link href="/sales/bin">
+                <Button variant="outline"><Archive className="mr-2"/> View Bin</Button>
+            </Link>
+            <Link href="/sales/new">
+              <Button><PlusCircle className="mr-2" /> New Sale</Button>
+            </Link>
+        </div>
       </div>
 
       <Card>
@@ -86,7 +102,12 @@ export default function SalesPage() {
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search sales..." className="pl-8 w-64" />
+              <Input 
+                placeholder="Search sales..." 
+                className="pl-8 w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
@@ -103,7 +124,7 @@ export default function SalesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sales.map((sale) => (
+              {filteredSales.map((sale) => (
                 <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{sale.id}</TableCell>
                   <TableCell>{sale.customer}</TableCell>
@@ -121,15 +142,15 @@ export default function SalesPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete this sale.
+                            This will move the sale to the bin. You can restore it later.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={(e) => handleDeleteSale(e, sale.id)}>
-                            Delete
+                            Move to Bin
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

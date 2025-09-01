@@ -9,12 +9,15 @@ export type InventoryItem = {
   supplier: string;
 };
 
+export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';
+export type PurchaseStatus = 'Received' | 'Pending';
+
 export type Sale = {
   id: string;
   customer: string;
   date: string;
   amount: number;
-  status: 'Paid' | 'Pending' | 'Overdue';
+  status: SaleStatus;
   items: {
     name: string;
     quantity: number;
@@ -35,6 +38,7 @@ export type Sale = {
   cgstRate?: number;
   sgstRate?: number;
   igstRate?: number;
+  deletedAt?: string;
 };
 
 export type Purchase = {
@@ -44,12 +48,13 @@ export type Purchase = {
     shippingAddress?: string;
     date: string;
     amount: number;
-    status: 'Received' | 'Pending';
+    status: PurchaseStatus;
     items: {
         name: string;
         quantity: number;
         price: number;
     }[];
+    deletedAt?: string;
 };
 
 
@@ -141,6 +146,7 @@ export const salesData: Sale[] = [
     customerPhone: '555-888-9999',
     cgstRate: 9,
     sgstRate: 9,
+    deletedAt: new Date().toISOString(),
   },
 ];
 
@@ -149,5 +155,5 @@ export const purchasesData: Purchase[] = [
     { id: 'PO-2024-002', vendor: 'Stone Solutions', vendorAddress: "Jaipur, India", date: '2024-05-20', amount: 7500.00, status: 'Received', items: [{name: 'Black Granite Countertop', quantity: 30, price: 250}] },
     { id: 'PO-2024-003', vendor: 'Quartz Co.', vendorAddress: "USA", date: '2024-05-25', amount: 5100.00, status: 'Received', items: [{name: 'White Quartz Tile', quantity: 200, price: 25.50}] },
     { id: 'PO-2024-004', vendor: 'Mountain Slate', vendorAddress: "Brazil", date: '2024-06-02', amount: 8200.00, status: 'Pending', items: [{name: 'Slate Roofing Tile', quantity: 1000, price: 8.20}] },
-    { id: 'PO-2024-005', vendor: 'Rock Garden', vendorAddress: "Australia", date: '2024-06-10', amount: 7875.00, status: 'Received', items: [{name: 'Sandstone Paver', quantity: 500, price: 15.75}] },
+    { id: 'PO-2024-005', vendor: 'Rock Garden', vendorAddress: "Australia", date: '2024-06-10', amount: 7875.00, status: 'Received', items: [{name: 'Sandstone Paver', quantity: 500, price: 15.75}], deletedAt: new Date().toISOString() },
 ];
