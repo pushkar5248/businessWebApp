@@ -36,9 +36,10 @@ const currencies = [
 const themes = [
     { name: 'light', label: 'Light' },
     { name: 'dark', label: 'Dark' },
-    { name: 'zinc', label: 'Zinc' },
-    { name: 'slate', label: 'Slate' },
-    { name: 'stone', label: 'Stone' },
+    { name: 'dracula', label: 'Dracula' },
+    { name: 'ocean', label: 'Ocean' },
+    { name: 'forest', label: 'Forest' },
+    { name: 'sunset', label: 'Sunset' },
 ]
 
 
@@ -154,7 +155,7 @@ function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSetti
                 <RadioGroup 
                     value={settings.appearance.theme} 
                     onValueChange={handleThemeChange}
-                    className="grid max-w-md grid-cols-2 gap-8 pt-2"
+                    className="grid max-w-md grid-cols-2 gap-8 pt-2 md:grid-cols-3"
                     disabled={isGuest}
                 >
                     {themes.map((theme) => (
@@ -316,3 +317,5 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
+    

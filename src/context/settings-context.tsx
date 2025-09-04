@@ -49,7 +49,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const applyTheme = useCallback((theme: UserSettings['appearance']['theme']) => {
-        document.documentElement.classList.remove('light', 'dark', 'theme-zinc', 'theme-slate', 'theme-stone');
+        document.documentElement.classList.remove('light', 'dark', 'theme-dracula', 'theme-ocean', 'theme-forest', 'theme-sunset');
         
         if (theme === 'light' || theme === 'dark') {
             document.documentElement.classList.add(theme);

@@ -74,7 +74,7 @@ export type UserSettings = {
     businessEmail: string;
   },
   appearance: {
-    theme: 'light' | 'dark' | 'zinc' | 'slate' | 'stone';
+    theme: 'light' | 'dark' | 'dracula' | 'ocean' | 'forest' | 'sunset';
   },
   billing: {
     currency: string;
