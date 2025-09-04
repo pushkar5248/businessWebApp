@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -42,7 +42,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MainLayout } from "@/components/layout/main-layout";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -137,6 +137,8 @@ export default function InventoryPage() {
   const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
   const dragItem = useRef<string | null>(null);
   const dragOverItem = useRef<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     id: false,
@@ -182,6 +184,10 @@ export default function InventoryPage() {
     if (savedOrder) {
       setColumnOrder(JSON.parse(savedOrder));
     }
+     const savedSortConfig = localStorage.getItem("inventorySortConfig");
+    if (savedSortConfig) {
+      setSortConfig(JSON.parse(savedSortConfig));
+    }
   }, []);
   
   useEffect(() => {
@@ -191,6 +197,10 @@ export default function InventoryPage() {
   useEffect(() => {
     localStorage.setItem("inventoryColumnOrder", JSON.stringify(columnOrder));
   }, [columnOrder]);
+
+  useEffect(() => {
+    localStorage.setItem('inventorySortConfig', JSON.stringify(sortConfig));
+  }, [sortConfig]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
@@ -221,6 +231,14 @@ export default function InventoryPage() {
   const handleDragEnd = () => {
     dragItem.current = null;
     dragOverItem.current = null;
+  };
+
+  const requestSort = (key: keyof ColumnKeys) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
   };
 
 
@@ -277,7 +295,7 @@ export default function InventoryPage() {
     const headers = visibleColumns;
     const csvContent = [
       headers.map(h => columns[h]).join(','),
-      ...items.map(item => headers.map(headerKey => {
+      ...sortedItems.map(item => headers.map(headerKey => {
         const value = item[headerKey as keyof ColumnKeys];
         if (typeof value === 'string' && value.includes(',')) {
           return `"${value}"`;
@@ -354,6 +372,33 @@ export default function InventoryPage() {
       setImportModalOpen(true);
   }
 
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...items];
+    if (searchTerm) {
+      sortableItems = sortableItems.filter(item =>
+        Object.values(item).some(val =>
+          String(val).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [items, sortConfig, searchTerm]);
+
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-4">
@@ -403,7 +448,7 @@ export default function InventoryPage() {
                 <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="Search items..." className="pl-8 w-64" />
+                      <Input placeholder="Search items..." className="pl-8 w-64" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -444,8 +489,12 @@ export default function InventoryPage() {
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
                     className="cursor-move"
+                    onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
-                    {columns[key]}
+                    <div className="flex items-center gap-2">
+                      {columns[key]}
+                      {sortConfig?.key === key && <ArrowUpDown className="h-4 w-4" />}
+                    </div>
                   </TableHead>
                 ))}
                 <TableHead />
@@ -458,14 +507,14 @@ export default function InventoryPage() {
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : items.length === 0 ? (
+              ) : sortedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
                     No items found. Get started by adding a new item.
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
+                sortedItems.map((item) => (
                   <TableRow key={item.id}>
                     {visibleColumns.map((key) => (
                       <TableCell key={key} className={key === 'name' ? 'font-medium' : ''}>
@@ -505,5 +554,3 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
-
-    
