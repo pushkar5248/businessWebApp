@@ -43,7 +43,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const getBadgeVariant = (status: string) => {
@@ -75,6 +76,7 @@ export default function PurchasesPage() {
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRows, setSelectedRows] = useState<string[]>([]);
     const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
         id: true,
@@ -139,25 +141,28 @@ export default function PurchasesPage() {
         router.push(`/purchases/${purchaseId}`);
     };
 
-    const handleDeletePurchase = async (e: React.MouseEvent, purchaseId: string) => {
-        e.stopPropagation(); // Prevent row click event
+    const handleDeletePurchases = async (purchaseIds: string[]) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.'})
             return;
         }
         try {
-            const purchaseRef = doc(db, "purchases", purchaseId);
-            await updateDoc(purchaseRef, {
-                deletedAt: new Date().toISOString()
+            const batch = writeBatch(db);
+            purchaseIds.forEach(id => {
+                const purchaseRef = doc(db, "purchases", id);
+                batch.update(purchaseRef, { deletedAt: new Date().toISOString() });
             });
-            setPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
+            await batch.commit();
+            
+            setPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
+            setSelectedRows([]);
             toast({
-              title: "Purchase Moved to Bin",
-              description: "The purchase order has been successfully moved to the bin.",
+              title: `Purchase(s) Moved to Bin`,
+              description: `${purchaseIds.length} purchase order(s) have been moved to the bin.`,
             });
         } catch (error) {
-            console.error("Error moving purchase to bin:", error);
-            toast({ variant: "destructive", title: "Error", description: "Could not move purchase to bin." });
+            console.error("Error moving purchases to bin:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not move purchases to bin." });
         }
     };
     
@@ -228,6 +233,23 @@ export default function PurchasesPage() {
         return sortableItems;
     }, [purchases, sortConfig, searchTerm]);
 
+    const handleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+          setSelectedRows(sortedPurchases.map(item => item.id));
+        } else {
+          setSelectedRows([]);
+        }
+    };
+
+    const handleRowSelect = (itemId: string, checked: boolean) => {
+        if (checked) {
+          setSelectedRows(prev => [...prev, itemId]);
+        } else {
+          setSelectedRows(prev => prev.filter(id => id !== itemId));
+        }
+    };
+
+
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-4">
@@ -271,11 +293,11 @@ export default function PurchasesPage() {
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {columnOrder.map((key) => (
+                    {Object.keys(COLUMN_NAMES).map((key) => (
                         <DropdownMenuCheckboxItem
                         key={key}
                         className="capitalize"
-                        checked={columnVisibility[key]}
+                        checked={columnVisibility[key as keyof ColumnKeys]}
                         onCheckedChange={(checked) =>
                             setColumnVisibility(prev => ({...prev, [key]: !!checked}))
                         }
@@ -289,9 +311,46 @@ export default function PurchasesPage() {
           </div>
         </CardHeader>
         <CardContent>
+           {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-md mb-4 border">
+                <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={!user}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Move Selected to Bin
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will move the selected {selectedRows.length} purchase(s) to the bin. You can restore them later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeletePurchases(selectedRows)}>
+                        Move to Bin
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                 <TableHead className="p-0" style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center p-4">
+                     <Checkbox
+                        checked={selectedRows.length > 0 && selectedRows.length === sortedPurchases.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                        disabled={!user}
+                      />
+                  </div>
+                </TableHead>
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
@@ -302,15 +361,11 @@ export default function PurchasesPage() {
                     onDragOver={(e) => e.preventDefault()}
                     className="cursor-move p-0 transition-all duration-300 ease-in-out"
                   >
-                    <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center justify-between p-4" onClick={() => requestSort(key as keyof ColumnKeys)}>
                         <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                requestSort(key as keyof ColumnKeys);
-                            }}
                             className="h-6 w-6 ml-2"
                         >
                             <ArrowUpDown className="h-4 w-4" />
@@ -324,18 +379,26 @@ export default function PurchasesPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                    <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                     </TableCell>
                 </TableRow>
               ) : sortedPurchases.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                    <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                         No purchases found.
                     </TableCell>
                 </TableRow>
               ) : (sortedPurchases.map((purchase) => (
-                <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer">
+                <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer" data-state={selectedRows.includes(purchase.id) && "selected"}>
+                   <TableCell className="border-l" onClick={(e) => e.stopPropagation()}>
+                       <Checkbox
+                          checked={selectedRows.includes(purchase.id)}
+                          onCheckedChange={(checked) => handleRowSelect(purchase.id, !!checked)}
+                          aria-label={`Select purchase ${purchase.id}`}
+                          disabled={!user}
+                        />
+                    </TableCell>
                   {visibleColumns.map(key => (
                       <TableCell key={key} className="border-l">
                           {key === 'status' ? (
@@ -349,10 +412,10 @@ export default function PurchasesPage() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right border-l">
+                  <TableCell className="text-right border-l" onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" disabled={!user} onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" disabled={!user}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </AlertDialogTrigger>
@@ -364,8 +427,8 @@ export default function PurchasesPage() {
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={(e) => handleDeletePurchase(e, purchase.id)}>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeletePurchases([purchase.id])}>
                                     Move to Bin
                                 </AlertDialogAction>
                             </AlertDialogFooter>

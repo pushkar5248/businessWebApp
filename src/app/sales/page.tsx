@@ -43,7 +43,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const getBadgeVariant = (status: string) => {
@@ -77,6 +78,7 @@ export default function SalesPage() {
     const [sales, setSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRows, setSelectedRows] = useState<string[]>([]);
     const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
         id: true,
@@ -140,25 +142,28 @@ export default function SalesPage() {
         router.push(`/sales/${invoiceId}`);
     };
 
-    const handleDeleteSale = async (e: React.MouseEvent, saleId: string) => {
-        e.stopPropagation(); // Prevent row click event from firing
+    const handleDeleteSales = async (saleIds: string[]) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.'})
             return;
         }
         try {
-          const saleRef = doc(db, "sales", saleId);
-          await updateDoc(saleRef, {
-            deletedAt: new Date().toISOString()
-          });
-          setSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
-          toast({
-            title: "Sale Moved to Bin",
-            description: "The sale has been successfully moved to the bin.",
-          });
+            const batch = writeBatch(db);
+            saleIds.forEach(id => {
+                const saleRef = doc(db, "sales", id);
+                batch.update(saleRef, { deletedAt: new Date().toISOString() });
+            });
+            await batch.commit();
+
+            setSales(currentSales => currentSales.filter(sale => !saleIds.includes(sale.id)));
+            setSelectedRows([]);
+            toast({
+                title: "Sale(s) Moved to Bin",
+                description: `${saleIds.length} sale(s) have been successfully moved to the bin.`,
+            });
         } catch (error) {
-          console.error("Error moving sale to bin:", error);
-          toast({ variant: "destructive", title: "Error", description: "Could not move sale to bin." });
+          console.error("Error moving sales to bin:", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not move sales to bin." });
         }
     };
     
@@ -229,6 +234,22 @@ export default function SalesPage() {
         return sortableItems;
     }, [sales, sortConfig, searchTerm]);
 
+    const handleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+          setSelectedRows(sortedSales.map(item => item.id));
+        } else {
+          setSelectedRows([]);
+        }
+    };
+
+    const handleRowSelect = (itemId: string, checked: boolean) => {
+        if (checked) {
+          setSelectedRows(prev => [...prev, itemId]);
+        } else {
+          setSelectedRows(prev => prev.filter(id => id !== itemId));
+        }
+    };
+
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-4">
@@ -272,11 +293,11 @@ export default function SalesPage() {
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {columnOrder.map((key) => (
+                    {Object.keys(COLUMN_NAMES).map((key) => (
                         <DropdownMenuCheckboxItem
                         key={key}
                         className="capitalize"
-                        checked={columnVisibility[key]}
+                        checked={columnVisibility[key as keyof ColumnKeys]}
                         onCheckedChange={(checked) =>
                             setColumnVisibility(prev => ({...prev, [key]: !!checked}))
                         }
@@ -290,9 +311,46 @@ export default function SalesPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-md mb-4 border">
+                <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={!user}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Move Selected to Bin
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will move the selected {selectedRows.length} sale(s) to the bin. You can restore them later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteSales(selectedRows)}>
+                        Move to Bin
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                 <TableHead className="p-0" style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center p-4">
+                     <Checkbox
+                        checked={selectedRows.length > 0 && selectedRows.length === sortedSales.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                        disabled={!user}
+                      />
+                  </div>
+                </TableHead>
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
@@ -303,15 +361,11 @@ export default function SalesPage() {
                         onDragOver={(e) => e.preventDefault()}
                         className="cursor-move p-0 transition-all duration-300 ease-in-out"
                       >
-                    <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center justify-between p-4" onClick={() => requestSort(key as keyof ColumnKeys)}>
                         <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                requestSort(key as keyof ColumnKeys);
-                            }}
                             className="h-6 w-6 ml-2"
                         >
                             <ArrowUpDown className="h-4 w-4" />
@@ -325,18 +379,26 @@ export default function SalesPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
               ) : sortedSales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                     No sales found.
                   </TableCell>
                 </TableRow>
               ) : (sortedSales.map((sale) => (
-                <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer">
+                <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer" data-state={selectedRows.includes(sale.id) && "selected"}>
+                   <TableCell className="border-l" onClick={(e) => e.stopPropagation()}>
+                       <Checkbox
+                          checked={selectedRows.includes(sale.id)}
+                          onCheckedChange={(checked) => handleRowSelect(sale.id, !!checked)}
+                          aria-label={`Select sale ${sale.id}`}
+                          disabled={!user}
+                        />
+                    </TableCell>
                    {visibleColumns.map(key => (
                       <TableCell key={key} className="border-l">
                           {key === 'status' ? (
@@ -350,10 +412,10 @@ export default function SalesPage() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right border-l">
+                  <TableCell className="text-right border-l" onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={!user} onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" disabled={!user}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
@@ -365,8 +427,8 @@ export default function SalesPage() {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={(e) => handleDeleteSale(e, sale.id)}>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteSales([sale.id])}>
                             Move to Bin
                           </AlertDialogAction>
                         </AlertDialogFooter>
