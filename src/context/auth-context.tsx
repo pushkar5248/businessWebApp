@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -20,12 +20,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    const initializeAuth = async () => {
+      await setPersistence(auth, browserSessionPersistence);
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
+        setLoading(false);
+      });
+      return unsubscribe;
+    };
 
-    return () => unsubscribe();
+    const unsubscribePromise = initializeAuth();
+
+    return () => {
+      unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
   }, []);
 
   useEffect(() => {
