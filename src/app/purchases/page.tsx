@@ -291,7 +291,7 @@ export default function PurchasesPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
@@ -303,7 +303,7 @@ export default function PurchasesPage() {
                     className="cursor-move p-0 transition-all duration-300 ease-in-out"
                   >
                     <div className="flex items-center justify-between p-4">
-                        <span>{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
+                        <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                         <Button
                             variant="ghost"
                             size="icon"

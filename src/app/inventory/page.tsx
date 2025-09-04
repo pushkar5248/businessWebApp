@@ -512,7 +512,7 @@ export default function InventoryPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
@@ -529,7 +529,7 @@ export default function InventoryPage() {
                             value={columns[key]}
                             onChange={(e) => handleColumnNameChange(key, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full"
+                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
                         />
                       <Button
                         variant="ghost"
