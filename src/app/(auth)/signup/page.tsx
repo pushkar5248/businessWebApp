@@ -88,18 +88,19 @@ export default function SignupPage() {
                 id="email"
                 type="email"
                 placeholder="m@example.com"
+                suppressHydrationWarning={true}
                 {...register('email')}
                 />
                 {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...register('password')} />
+                <Input id="password" type="password" suppressHydrationWarning={true} {...register('password')} />
                 {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input id="confirmPassword" type="password" {...register('confirmPassword')} />
+                <Input id="confirmPassword" type="password" suppressHydrationWarning={true} {...register('confirmPassword')} />
                 {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
