@@ -49,14 +49,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const applyTheme = useCallback((theme: UserSettings['appearance']['theme']) => {
-        document.documentElement.classList.remove('light', 'dark', 'theme-dracula', 'theme-ocean', 'theme-forest', 'theme-sunset');
-        
-        if (theme === 'light' || theme === 'dark') {
-            document.documentElement.classList.add(theme);
-        } else {
-            // For other named themes, we assume they are dark variants for now
-            document.documentElement.classList.add('dark', `theme-${theme}`);
-        }
+        // The theme class is now applied in the RootLayout, so this function is just for updating state.
+        // We could add logic here if needed in the future.
     }, []);
 
     const fetchSettings = useCallback(async () => {
@@ -73,10 +67,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data() as UserSettings;
-                // Deep merge to ensure all nested properties from defaultSettings are present
                 const mergedSettings = deepmerge(defaultSettings, data);
                 
-                // Ensure profile is correctly set from user object or existing profile
                 mergedSettings.profile = {
                     displayName: user.displayName || data.profile?.displayName || defaultSettings.profile.displayName,
                     email: user.email || data.profile?.email || '',
@@ -117,12 +109,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         
         try {
             const docRef = doc(db, 'users', user.uid);
-            // Use updateDoc for partial updates
             await updateDoc(docRef, dataToSave);
             
-            // Deep merge new data into existing settings state
             const updatedSettings = deepmerge(settings, dataToSave as Partial<UserSettings>);
             setSettings(updatedSettings);
+
+            if (dataToSave.appearance?.theme) {
+                applyTheme(dataToSave.appearance.theme);
+            }
 
             toast({ title: 'Success', description: "Your settings have been saved."});
         } catch (error) {
