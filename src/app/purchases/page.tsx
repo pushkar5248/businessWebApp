@@ -300,8 +300,8 @@ export default function PurchasesPage() {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
+                    className="cursor-pointer hover:bg-muted/50"
                   >
                     <div className="flex items-center gap-2">
                       {COLUMN_NAMES[key as keyof ColumnKeys]}
@@ -309,7 +309,7 @@ export default function PurchasesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right border-l">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -328,7 +328,7 @@ export default function PurchasesPage() {
               ) : (sortedPurchases.map((purchase) => (
                 <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer">
                   {visibleColumns.map(key => (
-                      <TableCell key={key}>
+                      <TableCell key={key} className="border-l">
                           {key === 'status' ? (
                             <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                           ) : key === 'amount' ? (
@@ -340,7 +340,7 @@ export default function PurchasesPage() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right">
+                  <TableCell className="text-right border-l">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" disabled={!user} onClick={(e) => e.stopPropagation()}>

@@ -521,20 +521,22 @@ export default function InventoryPage() {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move"
+                    onClick={() => requestSort(key as keyof ColumnKeys)}
+                    className="cursor-move p-0"
                   >
-                    <div className="flex items-center gap-2" onClick={() => requestSort(key as keyof ColumnKeys)}>
+                    <div className="flex items-center gap-2 p-4">
                        <Input
                             type="text"
                             value={columns[key]}
                             onChange={(e) => handleColumnNameChange(key, e.target.value)}
-                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full"
                         />
                       {sortConfig?.key === key && <ArrowUpDown className="h-4 w-4" />}
                     </div>
                   </TableHead>
                 ))}
-                <TableHead />
+                <TableHead className="border-l"/>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -554,11 +556,11 @@ export default function InventoryPage() {
                 sortedItems.map((item) => (
                   <TableRow key={item.id}>
                     {visibleColumns.map((key) => (
-                      <TableCell key={key} className={key === 'name' ? 'font-medium' : ''}>
+                      <TableCell key={key} className={`border-l ${key === 'name' ? 'font-medium' : ''}`}>
                          {key === 'price' ? formatCurrency((item as any)[key]) : (item as any)[key]}
                       </TableCell>
                     ))}
-                      <TableCell>
+                      <TableCell className="border-l">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" disabled={!user}>
@@ -591,5 +593,3 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
-
-    

@@ -301,8 +301,8 @@ export default function SalesPage() {
                         onDragEnter={(e) => handleDragEnter(e, key)}
                         onDragEnd={handleDragEnd}
                         onDragOver={(e) => e.preventDefault()}
-                        className="cursor-move"
                         onClick={() => requestSort(key as keyof ColumnKeys)}
+                        className="cursor-pointer hover:bg-muted/50"
                       >
                     <div className="flex items-center gap-2">
                         {COLUMN_NAMES[key as keyof ColumnKeys]}
@@ -310,7 +310,7 @@ export default function SalesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right border-l">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -329,7 +329,7 @@ export default function SalesPage() {
               ) : (sortedSales.map((sale) => (
                 <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer">
                    {visibleColumns.map(key => (
-                      <TableCell key={key}>
+                      <TableCell key={key} className="border-l">
                           {key === 'status' ? (
                             <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                           ) : key === 'amount' ? (
@@ -341,7 +341,7 @@ export default function SalesPage() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right">
+                  <TableCell className="text-right border-l">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" disabled={!user} onClick={(e) => e.stopPropagation()}>
