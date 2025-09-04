@@ -151,10 +151,7 @@ function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSetti
     const [isDarkMode, setIsDarkMode] = useState(settings.appearance.theme === 'dark');
 
     useEffect(() => {
-        const theme = settings.appearance.theme;
-        const darkMode = theme === 'dark';
-        setIsDarkMode(darkMode);
-        document.documentElement.classList.toggle('dark', darkMode);
+        setIsDarkMode(settings.appearance.theme === 'dark');
     }, [settings.appearance.theme]);
 
     const toggleTheme = (checked: boolean) => {
