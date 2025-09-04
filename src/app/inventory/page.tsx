@@ -50,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/context/auth-context";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
@@ -139,6 +140,7 @@ export default function InventoryPage() {
   const dragOverItem = useRef<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     id: false,
@@ -266,20 +268,27 @@ export default function InventoryPage() {
     }
   };
   
-  const handleDeleteItem = useCallback(async (itemId: string) => {
+  const handleDeleteItems = async (itemIds: string[]) => {
     if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to delete an item.'})
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to delete items.'})
         return;
     }
     try {
-      await deleteDoc(doc(db, "inventory", itemId));
-      setItems(prev => prev.filter(item => item.id !== itemId));
-      toast({ title: "Success", description: "Item removed from inventory." });
+      const batch = writeBatch(db);
+      itemIds.forEach(id => {
+        const docRef = doc(db, "inventory", id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+
+      setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
+      setSelectedRows([]);
+      toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
     } catch (error) {
-      console.error("Error deleting item:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not delete item." });
+      console.error("Error deleting items:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not delete items." });
     }
-  }, [user, toast]);
+  };
 
   const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
     setItems(prev => prev.map(item => 
@@ -439,6 +448,23 @@ export default function InventoryPage() {
     setColumns(prev => ({ ...prev, [key]: newName }));
   };
 
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedRows(sortedItems.map(item => item.id));
+    } else {
+      setSelectedRows([]);
+    }
+  };
+
+  const handleRowSelect = (itemId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRows(prev => [...prev, itemId]);
+    } else {
+      setSelectedRows(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-4">
@@ -499,7 +525,7 @@ export default function InventoryPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columnOrder).map((key) => (
+                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
                           <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
@@ -517,9 +543,46 @@ export default function InventoryPage() {
             </div>
         </CardHeader>
         <CardContent>
+          {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-md mb-4 border">
+                <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={!user}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Selected
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the selected {selectedRows.length} items.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteItems(selectedRows)}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="p-0" style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center p-4">
+                     <Checkbox
+                        checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                        disabled={!user}
+                      />
+                  </div>
+                </TableHead>
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
@@ -558,19 +621,27 @@ export default function InventoryPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
               ) : sortedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                     No items found. Get started by adding a new item.
                   </TableCell>
                 </TableRow>
               ) : (
                 sortedItems.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} data-state={selectedRows.includes(item.id) && "selected"}>
+                    <TableCell className="border-l">
+                       <Checkbox
+                          checked={selectedRows.includes(item.id)}
+                          onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
+                          aria-label={`Select item ${item.name}`}
+                          disabled={!user}
+                        />
+                    </TableCell>
                     {visibleColumns.map((key) => (
                       <TableCell key={key} className={`border-l ${key === 'name' ? 'font-medium' : ''}`}>
                          {key === 'price' ? formatCurrency((item as any)[key]) : (item as any)[key]}
@@ -592,7 +663,7 @@ export default function InventoryPage() {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteItem(item.id)}>
+                                <AlertDialogAction onClick={() => handleDeleteItems([item.id])}>
                                   Delete
                                 </AlertDialogAction>
                               </AlertDialogFooter>
