@@ -35,11 +35,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { type Sale, type InventoryItem } from "@/lib/types";
+import { type Sale, type InventoryItem, UserSettings } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where, getDoc } from "firebase/firestore";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -48,11 +48,6 @@ const lineItemSchema = z.object({
 });
 
 const formSchema = z.object({
-  businessName: z.string().default("Adhunik Marbles"),
-  businessAddress: z.string().default("New Suraksha Vihar Colony, Gwalior Road, Agra 282 009"),
-  businessPhone: z.string().default("9760026605, 6396871665"),
-  businessEmail: z.string().default("contact@adhunikmarbles.com"),
-  businessGstin: z.string().default("09AGZPA5852F1Z0"),
   invoiceNumber: z.string().min(1, "Invoice number is required."),
   invoiceDate: z.string().min(1, "Invoice date is required."),
   customerName: z.string().min(1, "Customer name is required."),
@@ -81,6 +76,7 @@ type ActionType = "create" | "generate" | "create_and_generate";
 export function InvoiceForm() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
@@ -92,11 +88,6 @@ export function InvoiceForm() {
   const methods = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      businessName: "Adhunik Marbles",
-      businessAddress: "New Suraksha Vihar Colony, Gwalior Road, Agra 282 009",
-      businessPhone: "9760026605, 6396871665",
-      businessEmail: "contact@adhunikmarbles.com",
-      businessGstin: "09AGZPA5852F1Z0",
       invoiceDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
@@ -110,20 +101,48 @@ export function InvoiceForm() {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = methods;
   
-  const fetchInventory = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     if (!user) return;
-    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
-    const querySnapshot = await getDocs(q);
-    const items = querySnapshot.docs.map(doc => doc.data() as InventoryItem);
-    setInventoryItems(items);
-  }, [user]);
+    setIsLoading(true);
+    try {
+        const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
+        const settingsDocRef = doc(db, "users", user.uid);
+
+        const [inventorySnapshot, settingsSnap] = await Promise.all([
+            getDocs(inventoryQuery),
+            getDoc(settingsDocRef)
+        ]);
+
+        const items = inventorySnapshot.docs.map(doc => doc.data() as InventoryItem);
+        setInventoryItems(items);
+
+        if (settingsSnap.exists()) {
+            const userSettings = settingsSnap.data() as UserSettings;
+            setSettings(userSettings);
+            reset({
+                invoiceDate: new Date().toISOString().split("T")[0],
+                invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+                items: [{ name: "", quantity: 1, price: 0 }],
+                cgstRate: userSettings.billing.defaultCgstRate,
+                sgstRate: userSettings.billing.defaultSgstRate,
+                igstRate: 0,
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching initial data", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load initial data.'})
+    } finally {
+        setIsLoading(false);
+    }
+  }, [user, reset, toast]);
   
   useEffect(() => {
-    fetchInventory();
-  }, [fetchInventory]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -193,8 +212,17 @@ export function InvoiceForm() {
   };
 
   const handleGeneratePdf = async (data: InvoiceFormValues) => {
+    if (!settings) {
+        toast({ variant: "destructive", title: "Error", description: "Settings not loaded." });
+        throw new Error("Settings not loaded");
+    }
     try {
       const input: GenerateInvoicePdfInput = {
+        businessName: settings.general.businessName,
+        businessAddress: settings.general.businessAddress,
+        businessPhone: settings.general.businessPhone,
+        businessEmail: settings.general.businessEmail,
+        businessGstin: settings.general.businessGstin,
         ...data,
         items: data.items.map((item) => ({ ...item })),
         total: total,

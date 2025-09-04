@@ -4,7 +4,7 @@
 import { useParams } from 'next/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { type SaleStatus, type Sale } from '@/lib/types';
+import { type SaleStatus, type Sale, type UserSettings } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '@/context/auth-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -47,35 +48,48 @@ const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
 
 export default function InvoiceDetailsPage() {
     const params = useParams();
+    const { user } = useAuth();
     const { invoiceId } = params;
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [invoice, setInvoice] = useState<Sale | null>(null);
+    const [settings, setSettings] = useState<UserSettings | null>(null);
 
-    const fetchInvoice = useCallback(async () => {
-        if (!invoiceId) return;
+    const fetchInvoiceAndSettings = useCallback(async () => {
+        if (!invoiceId || !user) return;
         setIsLoading(true);
         try {
-            const docRef = doc(db, "sales", invoiceId as string);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setInvoice({ id: docSnap.id, ...docSnap.data() } as Sale);
+            const invoiceDocRef = doc(db, "sales", invoiceId as string);
+            const settingsDocRef = doc(db, "users", user.uid);
+
+            const [invoiceDocSnap, settingsDocSnap] = await Promise.all([
+                getDoc(invoiceDocRef),
+                getDoc(settingsDocRef)
+            ]);
+
+            if (invoiceDocSnap.exists()) {
+                setInvoice({ id: invoiceDocSnap.id, ...invoiceDocSnap.data() } as Sale);
             } else {
                 setInvoice(null);
             }
+
+            if (settingsDocSnap.exists()) {
+                setSettings(settingsDocSnap.data() as UserSettings);
+            }
+
         } catch (error) {
-            console.error("Error fetching invoice:", error);
+            console.error("Error fetching data:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to fetch invoice details." });
         } finally {
             setIsLoading(false);
         }
-    }, [invoiceId, toast]);
+    }, [invoiceId, user, toast]);
 
     useEffect(() => {
-        fetchInvoice();
-    }, [fetchInvoice]);
+        fetchInvoiceAndSettings();
+    }, [fetchInvoiceAndSettings]);
 
     if (isLoading) {
         return (
@@ -115,15 +129,22 @@ export default function InvoiceDetailsPage() {
     };
     
     const handleGeneratePdf = async () => {
-        if (!invoice) return;
+        if (!invoice || !settings) {
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Invoice or settings data is not available.",
+            });
+            return;
+        };
         setIsGenerating(true);
         try {
           const input: GenerateInvoicePdfInput = {
-            businessName: "Adhunik Marbles",
-            businessAddress: "New Suraksha Vihar Colony, Gwalior Road, Agra 282 009",
-            businessPhone: "9760026605, 6396871665",
-            businessEmail: "contact@adhunikmarbles.com",
-            businessGstin: "09AGZPA5852F1Z0",
+            businessName: settings.general.businessName,
+            businessAddress: settings.general.businessAddress,
+            businessPhone: settings.general.businessPhone,
+            businessEmail: settings.general.businessEmail,
+            businessGstin: settings.general.businessGstin,
             invoiceNumber: invoice.id,
             invoiceDate: invoice.date,
             customerName: invoice.customer,

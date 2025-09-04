@@ -172,7 +172,7 @@ export default function PurchasesPage() {
                 <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{purchase.id}</TableCell>
                   <TableCell>{purchase.vendor}</TableCell>
-                  <TableCell>{purchase.date}</TableCell>
+                  <TableCell>{new Date(purchase.date).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                   </TableCell>

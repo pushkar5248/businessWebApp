@@ -1,4 +1,5 @@
 
+
 export type InventoryItem = {
   id: string;
   name: string;
@@ -39,7 +40,7 @@ export type Sale = {
   cgstRate?: number;
   sgstRate?: number;
   igstRate?: number;
-  deletedAt?: string;
+  deletedAt?: string | null;
   userId?: string;
 };
 
@@ -56,6 +57,30 @@ export type Purchase = {
         quantity: number;
         price: number;
     }[];
-    deletedAt?: string;
+    deletedAt?: string | null;
     userId?: string;
 };
+
+export type UserSettings = {
+  profile: {
+    displayName: string;
+    email: string;
+  },
+  general: {
+    businessName: string;
+    businessGstin: string;
+    businessAddress: string;
+    businessPhone: string;
+    businessEmail: string;
+  },
+  appearance: {
+    theme: 'light' | 'dark';
+  },
+  billing: {
+    currency: string;
+    defaultCgstRate: number;
+    defaultSgstRate: number;
+    invoiceFooter: string;
+    invoiceTerms: string;
+  }
+}

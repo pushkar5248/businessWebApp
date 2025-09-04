@@ -138,7 +138,7 @@ export default function PurchaseDetailsPage() {
                 <CardHeader>
                     <CardTitle>PO Details</CardTitle>
                     <CardDescription>
-                        Date: {purchase.date}
+                        Date: {new Date(purchase.date).toLocaleDateString()}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-8">

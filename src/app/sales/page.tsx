@@ -173,7 +173,7 @@ export default function SalesPage() {
                 <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{sale.id}</TableCell>
                   <TableCell>{sale.customer}</TableCell>
-                  <TableCell>{sale.date}</TableCell>
+                  <TableCell>{new Date(sale.date).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                   </TableCell>
