@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrderFormValues } from "@/components/purchase-order-form";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 
