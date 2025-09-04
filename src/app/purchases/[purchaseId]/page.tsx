@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { type Purchase, type PurchaseStatus } from '@/lib/types';
+import { type Purchase, type PurchaseStatus, InventoryItem } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '@/context/auth-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -39,6 +40,7 @@ const purchaseStatuses: PurchaseStatus[] = ['Received', 'Pending'];
 
 export default function PurchaseDetailsPage() {
     const params = useParams();
+    const { user } = useAuth();
     const { purchaseId } = params;
     const { formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
@@ -83,19 +85,62 @@ export default function PurchaseDetailsPage() {
     }
 
     const handleStatusChange = async (newStatus: PurchaseStatus) => {
-        if (purchase) {
-            try {
-                const purchaseRef = doc(db, "purchases", purchase.id);
-                await updateDoc(purchaseRef, { status: newStatus });
-                setPurchase({ ...purchase, status: newStatus });
-                 toast({
-                    title: "Status Updated",
-                    description: `Purchase order status changed to ${newStatus}.`
-                });
-            } catch (error) {
-                 console.error("Error updating status:", error);
-                toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
+        if (!purchase || !user) return;
+        
+        try {
+            const batch = writeBatch(db);
+            const purchaseRef = doc(db, "purchases", purchase.id);
+            
+            // Update purchase status
+            batch.update(purchaseRef, { status: newStatus });
+
+            // If status is 'Received', update inventory
+            if (newStatus === 'Received' && purchase.status !== 'Received') {
+                const itemNames = purchase.items.map(item => item.name);
+                if(itemNames.length > 0) {
+                    const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid), where("name", "in", itemNames));
+                    const inventorySnapshot = await getDocs(inventoryQuery);
+                    
+                    const inventoryMap = new Map<string, {docId: string, stock: number}>();
+                    inventorySnapshot.forEach(doc => {
+                        const item = doc.data() as InventoryItem;
+                        inventoryMap.set(item.name, { docId: doc.id, stock: item.stock });
+                    });
+
+                    for (const purchasedItem of purchase.items) {
+                        const existingItem = inventoryMap.get(purchasedItem.name);
+                        if (existingItem) {
+                            const newStock = existingItem.stock + purchasedItem.quantity;
+                            const itemRef = doc(db, "inventory", existingItem.docId);
+                            batch.update(itemRef, { stock: newStock });
+                        } else {
+                            // If item doesn't exist, create it in inventory
+                             const newItemRef = doc(collection(db, "inventory"));
+                             batch.set(newItemRef, {
+                                 name: purchasedItem.name,
+                                 quantity: purchasedItem.quantity,
+                                 price: purchasedItem.price,
+                                 category: 'Uncategorized',
+                                 subcategory: '',
+                                 supplier: purchase.vendor,
+                                 userId: user.uid,
+                                 stock: purchasedItem.quantity
+                             });
+                        }
+                    }
+                }
             }
+            
+            await batch.commit();
+
+            setPurchase({ ...purchase, status: newStatus });
+            toast({
+                title: "Status Updated",
+                description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
+            });
+        } catch (error) {
+             console.error("Error updating status:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
         }
     };
     
@@ -118,14 +163,14 @@ export default function PurchaseDetailsPage() {
               <div className="flex items-center gap-2">
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2">
+                        <Button variant="outline" className="flex items-center gap-2" disabled={!user}>
                              <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                              <ChevronDown className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                     {purchaseStatuses.map(status => (
-                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)} disabled={purchase.status === status}>
                             {status}
                         </DropdownMenuItem>
                     ))}
@@ -195,3 +240,5 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
+
+    

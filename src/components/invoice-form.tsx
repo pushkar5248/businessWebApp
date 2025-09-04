@@ -39,7 +39,7 @@ import { type Sale, type InventoryItem, UserSettings } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where, getDoc, writeBatch, documentId } from "firebase/firestore";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -199,14 +199,46 @@ export function InvoiceForm() {
     };
 
     try {
-        await setDoc(doc(db, "sales", newSale.id), newSale);
+        const batch = writeBatch(db);
+
+        // 1. Add the new sale to the batch
+        const saleDocRef = doc(db, "sales", newSale.id);
+        batch.set(saleDocRef, newSale);
+
+        // 2. Update inventory stock
+        const itemNames = data.items.map(item => item.name);
+        if (itemNames.length > 0) {
+            const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid), where("name", "in", itemNames));
+            const inventorySnapshot = await getDocs(inventoryQuery);
+
+            const inventoryUpdates = new Map<string, number>();
+            inventorySnapshot.forEach(doc => {
+                const item = doc.data() as InventoryItem;
+                inventoryUpdates.set(item.name, item.stock);
+            });
+            
+            for (const saleItem of data.items) {
+                const currentStock = inventoryUpdates.get(saleItem.name);
+                if (currentStock !== undefined) {
+                    const inventoryDoc = inventorySnapshot.docs.find(d => d.data().name === saleItem.name);
+                    if (inventoryDoc) {
+                        const newStock = currentStock - saleItem.quantity;
+                        batch.update(inventoryDoc.ref, { stock: newStock });
+                    }
+                }
+            }
+        }
+
+        // 3. Commit the batch
+        await batch.commit();
+
         toast({
           title: "Sale Created",
-          description: `Invoice #${data.invoiceNumber} has been successfully created.`,
+          description: `Invoice #${data.invoiceNumber} has been successfully created and inventory updated.`,
         });
     } catch (error) {
-        console.error("Error creating sale:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to create sale." });
+        console.error("Error creating sale and updating inventory:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to create sale or update inventory." });
         throw error; // re-throw to stop processing in combined action
     }
   };
