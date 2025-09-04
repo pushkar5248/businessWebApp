@@ -45,10 +45,9 @@ const lineItemSchema = z.object({
 const formSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
   vendorAddress: z.string().min(1, "Vendor address is required."),
-  vendorPhone: z.string().min(1, "Vendor phone is required."),
+  shippingAddress: z.string().optional(),
   poNumber: z.string().min(1, "PO number is required."),
   poDate: z.string().min(1, "PO date is required."),
-  shippingAddress: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
 });
 
@@ -75,7 +74,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     if (!user) return;
     const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
     const querySnapshot = await getDocs(q);
-    const items = querySnapshot.docs.map(doc => doc.data() as InventoryItem);
+    const items = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
     setInventoryItems(items);
   }, [user]);
 
@@ -109,7 +108,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
     try {
-      onSubmit(data);
+      await onSubmit(data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -128,7 +127,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
             </CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
               <Input
                 id="vendorName"
@@ -137,17 +136,6 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
               />
               {errors.vendorName && (
                 <p className="text-sm text-destructive">{errors.vendorName.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="vendorPhone">Vendor Phone</Label>
-              <Input
-                id="vendorPhone"
-                {...methods.register("vendorPhone")}
-                placeholder="+1 234 567 890"
-              />
-               {errors.vendorPhone && (
-                <p className="text-sm text-destructive">{errors.vendorPhone.message}</p>
               )}
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -270,10 +258,12 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                  <div className="space-y-2">
                     <Label htmlFor="poNumber">PO Number</Label>
                     <Input id="poNumber" {...methods.register("poNumber")} />
+                    {errors.poNumber && <p className="text-sm text-destructive">{errors.poNumber.message}</p>}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="poDate">PO Date</Label>
                     <Input id="poDate" type="date" {...methods.register("poDate")} />
+                    {errors.poDate && <p className="text-sm text-destructive">{errors.poDate.message}</p>}
                 </div>
             </div>
              <Button type="submit" size="lg" disabled={isLoading}>
@@ -289,3 +279,5 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     </FormProvider>
   );
 }
+
+    

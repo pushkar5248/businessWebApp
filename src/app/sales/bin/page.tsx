@@ -35,6 +35,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { salesData } from '@/lib/data';
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -58,8 +59,12 @@ export default function SalesBinPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchBinnedSales = useCallback(async () => {
-        if (!user) return;
         setIsLoading(true);
+        if (!user) {
+            setBinnedSales(salesData.filter(s => s.deletedAt));
+            setIsLoading(false);
+            return;
+        }
         try {
             const q = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "!=", null));
             const querySnapshot = await getDocs(q);
@@ -78,6 +83,7 @@ export default function SalesBinPage() {
     }, [fetchBinnedSales]);
 
     const handleRestoreSale = async (saleId: string) => {
+        if (!user) return;
         try {
             const saleRef = doc(db, "sales", saleId);
             await updateDoc(saleRef, { deletedAt: null });
@@ -93,6 +99,7 @@ export default function SalesBinPage() {
     };
 
     const handlePermanentDelete = async (saleId: string) => {
+        if (!user) return;
         try {
             await deleteDoc(doc(db, "sales", saleId));
             setBinnedSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
@@ -175,12 +182,12 @@ export default function SalesBinPage() {
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(sale.amount)}</TableCell>
                   <TableCell className="text-right space-x-2">
-                     <Button variant="ghost" size="icon" onClick={() => handleRestoreSale(sale.id)}>
+                     <Button variant="ghost" size="icon" onClick={() => handleRestoreSale(sale.id)} disabled={!user}>
                         <Undo className="h-4 w-4 text-green-600" />
                      </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" disabled={!user}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
@@ -215,3 +222,5 @@ export default function SalesBinPage() {
     </MainLayout>
   );
 }
+
+    

@@ -30,7 +30,6 @@ export default function NewPurchasePage() {
         id: data.poNumber,
         vendor: data.vendorName,
         vendorAddress: data.vendorAddress,
-        vendorPhone: data.vendorPhone,
         shippingAddress: data.shippingAddress,
         date: data.poDate,
         amount: data.items.reduce((acc, item) => acc + item.quantity * item.price, 0),
@@ -72,3 +71,5 @@ export default function NewPurchasePage() {
     </MainLayout>
   );
 }
+
+    

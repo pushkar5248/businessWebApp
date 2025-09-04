@@ -1,5 +1,4 @@
 
-
 export type InventoryItem = {
   id: string;
   name: string;
@@ -8,7 +7,7 @@ export type InventoryItem = {
   stock: number;
   price: number;
   supplier: string;
-  userId?: string;
+  userId: string;
 };
 
 export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';
@@ -41,7 +40,7 @@ export type Sale = {
   sgstRate?: number;
   igstRate?: number;
   deletedAt?: string | null;
-  userId?: string;
+  userId: string;
 };
 
 export type Purchase = {
@@ -58,7 +57,7 @@ export type Purchase = {
         price: number;
     }[];
     deletedAt?: string | null;
-    userId?: string;
+    userId: string;
 };
 
 export type UserSettings = {
@@ -84,3 +83,5 @@ export type UserSettings = {
     invoiceTerms: string;
   }
 }
+
+    

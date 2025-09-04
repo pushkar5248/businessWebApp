@@ -195,7 +195,7 @@ export default function InventoryPage() {
     }
     try {
       const docRef = await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
-      setItems(prev => [{ ...item, id: docRef.id }, ...prev]);
+      setItems(prev => [{ ...item, userId: user.uid, id: docRef.id }, ...prev]);
       setAddModalOpen(false);
       toast({ title: "Success", description: "New item added to inventory." });
     } catch (error) {
@@ -219,7 +219,7 @@ export default function InventoryPage() {
     }
   }, [user, toast]);
 
-  const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id'>, value: string | number) => {
+  const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
     setItems(prev => prev.map(item => 
       item.id === itemId ? { ...item, [field]: value } : item
     ));
@@ -242,7 +242,7 @@ export default function InventoryPage() {
     const csvContent = [
       headers.map(h => columns[h]).join(','),
       ...items.map(item => headers.map(headerKey => {
-        const value = item[headerKey as keyof InventoryItem];
+        const value = item[headerKey as keyof ColumnKeys];
         if (typeof value === 'string' && value.includes(',')) {
           return `"${value}"`;
         }
@@ -288,7 +288,7 @@ export default function InventoryPage() {
 
         rows.forEach(row => {
           const [name, category, subcategory, stock, price, supplier] = row.split(',');
-          const newItem: Omit<InventoryItem, 'id'> = {
+          const newItemData: Omit<InventoryItem, 'id'> = {
             name: name?.trim() || '',
             category: category?.trim() || '',
             subcategory: subcategory?.trim() || '',
@@ -298,8 +298,8 @@ export default function InventoryPage() {
             userId: user.uid,
           };
           const docRef = doc(collection(db, "inventory"));
-          batch.set(docRef, newItem);
-          newItems.push({ ...newItem, id: docRef.id });
+          batch.set(docRef, newItemData);
+          newItems.push({ ...newItemData, id: docRef.id });
         });
 
         await batch.commit();
@@ -423,19 +423,7 @@ export default function InventoryPage() {
                   <TableRow key={item.id}>
                     {visibleColumns.map((key) => (
                       <TableCell key={key} className={key === 'name' ? 'font-medium' : ''}>
-                        <Input
-                          type={typeof (item as any)[key] === 'number' ? 'number' : 'text'}
-                          value={(item as any)[key]}
-                          readOnly={!user}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              key as keyof Omit<InventoryItem, 'id'>,
-                              e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                            )
-                          }
-                          className="border-none bg-transparent focus:ring-0 p-0 h-auto"
-                        />
+                         {key === 'price' ? formatCurrency((item as any)[key]) : (item as any)[key]}
                       </TableCell>
                     ))}
                       <TableCell>
@@ -471,3 +459,5 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
+
+    

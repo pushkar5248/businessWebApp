@@ -75,7 +75,7 @@ type ActionType = "create" | "generate" | "create_and_generate";
 
 export function InvoiceForm() {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -107,7 +107,6 @@ export function InvoiceForm() {
   
   const fetchInitialData = useCallback(async () => {
     if (!user) return;
-    setIsLoading(true);
     try {
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const settingsDocRef = doc(db, "users", user.uid);
@@ -117,7 +116,7 @@ export function InvoiceForm() {
             getDoc(settingsDocRef)
         ]);
 
-        const items = inventorySnapshot.docs.map(doc => doc.data() as InventoryItem);
+        const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
         setInventoryItems(items);
 
         if (settingsSnap.exists()) {
@@ -135,8 +134,6 @@ export function InvoiceForm() {
     } catch (error) {
         console.error("Error fetching initial data", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load initial data.'})
-    } finally {
-        setIsLoading(false);
     }
   }, [user, reset, toast]);
   
@@ -194,6 +191,9 @@ export function InvoiceForm() {
       transporterVehicleNumber: data.transporterVehicleNumber,
       placeOfSupply: data.placeOfSupply,
       transportDate: data.transportDate,
+      cgstRate: data.cgstRate,
+      sgstRate: data.sgstRate,
+      igstRate: data.igstRate,
       userId: user.uid,
       deletedAt: null
     };
@@ -267,7 +267,7 @@ export function InvoiceForm() {
   };
 
   const onSubmit = async (data: InvoiceFormValues, action: ActionType) => {
-    setIsLoading(true);
+    setIsActionLoading(true);
     try {
       if (action === 'create' || action === 'create_and_generate') {
         await handleCreateSale(data);
@@ -281,7 +281,7 @@ export function InvoiceForm() {
     } catch (error) {
       // Error is already toasted in handleCreateSale or handleGeneratePdf
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
@@ -512,7 +512,7 @@ export function InvoiceForm() {
               )}
           </CardContent>
           <CardFooter className="flex flex-col items-end space-y-4">
-            <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-sm ml-auto">
                 <div className="space-y-2">
                     <Label htmlFor="cgstRate">CGST (%)</Label>
                     <Input id="cgstRate" type="number" {...methods.register("cgstRate")} />
@@ -543,25 +543,42 @@ export function InvoiceForm() {
           </CardFooter>
         </Card>
         
-        <div className="flex justify-end gap-4">
-             <Button type="button" size="lg" variant="outline" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'create'))}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Create Sale
-             </Button>
-             <Button type="button" size="lg" variant="outline" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'generate'))}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Generate Invoice PDF
-             </Button>
-             <Button type="button" size="lg" disabled={isLoading} onClick={handleSubmit(data => onSubmit(data, 'create_and_generate'))}>
-                {isLoading ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                    </>
-                ) : "Create Sale and Generate PDF"}
-             </Button>
+        <div className="flex justify-between items-center">
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                    <Input id="invoiceNumber" {...methods.register("invoiceNumber")} />
+                    {errors.invoiceNumber && <p className="text-sm text-destructive">{errors.invoiceNumber.message}</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="invoiceDate">Invoice Date</Label>
+                    <Input id="invoiceDate" type="date" {...methods.register("invoiceDate")} />
+                    {errors.invoiceDate && <p className="text-sm text-destructive">{errors.invoiceDate.message}</p>}
+                </div>
+            </div>
+
+            <div className="flex justify-end gap-4">
+                 <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => onSubmit(data, 'create'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Create Sale
+                 </Button>
+                 <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => onSubmit(data, 'generate'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Generate Invoice PDF
+                 </Button>
+                 <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => onSubmit(data, 'create_and_generate'))}>
+                    {isActionLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                        </>
+                    ) : "Create Sale and Generate PDF"}
+                 </Button>
+            </div>
         </div>
       </form>
     </FormProvider>
   );
 }
+
+    

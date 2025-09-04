@@ -35,6 +35,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { purchasesData } from '@/lib/data';
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -56,8 +57,13 @@ export default function PurchasesBinPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchBinnedPurchases = useCallback(async () => {
-        if (!user) return;
         setIsLoading(true);
+        if (!user) {
+            setBinnedPurchases(purchasesData.filter(p => p.deletedAt));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const q = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "!=", null));
             const querySnapshot = await getDocs(q);
@@ -76,6 +82,7 @@ export default function PurchasesBinPage() {
     }, [fetchBinnedPurchases]);
 
     const handleRestorePurchase = async (purchaseId: string) => {
+        if (!user) return;
         try {
             const purchaseRef = doc(db, "purchases", purchaseId);
             await updateDoc(purchaseRef, { deletedAt: null });
@@ -91,6 +98,7 @@ export default function PurchasesBinPage() {
     };
 
     const handlePermanentDelete = async (purchaseId: string) => {
+        if (!user) return;
         try {
             await deleteDoc(doc(db, "purchases", purchaseId));
             setBinnedPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
@@ -173,12 +181,12 @@ export default function PurchasesBinPage() {
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(purchase.amount)}</TableCell>
                   <TableCell className="text-right space-x-2">
-                     <Button variant="ghost" size="icon" onClick={() => handleRestorePurchase(purchase.id)}>
+                     <Button variant="ghost" size="icon" onClick={() => handleRestorePurchase(purchase.id)} disabled={!user}>
                         <Undo className="h-4 w-4 text-green-600" />
                      </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" disabled={!user}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
@@ -213,3 +221,5 @@ export default function PurchasesBinPage() {
     </MainLayout>
   );
 }
+
+    
