@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -25,13 +25,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { salesData as initialSalesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2, Archive } from "lucide-react";
+import { type Sale } from "@/lib/types";
+import { PlusCircle, Search, Trash2, Archive, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 
 const getBadgeVariant = (status: string) => {
@@ -48,32 +51,62 @@ const getBadgeVariant = (status: string) => {
 };
 
 export default function SalesPage() {
+    const { user } = useAuth();
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
-    const [sales, setSales] = useState(initialSalesData);
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchSales = useCallback(async () => {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+        const querySnapshot = await getDocs(q);
+        const salesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale))
+          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setSales(salesList);
+      } catch (error) {
+        console.error("Error fetching sales:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch sales." });
+      } finally {
+        setIsLoading(false);
+      }
+    }, [user, toast]);
+
+    useEffect(() => {
+      fetchSales();
+    }, [fetchSales]);
 
     const handleRowClick = (invoiceId: string) => {
         router.push(`/sales/${invoiceId}`);
     };
 
-    const handleDeleteSale = (e: React.MouseEvent, saleId: string) => {
+    const handleDeleteSale = async (e: React.MouseEvent, saleId: string) => {
         e.stopPropagation(); // Prevent row click event from firing
-        setSales(currentSales => currentSales.map(sale => 
-            sale.id === saleId ? { ...sale, deletedAt: new Date().toISOString() } : sale
-        ));
-        toast({
-          title: "Sale Moved to Bin",
-          description: "The sale has been successfully moved to the bin.",
-        });
+        try {
+          const saleRef = doc(db, "sales", saleId);
+          await updateDoc(saleRef, {
+            deletedAt: new Date().toISOString()
+          });
+          setSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+          toast({
+            title: "Sale Moved to Bin",
+            description: "The sale has been successfully moved to the bin.",
+          });
+        } catch (error) {
+          console.error("Error moving sale to bin:", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not move sale to bin." });
+        }
     };
 
     const filteredSales = useMemo(() => {
-        return sales.filter(sale => !sale.deletedAt && (
+        return sales.filter(sale =>
             sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.customer.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
+        );
     }, [sales, searchTerm]);
 
   return (
@@ -124,7 +157,19 @@ export default function SalesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSales.map((sale) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                  </TableCell>
+                </TableRow>
+              ) : filteredSales.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No sales found.
+                  </TableCell>
+                </TableRow>
+              ) : (filteredSales.map((sale) => (
                 <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{sale.id}</TableCell>
                   <TableCell>{sale.customer}</TableCell>
@@ -157,7 +202,7 @@ export default function SalesPage() {
                     </AlertDialog>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </CardContent>

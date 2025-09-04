@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -25,13 +25,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { salesData as initialSalesData } from "@/lib/data";
-import { ArrowLeft, Search, Trash2, Undo } from "lucide-react";
+import { type Sale } from "@/lib/types";
+import { ArrowLeft, Search, Trash2, Undo, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -47,36 +50,69 @@ const getBadgeVariant = (status: string) => {
 };
 
 export default function SalesBinPage() {
+    const { user } = useAuth();
     const { formatCurrency } = useCurrency();
     const { toast } = useToast();
-    const [sales, setSales] = useState(initialSalesData);
+    const [binnedSales, setBinnedSales] = useState<Sale[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleRestoreSale = (saleId: string) => {
-        setSales(currentSales => currentSales.map(sale => 
-            sale.id === saleId ? { ...sale, deletedAt: undefined } : sale
-        ));
-        toast({
-          title: "Sale Restored",
-          description: "The sale has been successfully restored.",
-        });
+    const fetchBinnedSales = useCallback(async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const q = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "!=", null));
+            const querySnapshot = await getDocs(q);
+            const salesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+            setBinnedSales(salesList);
+        } catch (error) {
+            console.error("Error fetching binned sales:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch binned items." });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, toast]);
+
+    useEffect(() => {
+        fetchBinnedSales();
+    }, [fetchBinnedSales]);
+
+    const handleRestoreSale = async (saleId: string) => {
+        try {
+            const saleRef = doc(db, "sales", saleId);
+            await updateDoc(saleRef, { deletedAt: null });
+            setBinnedSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+            toast({
+              title: "Sale Restored",
+              description: "The sale has been successfully restored.",
+            });
+        } catch (error) {
+            console.error("Error restoring sale:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to restore sale."});
+        }
     };
 
-    const handlePermanentDelete = (saleId: string) => {
-         setSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
-         toast({
-            title: "Sale Permanently Deleted",
-            description: "The sale has been permanently deleted.",
-            variant: "destructive"
-        });
+    const handlePermanentDelete = async (saleId: string) => {
+        try {
+            await deleteDoc(doc(db, "sales", saleId));
+            setBinnedSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+            toast({
+                title: "Sale Permanently Deleted",
+                description: "The sale has been permanently deleted.",
+                variant: "destructive"
+            });
+        } catch (error) {
+            console.error("Error permanently deleting sale:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to permanently delete sale."});
+        }
     }
 
-    const binnedSales = useMemo(() => {
-        return sales.filter(sale => sale.deletedAt && (
+    const filteredSales = useMemo(() => {
+        return binnedSales.filter(sale =>
             sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.customer.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
-    }, [sales, searchTerm]);
+        );
+    }, [binnedSales, searchTerm]);
 
   return (
     <MainLayout>
@@ -97,7 +133,7 @@ export default function SalesBinPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Deleted Sales</CardTitle>
-              <CardDescription>Items in the bin are automatically deleted after 30 days.</CardDescription>
+              <CardDescription>Items in the bin can be restored or permanently deleted.</CardDescription>
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -123,7 +159,13 @@ export default function SalesBinPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {binnedSales.length > 0 ? binnedSales.map((sale) => (
+              {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    </TableCell>
+                </TableRow>
+              ) : filteredSales.length > 0 ? filteredSales.map((sale) => (
                 <TableRow key={sale.id}>
                   <TableCell className="font-medium">{sale.id}</TableCell>
                   <TableCell>{sale.customer}</TableCell>

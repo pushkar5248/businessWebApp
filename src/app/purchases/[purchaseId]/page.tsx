@@ -1,17 +1,17 @@
 
 "use client";
 
-import { useParams } from 'next/navigation';
-import React, { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { purchasesData, type Purchase, type PurchaseStatus } from '@/lib/data';
+import { type Purchase, type PurchaseStatus } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCurrency } from '@/context/currency-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 
 const getBadgeVariant = (status: string) => {
@@ -40,29 +42,60 @@ export default function PurchaseDetailsPage() {
     const { purchaseId } = params;
     const { formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(true);
+    const [purchase, setPurchase] = useState<Purchase | null>(null);
+    
+    const fetchPurchase = useCallback(async () => {
+      if (!purchaseId) return;
+      setIsLoading(true);
+      try {
+        const docRef = doc(db, "purchases", purchaseId as string);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            setPurchase({ id: docSnap.id, ...docSnap.data() } as Purchase);
+        } else {
+            setPurchase(null);
+        }
+      } catch (error) {
+        console.error("Error fetching purchase:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to fetch purchase details." });
+      } finally {
+        setIsLoading(false);
+      }
+    }, [purchaseId, toast]);
 
-    const [purchase, setPurchase] = useState<Purchase | undefined>(
-        purchasesData.find(p => p.id === purchaseId)
-    );
+    useEffect(() => {
+        fetchPurchase();
+    }, [fetchPurchase]);
 
+    if (isLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            </MainLayout>
+        );
+    }
+    
     if (!purchase) {
         notFound();
     }
 
-    const handleStatusChange = (newStatus: PurchaseStatus) => {
+    const handleStatusChange = async (newStatus: PurchaseStatus) => {
         if (purchase) {
-            const updatedPurchase = { ...purchase, status: newStatus };
-            setPurchase(updatedPurchase);
-            
-            const index = purchasesData.findIndex(p => p.id === purchase.id);
-            if (index !== -1) {
-                purchasesData[index] = updatedPurchase;
+            try {
+                const purchaseRef = doc(db, "purchases", purchase.id);
+                await updateDoc(purchaseRef, { status: newStatus });
+                setPurchase({ ...purchase, status: newStatus });
+                 toast({
+                    title: "Status Updated",
+                    description: `Purchase order status changed to ${newStatus}.`
+                });
+            } catch (error) {
+                 console.error("Error updating status:", error);
+                toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
             }
-
-            toast({
-                title: "Status Updated",
-                description: `Purchase order status changed to ${newStatus}.`
-            });
         }
     };
     

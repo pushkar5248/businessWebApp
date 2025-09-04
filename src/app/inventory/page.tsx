@@ -39,17 +39,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { inventoryData as initialInventoryData, type InventoryItem } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2 } from "lucide-react";
+import { type InventoryItem } from "@/lib/types";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, writeBatch } from "firebase/firestore";
+import { useAuth } from "@/context/auth-context";
 
 
-type ColumnKeys = keyof InventoryItem;
+type ColumnKeys = Omit<InventoryItem, 'userId'>;
 
-const COLUMN_NAMES: Record<ColumnKeys, string> = {
+const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
   id: 'Item ID',
   name: 'Name',
   category: 'Category',
@@ -59,8 +62,8 @@ const COLUMN_NAMES: Record<ColumnKeys, string> = {
   supplier: 'Supplier'
 };
 
-const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: InventoryItem) => void; onCancel: () => void }) => {
-  const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
+const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id'>) => void; onCancel: () => void }) => {
+  const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id' | 'userId'>>({
     name: "",
     category: "",
     subcategory: "",
@@ -79,8 +82,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: InventoryItem)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const fullItem = { ...newItem, id: `ITM${Date.now().toString().slice(-6)}` };
-    onAddItem(fullItem);
+    onAddItem(newItem);
   };
 
   return (
@@ -121,16 +123,18 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: InventoryItem)
 
 
 export default function InventoryPage() {
+  const { user } = useAuth();
   const { formatCurrency } = useCurrency();
   const { toast } = useToast();
-  const [items, setItems] = useState<InventoryItem[]>(initialInventoryData);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isImportModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [columns, setColumns] = useState<Record<string, string>>(COLUMN_NAMES);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
-    id: true,
+    id: false,
     name: true,
     category: true,
     subcategory: true,
@@ -138,6 +142,27 @@ export default function InventoryPage() {
     price: true,
     supplier: true,
   });
+  
+  const fetchItems = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+      const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+      setItems(inventoryList);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, toast]);
+  
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+  
 
   useEffect(() => {
     const savedVisibility = localStorage.getItem("inventoryColumnVisibility");
@@ -147,53 +172,54 @@ export default function InventoryPage() {
   }, []);
   
   useEffect(() => {
-    if (items.length > 0) {
-      const firstItemKeys = Object.keys(items[0]);
-      const newColumns = firstItemKeys.reduce((acc, key) => {
-        acc[key] = COLUMN_NAMES[key as ColumnKeys] || key.charAt(0).toUpperCase() + key.slice(1);
-        return acc;
-      }, {} as Record<string,string>);
-      setColumns(newColumns);
-      
-      const newVisibility = { ...columnVisibility };
-      let visibilityChanged = false;
-      Object.keys(newColumns).forEach(key => {
-        if (newVisibility[key] === undefined) {
-          newVisibility[key] = true;
-          visibilityChanged = true;
-        }
-      });
-      if(visibilityChanged) {
-        setColumnVisibility(newVisibility);
-        localStorage.setItem("inventoryColumnVisibility", JSON.stringify(newVisibility));
-      }
-    }
-  }, [items, columnVisibility]);
+    localStorage.setItem("inventoryColumnVisibility", JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
-    const newVisibility = { ...columnVisibility, [key]: checked };
-    setColumnVisibility(newVisibility);
-    localStorage.setItem("inventoryColumnVisibility", JSON.stringify(newVisibility));
+    setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
-  const visibleColumns = Object.keys(columns).filter(key => columnVisibility[key]);
+  const visibleColumns = Object.keys(columns).filter(key => columnVisibility[key as keyof ColumnKeys]);
 
 
-  const handleAddItem = (item: InventoryItem) => {
-    setItems(prev => [item, ...prev]);
-    setAddModalOpen(false);
-    toast({ title: "Success", description: "New item added to inventory." });
+  const handleAddItem = async (item: Omit<InventoryItem, 'id' | 'userId'>) => {
+    if (!user) return;
+    try {
+      const docRef = await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
+      setItems(prev => [{ ...item, id: docRef.id }, ...prev]);
+      setAddModalOpen(false);
+      toast({ title: "Success", description: "New item added to inventory." });
+    } catch (error) {
+      console.error("Error adding item:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not add item." });
+    }
   };
   
-  const handleDeleteItem = useCallback((itemId: string) => {
-    setItems(prev => prev.filter(item => item.id !== itemId));
-    toast({ title: "Success", description: "Item removed from inventory." });
-  }, []);
+  const handleDeleteItem = useCallback(async (itemId: string) => {
+    try {
+      await deleteDoc(doc(db, "inventory", itemId));
+      setItems(prev => prev.filter(item => item.id !== itemId));
+      toast({ title: "Success", description: "Item removed from inventory." });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not delete item." });
+    }
+  }, [toast]);
 
-  const handleItemChange = (itemId: string, field: keyof Omit<InventoryItem, 'id'>, value: string | number) => {
-    setItems(prev => prev.map(item => 
+  const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id'>, value: string | number) => {
+     setItems(prev => prev.map(item => 
       item.id === itemId ? { ...item, [field]: value } : item
     ));
+    
+    try {
+        const itemRef = doc(db, "inventory", itemId);
+        await updateDoc(itemRef, { [field]: value });
+    } catch (error) {
+        console.error("Error updating item:", error);
+        toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.`});
+        // Optionally revert UI change
+        fetchItems();
+    }
   };
 
   const handleExport = () => {
@@ -224,49 +250,47 @@ export default function InventoryPage() {
   };
   
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const rows = text.split('\n').filter(row => row.trim() !== '');
-        const headerRow = rows.shift()?.trim().split(',') as string[];
+        const rows = text.split('\n').filter(row => row.trim() !== '').slice(1); // Skip header
         
-        if (!headerRow) {
-             toast({ variant: "destructive", title: "Error", description: "Invalid CSV file: Missing headers." });
-            return;
+        if (rows.length === 0) {
+          toast({ variant: "destructive", title: "Error", description: "CSV file is empty or has no data rows." });
+          return;
         }
-        
-        const headerKeys = headerRow.map(h => {
-          const foundKey = (Object.keys(COLUMN_NAMES) as ColumnKeys[]).find(key => COLUMN_NAMES[key].toLowerCase() === h.trim().toLowerCase());
-          return foundKey || h.trim().toLowerCase().replace(/\s+/g, '_');
+
+        const batch = writeBatch(db);
+        const newItems: InventoryItem[] = [];
+
+        rows.forEach(row => {
+          const [name, category, subcategory, stock, price, supplier] = row.split(',');
+          const newItem: Omit<InventoryItem, 'id'> = {
+            name: name?.trim() || '',
+            category: category?.trim() || '',
+            subcategory: subcategory?.trim() || '',
+            stock: Number(stock) || 0,
+            price: Number(price) || 0,
+            supplier: supplier?.trim() || '',
+            userId: user.uid,
+          };
+          const docRef = doc(collection(db, "inventory"));
+          batch.set(docRef, newItem);
+          newItems.push({ ...newItem, id: docRef.id });
         });
 
-        const newItems = rows.map((row, rowIndex) => {
-            const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, ''));
-            const item = headerKeys.reduce((obj, header, index) => {
-              const value = values[index];
-              const numericHeaders = ['stock', 'price'];
-              if(numericHeaders.includes(header)) {
-                  (obj as any)[header] = Number(value) || 0;
-              } else {
-                  (obj as any)[header] = value;
-              }
-            return obj;
-          }, {} as any);
-          if(!item.id) {
-            item.id = `ITM${Date.now().toString().slice(-6)}${rowIndex}`;
-          }
-          return item;
-        });
+        await batch.commit();
 
         setItems(prev => [...newItems, ...prev]);
         setImportModalOpen(false);
         toast({ title: "Success", description: "Inventory imported successfully." });
       } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse CSV file." });
+        toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
       }
     };
     reader.readAsText(file);
@@ -307,7 +331,7 @@ export default function InventoryPage() {
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
             <p className="text-sm text-muted-foreground mt-2">
-                Make sure your CSV has headers: {Object.values(COLUMN_NAMES).join(', ')}
+                CSV headers must be: name, category, subcategory, stock, price, supplier
             </p>
           </div>
            <DialogFooter>
@@ -340,12 +364,12 @@ export default function InventoryPage() {
                           <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
-                            checked={columnVisibility[key]}
+                            checked={columnVisibility[key as keyof ColumnKeys]}
                             onCheckedChange={(checked) =>
                               handleColumnVisibilityChange(key, !!checked)
                             }
                           >
-                            {columns[key]}
+                            {columns[key as keyof ColumnKeys]}
                           </DropdownMenuCheckboxItem>
                         ))}
                       </DropdownMenuContent>
@@ -364,13 +388,23 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  {visibleColumns.map((key) => (
-                    <TableCell key={key} className={key === 'name' ? 'font-medium' : ''}>
-                      {key === 'id' ? (
-                        item.id
-                      ) : (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                    No items found. Get started by adding a new item.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map((item) => (
+                  <TableRow key={item.id}>
+                    {visibleColumns.map((key) => (
+                      <TableCell key={key} className={key === 'name' ? 'font-medium' : ''}>
                         <Input
                           type={typeof (item as any)[key] === 'number' ? 'number' : 'text'}
                           value={(item as any)[key]}
@@ -381,36 +415,36 @@ export default function InventoryPage() {
                               e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
                             )
                           }
-                          className="border-none bg-transparent focus:ring-0"
+                          className="border-none bg-transparent focus:ring-0 p-0 h-auto"
                         />
-                      )}
-                    </TableCell>
-                  ))}
-                    <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the item from your inventory.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteItem(item.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                    </TableCell>
-                </TableRow>
-              ))}
+                      </TableCell>
+                    ))}
+                      <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the item from your inventory.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteItem(item.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                      </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

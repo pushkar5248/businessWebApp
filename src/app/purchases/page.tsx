@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -25,13 +25,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { purchasesData as initialPurchasesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2, Archive } from "lucide-react";
+import { type Purchase } from "@/lib/types";
+import { PlusCircle, Search, Trash2, Archive, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 
 const getBadgeVariant = (status: string) => {
@@ -46,32 +49,63 @@ const getBadgeVariant = (status: string) => {
 };
 
 export default function PurchasesPage() {
+    const { user } = useAuth();
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
-    const [purchases, setPurchases] = useState(initialPurchasesData);
+    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchPurchases = useCallback(async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const q = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+            const querySnapshot = await getDocs(q);
+            const purchasesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase))
+              .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setPurchases(purchasesList);
+        } catch (error) {
+            console.error("Error fetching purchases:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch purchases." });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, toast]);
+
+    useEffect(() => {
+        fetchPurchases();
+    }, [fetchPurchases]);
+
 
     const handleRowClick = (purchaseId: string) => {
         router.push(`/purchases/${purchaseId}`);
     };
 
-    const handleDeletePurchase = (e: React.MouseEvent, purchaseId: string) => {
+    const handleDeletePurchase = async (e: React.MouseEvent, purchaseId: string) => {
         e.stopPropagation(); // Prevent row click event
-        setPurchases(currentPurchases => currentPurchases.map(p => 
-            p.id === purchaseId ? { ...p, deletedAt: new Date().toISOString() } : p
-        ));
-        toast({
-          title: "Purchase Moved to Bin",
-          description: "The purchase order has been successfully moved to the bin.",
-        });
+        try {
+            const purchaseRef = doc(db, "purchases", purchaseId);
+            await updateDoc(purchaseRef, {
+                deletedAt: new Date().toISOString()
+            });
+            setPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
+            toast({
+              title: "Purchase Moved to Bin",
+              description: "The purchase order has been successfully moved to the bin.",
+            });
+        } catch (error) {
+            console.error("Error moving purchase to bin:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not move purchase to bin." });
+        }
     };
 
     const filteredPurchases = useMemo(() => {
-        return purchases.filter(purchase => !purchase.deletedAt && (
+        return purchases.filter(purchase =>
             purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             purchase.vendor.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
+        );
     }, [purchases, searchTerm]);
 
   return (
@@ -122,7 +156,19 @@ export default function PurchasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPurchases.map((purchase) => (
+              {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    </TableCell>
+                </TableRow>
+              ) : filteredPurchases.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        No purchases found.
+                    </TableCell>
+                </TableRow>
+              ) : (filteredPurchases.map((purchase) => (
                 <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{purchase.id}</TableCell>
                   <TableCell>{purchase.vendor}</TableCell>
@@ -155,7 +201,7 @@ export default function PurchasesPage() {
                     </AlertDialog>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </CardContent>

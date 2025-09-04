@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import React, { useState, useMemo } from 'react';
+import { useParams } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { salesData, SaleStatus, Sale } from '@/lib/data';
+import { type SaleStatus, type Sale } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -26,6 +26,8 @@ import {
   type GenerateInvoicePdfInput,
 } from "@/ai/flows/generate-invoice-pdf";
 import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 
 const getBadgeVariant = (status: string) => {
@@ -49,10 +51,42 @@ export default function InvoiceDetailsPage() {
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
-    
-    // In a real app, you'd fetch this from a state management solution or API
-    const [invoice, setInvoice] = useState<Sale | undefined>(salesData.find(sale => sale.id === invoiceId));
+    const [isLoading, setIsLoading] = useState(true);
+    const [invoice, setInvoice] = useState<Sale | null>(null);
 
+    const fetchInvoice = useCallback(async () => {
+        if (!invoiceId) return;
+        setIsLoading(true);
+        try {
+            const docRef = doc(db, "sales", invoiceId as string);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setInvoice({ id: docSnap.id, ...docSnap.data() } as Sale);
+            } else {
+                setInvoice(null);
+            }
+        } catch (error) {
+            console.error("Error fetching invoice:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to fetch invoice details." });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [invoiceId, toast]);
+
+    useEffect(() => {
+        fetchInvoice();
+    }, [fetchInvoice]);
+
+    if (isLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            </MainLayout>
+        );
+    }
+    
     if (!invoice) {
         notFound();
     }
@@ -63,24 +97,25 @@ export default function InvoiceDetailsPage() {
     const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
     const totalTaxes = cgstAmount + sgstAmount + igstAmount;
 
-    const handleStatusChange = (newStatus: SaleStatus) => {
+    const handleStatusChange = async (newStatus: SaleStatus) => {
         if (invoice) {
-            const updatedInvoice = { ...invoice, status: newStatus };
-            setInvoice(updatedInvoice);
-            
-            const index = salesData.findIndex(s => s.id === invoice.id);
-            if (index !== -1) {
-                salesData[index] = updatedInvoice;
+            try {
+                const invoiceRef = doc(db, "sales", invoice.id);
+                await updateDoc(invoiceRef, { status: newStatus });
+                setInvoice({ ...invoice, status: newStatus });
+                toast({
+                    title: "Status Updated",
+                    description: `Invoice status changed to ${newStatus}.`
+                });
+            } catch (error) {
+                console.error("Error updating status:", error);
+                toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
             }
-
-            toast({
-                title: "Status Updated",
-                description: `Invoice status changed to ${newStatus}.`
-            });
         }
     };
     
     const handleGeneratePdf = async () => {
+        if (!invoice) return;
         setIsGenerating(true);
         try {
           const input: GenerateInvoicePdfInput = {

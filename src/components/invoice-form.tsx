@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,8 +35,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { inventoryData, salesData, type Sale } from "@/lib/data";
+import { type Sale, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase";
+import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -76,6 +79,7 @@ type InvoiceFormValues = z.infer<typeof formSchema>;
 type ActionType = "create" | "generate" | "create_and_generate";
 
 export function InvoiceForm() {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -83,6 +87,7 @@ export function InvoiceForm() {
   const [total, setTotal] = useState(0);
   const [totalTaxes, setTotalTaxes] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
 
   const methods = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
@@ -107,6 +112,18 @@ export function InvoiceForm() {
     watch,
     formState: { errors },
   } = methods;
+  
+  const fetchInventory = useCallback(async () => {
+    if (!user) return;
+    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    const querySnapshot = await getDocs(q);
+    const items = querySnapshot.docs.map(doc => doc.data() as InventoryItem);
+    setInventoryItems(items);
+  }, [user]);
+  
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -134,8 +151,12 @@ export function InvoiceForm() {
     setTotal(newSubtotal + newTotalTaxes);
   }, [watchedItems, cgstRate, sgstRate, igstRate]);
 
-  const handleCreateSale = (data: InvoiceFormValues) => {
-    const newSale: Sale = {
+  const handleCreateSale = async (data: InvoiceFormValues) => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a sale." });
+        throw new Error("User not authenticated");
+    }
+    const newSale: Omit<Sale, 'id'> & { id: string } = {
       id: data.invoiceNumber,
       customer: data.customerName,
       date: data.invoiceDate,
@@ -154,12 +175,21 @@ export function InvoiceForm() {
       transporterVehicleNumber: data.transporterVehicleNumber,
       placeOfSupply: data.placeOfSupply,
       transportDate: data.transportDate,
+      userId: user.uid,
+      deletedAt: null
     };
-    salesData.unshift(newSale); // Add to the beginning of the array
-    toast({
-      title: "Sale Created",
-      description: `Invoice #${data.invoiceNumber} has been successfully created.`,
-    });
+
+    try {
+        await setDoc(doc(db, "sales", newSale.id), newSale);
+        toast({
+          title: "Sale Created",
+          description: `Invoice #${data.invoiceNumber} has been successfully created.`,
+        });
+    } catch (error) {
+        console.error("Error creating sale:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to create sale." });
+        throw error; // re-throw to stop processing in combined action
+    }
   };
 
   const handleGeneratePdf = async (data: InvoiceFormValues) => {
@@ -212,16 +242,16 @@ export function InvoiceForm() {
     setIsLoading(true);
     try {
       if (action === 'create' || action === 'create_and_generate') {
-        handleCreateSale(data);
+        await handleCreateSale(data);
       }
       if (action === 'generate' || action === 'create_and_generate') {
         await handleGeneratePdf(data);
       }
-      if (action === 'create') {
+      if (action !== 'generate') {
         router.push('/sales');
       }
     } catch (error) {
-      // Error is already toasted in handleGeneratePdf
+      // Error is already toasted in handleCreateSale or handleGeneratePdf
     } finally {
       setIsLoading(false);
     }
@@ -400,7 +430,7 @@ export function InvoiceForm() {
                         list="inventory-items"
                       />
                        <datalist id="inventory-items">
-                        {inventoryData.map(item => <option key={item.id} value={item.name} />)}
+                        {inventoryItems.map(item => <option key={item.id} value={item.name} />)}
                        </datalist>
                       {errors.items?.[index]?.name && (
                         <p className="text-sm text-destructive">{errors.items[index].name.message}</p>

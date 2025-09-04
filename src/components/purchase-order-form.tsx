@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,9 +27,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { inventoryData } from "@/lib/data";
 import { useCurrency } from "@/context/currency-context";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { InventoryItem } from "@/lib/types";
 
 
 const lineItemSchema = z.object({
@@ -52,10 +55,11 @@ export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
 
 export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrderFormValues) => void; }) {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const { user } = useAuth();
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
 
   const methods = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(formSchema),
@@ -65,6 +69,18 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
       items: [{ name: "", quantity: 1, price: 0 }],
     },
   });
+  
+  const fetchInventory = useCallback(async () => {
+    if (!user) return;
+    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    const querySnapshot = await getDocs(q);
+    const items = querySnapshot.docs.map(doc => doc.data() as InventoryItem);
+    setInventoryItems(items);
+  }, [user]);
+
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
 
   const {
     control,
@@ -92,9 +108,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       onSubmit(data);
-      router.push('/purchases');
     } catch (error) {
       console.error(error);
     } finally {
@@ -183,7 +197,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                         list="inventory-items"
                       />
                        <datalist id="inventory-items">
-                        {inventoryData.map(item => <option key={item.id} value={item.name} />)}
+                        {inventoryItems.map(item => <option key={item.id} value={item.name} />)}
                        </datalist>
                       {errors.items?.[index]?.name && (
                         <p className="text-sm text-destructive">{errors.items[index].name.message}</p>

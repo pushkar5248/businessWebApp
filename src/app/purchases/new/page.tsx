@@ -3,34 +3,61 @@
 
 import { PurchaseOrderForm } from "@/components/purchase-order-form";
 import { MainLayout } from "@/components/layout/main-layout";
-import { purchasesData, type Purchase } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrderFormValues } from "@/components/purchase-order-form";
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 
 export default function NewPurchasePage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
   
-  const handleCreatePurchase = (data: PurchaseOrderFormValues) => {
-    console.log("New Purchase Order:", data);
-    const newPurchase: Purchase = {
+  const handleCreatePurchase = async (data: PurchaseOrderFormValues) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "You must be logged in to create a purchase order.",
+      });
+      return;
+    }
+
+    const newPurchase = {
         id: data.poNumber,
         vendor: data.vendorName,
         vendorAddress: data.vendorAddress,
+        vendorPhone: data.vendorPhone,
         shippingAddress: data.shippingAddress,
         date: data.poDate,
         amount: data.items.reduce((acc, item) => acc + item.quantity * item.price, 0),
         status: 'Pending',
         items: data.items,
+        userId: user.uid,
+        deletedAt: null,
     };
-    // In a real app, you would send this to a server.
-    // For now, we just prepend it to the mock data array.
-    purchasesData.unshift(newPurchase);
     
-    toast({
-        title: "Purchase Order Created",
-        description: `PO #${data.poNumber} has been successfully created.`,
-    });
+    try {
+        const docRef = doc(db, "purchases", newPurchase.id);
+        await setDoc(docRef, newPurchase);
+        
+        toast({
+            title: "Purchase Order Created",
+            description: `PO #${data.poNumber} has been successfully created.`,
+        });
+        router.push('/purchases');
+
+    } catch (error) {
+        console.error("Error creating purchase order:", error);
+        toast({
+            variant: "destructive",
+            title: "Creation Failed",
+            description: "Could not create the purchase order. Please try again.",
+        });
+    }
   };
 
   return (

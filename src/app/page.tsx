@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -22,11 +22,15 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Badge } from "@/components/ui/badge";
 import { MainLayout } from "@/components/layout/main-layout";
-import { chartData, salesData } from "@/lib/data";
-import { DollarSign, Boxes, ShoppingCart, Users } from "lucide-react";
+import { chartData } from "@/lib/data";
+import { DollarSign, Boxes, ShoppingCart, Users, Loader2 } from "lucide-react";
 import { useCurrency } from '@/context/currency-context';
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import type { Sale } from '@/lib/types';
+
 
 const chartConfig = {
   sales: {
@@ -36,7 +40,55 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { formatCurrency } = useCurrency();
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalSalesCount, setTotalSalesCount] = useState(0);
+  const [stockItemsCount, setStockItemsCount] = useState(0);
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      };
+
+      try {
+        // Fetch Sales
+        const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid));
+        const salesSnapshot = await getDocs(salesQuery);
+        const salesList = salesSnapshot.docs.map(doc => doc.data() as Sale);
+        const revenue = salesList.reduce((acc, sale) => acc + sale.amount, 0);
+        setTotalRevenue(revenue);
+        setTotalSalesCount(salesList.length);
+        setRecentSales(salesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        
+        // Fetch Inventory
+        const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
+        const inventorySnapshot = await getDocs(inventoryQuery);
+        setStockItemsCount(inventorySnapshot.size);
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  if (isLoading) {
+    return (
+        <MainLayout>
+            <div className="flex h-[80vh] items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -46,9 +98,9 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(115231.89)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last month
+              Based on all-time sales
             </p>
           </CardContent>
         </Card>
@@ -58,9 +110,9 @@ export default function Dashboard() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+235</div>
+            <div className="text-2xl font-bold">+{totalSalesCount}</div>
             <p className="text-xs text-muted-foreground">
-              +180.1% from last month
+              Total number of invoices created
             </p>
           </CardContent>
         </Card>
@@ -70,8 +122,8 @@ export default function Dashboard() {
             <Boxes className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,932</div>
-            <p className="text-xs text-muted-foreground">+19 from last month</p>
+            <div className="text-2xl font-bold">{stockItemsCount}</div>
+            <p className="text-xs text-muted-foreground">Different items in inventory</p>
           </CardContent>
         </Card>
         <Card>
@@ -80,9 +132,9 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+52</div>
+            <div className="text-2xl font-bold">...</div>
             <p className="text-xs text-muted-foreground">
-              +2 from last month
+              Feature coming soon
             </p>
           </CardContent>
         </Card>
@@ -120,7 +172,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Recent Sales</CardTitle>
             <CardDescription>
-              You made 235 sales this month.
+              Your most recent sales.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -132,7 +184,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salesData.slice(0, 5).map((sale) => (
+                {recentSales.slice(0, 5).map((sale) => (
                   <TableRow key={sale.id}>
                     <TableCell>
                       <div className="font-medium">{sale.customer}</div>
