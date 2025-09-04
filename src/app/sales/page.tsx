@@ -301,7 +301,7 @@ export default function SalesPage() {
                         onDragEnter={(e) => handleDragEnter(e, key)}
                         onDragEnd={handleDragEnd}
                         onDragOver={(e) => e.preventDefault()}
-                        className="cursor-move p-0"
+                        className="cursor-move p-0 transition-all duration-300 ease-in-out"
                       >
                     <div className="flex items-center justify-between p-4">
                         <span>{COLUMN_NAMES[key as keyof ColumnKeys]}</span>

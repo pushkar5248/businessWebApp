@@ -521,7 +521,7 @@ export default function InventoryPage() {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move p-0"
+                    className="cursor-move p-0 transition-all duration-300 ease-in-out"
                   >
                     <div className="flex items-center justify-between p-4">
                        <Input
@@ -534,7 +534,10 @@ export default function InventoryPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => requestSort(key as keyof ColumnKeys)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            requestSort(key as keyof ColumnKeys);
+                        }}
                         className="h-6 w-6 ml-2"
                       >
                         <ArrowUpDown className="h-4 w-4" />
