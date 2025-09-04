@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { MainLayout } from "@/components/layout/main-layout";
-import { chartData, salesData, inventoryData } from "@/lib/data";
+import { inventoryData, salesData } from "@/lib/data";
 import { DollarSign, Boxes, ShoppingCart, Users, Loader2 } from "lucide-react";
 import { useCurrency } from '@/context/currency-context';
 import { useAuth } from '@/context/auth-context';
@@ -42,11 +42,12 @@ const chartConfig = {
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencyValue } = useCurrency();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSalesCount, setTotalSalesCount] = useState(0);
   const [stockItemsCount, setStockItemsCount] = useState(0);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [salesChartData, setSalesChartData] = useState<{ month: string; sales: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -76,6 +77,31 @@ export default function Dashboard() {
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const inventorySnapshot = await getDocs(inventoryQuery);
         setStockItemsCount(inventorySnapshot.size);
+        
+        // Process data for chart
+        const months = Array(6).fill(0).map((_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            return {
+                label: d.toLocaleString('default', { month: 'short' }),
+                year: d.getFullYear(),
+                month: d.getMonth(),
+                sales: 0
+            };
+        }).reverse();
+
+        salesList.forEach(sale => {
+            const saleDate = new Date(sale.date);
+            const saleYear = saleDate.getFullYear();
+            const saleMonth = saleDate.getMonth();
+
+            const monthData = months.find(m => m.year === saleYear && m.month === saleMonth);
+            if (monthData) {
+                monthData.sales += sale.amount;
+            }
+        });
+
+        setSalesChartData(months.map(m => ({ month: m.label, sales: m.sales })));
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -156,24 +182,28 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Sales Overview</CardTitle>
             <CardDescription>
-              An overview of sales for the first 6 months.
+              Your total sales revenue over the last 6 months.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-              <BarChart accessibilityLayer data={chartData}>
+              <BarChart accessibilityLayer data={salesChartData}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 3)}
                 />
-                 <YAxis />
+                 <YAxis 
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={10}
+                    tickFormatter={(value) => formatCurrencyValue(value).replace(/\.00$/, '')}
+                 />
                 <ChartTooltip
                   cursor={false}
-                  content={<ChartTooltipContent />}
+                  content={<ChartTooltipContent formatter={(value) => formatCurrency(value as number)} />}
                 />
                 <Bar dataKey="sales" fill="var(--color-sales)" radius={8} />
               </BarChart>
