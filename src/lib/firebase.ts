@@ -19,7 +19,7 @@ console.log('Attempting to initialize Firebase...');
 console.log('API Key Populated:', !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 console.log('Auth Domain Populated:', !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
 console.log('Project ID Populated:', !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-console.log('Raw Config Object:', firebaseConfig);
+console.log('Raw Config Object:', JSON.stringify(firebaseConfig, null, 2));
 console.log('======================');
 // --- END DIAGNOSTIC LOGS ---
 
