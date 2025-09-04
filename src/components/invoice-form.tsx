@@ -35,11 +35,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { type Sale, type InventoryItem, UserSettings } from "@/lib/types";
+import { type Sale, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
+import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where, getDoc, writeBatch, documentId } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where, writeBatch } from "firebase/firestore";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -75,8 +76,8 @@ type ActionType = "create" | "generate" | "create_and_generate";
 
 export function InvoiceForm() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [settings, setSettings] = useState<UserSettings | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
@@ -91,8 +92,8 @@ export function InvoiceForm() {
       invoiceDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
-      cgstRate: 9,
-      sgstRate: 9,
+      cgstRate: settings?.billing.defaultCgstRate ?? 9,
+      sgstRate: settings?.billing.defaultSgstRate ?? 9,
       igstRate: 0,
     },
   });
@@ -105,41 +106,36 @@ export function InvoiceForm() {
     formState: { errors },
   } = methods;
   
-  const fetchInitialData = useCallback(async () => {
+  const fetchInventory = useCallback(async () => {
     if (!user) return;
     try {
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
-        const settingsDocRef = doc(db, "users", user.uid);
-
-        const [inventorySnapshot, settingsSnap] = await Promise.all([
-            getDocs(inventoryQuery),
-            getDoc(settingsDocRef)
-        ]);
-
+        const inventorySnapshot = await getDocs(inventoryQuery);
         const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
         setInventoryItems(items);
 
-        if (settingsSnap.exists()) {
-            const userSettings = settingsSnap.data() as UserSettings;
-            setSettings(userSettings);
-            reset({
-                invoiceDate: new Date().toISOString().split("T")[0],
-                invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-                items: [{ name: "", quantity: 1, price: 0 }],
-                cgstRate: userSettings.billing.defaultCgstRate,
-                sgstRate: userSettings.billing.defaultSgstRate,
-                igstRate: 0,
-            });
-        }
     } catch (error) {
-        console.error("Error fetching initial data", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load initial data.'})
+        console.error("Error fetching inventory", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load inventory items.'})
     }
-  }, [user, reset, toast]);
+  }, [user, toast]);
   
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    fetchInventory();
+  }, [fetchInventory]);
+
+  useEffect(() => {
+      if (settings) {
+          reset({
+              invoiceDate: new Date().toISOString().split("T")[0],
+              invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+              items: [{ name: "", quantity: 1, price: 0 }],
+              cgstRate: settings.billing.defaultCgstRate,
+              sgstRate: settings.billing.defaultSgstRate,
+              igstRate: 0,
+          });
+      }
+  }, [settings, reset]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -316,6 +312,14 @@ export function InvoiceForm() {
       setIsActionLoading(false);
     }
   };
+  
+   if (!settings) {
+    return (
+        <div className="flex h-[80vh] items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+   }
 
 
   return (
@@ -612,5 +616,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
-    

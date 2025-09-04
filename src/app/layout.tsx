@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import { CurrencyProvider } from "@/context/currency-context";
 import { AuthProvider } from "@/context/auth-context";
+import { SettingsProvider } from "@/context/settings-context";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -22,9 +23,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased ${inter.variable}`}>
         <AuthProvider>
-          <CurrencyProvider>
-              {children}
-          </CurrencyProvider>
+          <SettingsProvider>
+            <CurrencyProvider>
+                {children}
+            </CurrencyProvider>
+          </SettingsProvider>
         </AuthProvider>
         <Toaster />
       </body>

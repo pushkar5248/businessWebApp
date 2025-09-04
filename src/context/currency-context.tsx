@@ -1,6 +1,8 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSettings } from './settings-context';
 
 interface CurrencyContextType {
   currency: string;
@@ -26,20 +28,20 @@ const currencySymbols: { [key: string]: string } = {
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
+  const { settings, loading: settingsLoading } = useSettings();
   const [currency, setCurrencyState] = useState('INR');
-   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedCurrency = localStorage.getItem('currency');
-    if (savedCurrency) {
-      setCurrencyState(savedCurrency);
+    if (!settingsLoading && settings) {
+      setCurrencyState(settings.billing.currency);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
-  }, []);
+  }, [settings, settingsLoading]);
 
   const setCurrency = (newCurrency: string) => {
     setCurrencyState(newCurrency);
-    localStorage.setItem('currency', newCurrency);
+    // The settings context will handle persistence
   };
 
   const getSymbol = (currencyCode: string) => currencySymbols[currencyCode] || '$';

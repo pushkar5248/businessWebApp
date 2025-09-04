@@ -4,7 +4,7 @@
 import { useParams } from 'next/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { type SaleStatus, type Sale, type UserSettings } from '@/lib/types';
+import { type SaleStatus, type Sale } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,7 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '@/context/auth-context';
+import { useSettings } from '@/context/settings-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -48,50 +48,39 @@ const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
 
 export default function InvoiceDetailsPage() {
     const params = useParams();
-    const { user } = useAuth();
     const { invoiceId } = params;
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
+    const { settings } = useSettings();
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [invoice, setInvoice] = useState<Sale | null>(null);
-    const [settings, setSettings] = useState<UserSettings | null>(null);
 
-    const fetchInvoiceAndSettings = useCallback(async () => {
-        if (!invoiceId || !user) return;
+    const fetchInvoice = useCallback(async () => {
+        if (!invoiceId) return;
         setIsLoading(true);
         try {
             const invoiceDocRef = doc(db, "sales", invoiceId as string);
-            const settingsDocRef = doc(db, "users", user.uid);
-
-            const [invoiceDocSnap, settingsDocSnap] = await Promise.all([
-                getDoc(invoiceDocRef),
-                getDoc(settingsDocRef)
-            ]);
+            const invoiceDocSnap = await getDoc(invoiceDocRef);
 
             if (invoiceDocSnap.exists()) {
                 setInvoice({ id: invoiceDocSnap.id, ...invoiceDocSnap.data() } as Sale);
             } else {
                 setInvoice(null);
             }
-
-            if (settingsDocSnap.exists()) {
-                setSettings(settingsDocSnap.data() as UserSettings);
-            }
-
         } catch (error) {
             console.error("Error fetching data:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to fetch invoice details." });
         } finally {
             setIsLoading(false);
         }
-    }, [invoiceId, user, toast]);
+    }, [invoiceId, toast]);
 
     useEffect(() => {
-        fetchInvoiceAndSettings();
-    }, [fetchInvoiceAndSettings]);
+        fetchInvoice();
+    }, [fetchInvoice]);
 
-    if (isLoading) {
+    if (isLoading || !settings) {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-full">

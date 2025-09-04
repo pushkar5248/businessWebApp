@@ -40,6 +40,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "deepmerge": "^4.3.1",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
@@ -60,6 +61,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/deepmerge": "^2.2.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

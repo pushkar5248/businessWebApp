@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,15 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MainLayout } from "@/components/layout/main-layout";
-import { useCurrency } from '@/context/currency-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/context/currency-context';
 
 const currencies = [
   { value: 'USD', label: '$ (USD)' },
@@ -33,29 +32,6 @@ const currencies = [
   { value: 'INR', label: '₹ (INR)' },
 ];
 
-const defaultSettings: UserSettings = {
-    profile: {
-        displayName: 'Guest User',
-        email: '',
-    },
-    general: {
-        businessName: 'Adhunik Marbles (Sample)',
-        businessGstin: '27ABCDE1234F1Z5',
-        businessAddress: '123 Marble Street, Stoneville, ST 45678',
-        businessPhone: '+91 98765 43210',
-        businessEmail: 'contact@adhunikmarbles.com'
-    },
-    appearance: {
-        theme: 'light',
-    },
-    billing: {
-        currency: 'INR',
-        defaultCgstRate: 9,
-        defaultSgstRate: 9,
-        invoiceFooter: 'Thank you for your business!',
-        invoiceTerms: '1. Payment due within 30 days. \n2. All sales are final.',
-    }
-};
 
 function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => Promise<void>, isGuest: boolean }) {
     const { user } = useAuth();
@@ -148,6 +124,7 @@ function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings
 }
 
 function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
+    const { applyTheme } = useSettings();
     const [isDarkMode, setIsDarkMode] = useState(settings.appearance.theme === 'dark');
 
     useEffect(() => {
@@ -157,7 +134,7 @@ function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSetti
     const toggleTheme = (checked: boolean) => {
         const newTheme = checked ? 'dark' : 'light';
         setIsDarkMode(checked);
-        document.documentElement.classList.toggle('dark', checked);
+        applyTheme(newTheme); // Apply theme immediately
         onSave({ appearance: { theme: newTheme } });
     };
 
@@ -183,25 +160,24 @@ function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSetti
 }
 
 function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
-    const { currency, setCurrency } = useCurrency();
+    const { setCurrency } = useCurrency();
     const [localSettings, setLocalSettings] = useState(settings.billing);
 
     useEffect(() => {
         setLocalSettings(settings.billing);
-        if (settings.billing.currency) {
-            setCurrency(settings.billing.currency);
-        }
-    }, [settings.billing, setCurrency]);
+    }, [settings.billing]);
 
     const handleChange = (field: keyof UserSettings['billing'], value: string | number) => {
         setLocalSettings(prev => ({ ...prev, [field]: value }));
     };
+    
+    const handleCurrencyChange = (value: string) => {
+        setLocalSettings(prev => ({ ...prev, currency: value }));
+        setCurrency(value);
+    };
 
     const handleSave = () => {
         onSave({ billing: localSettings });
-        if (localSettings.currency) {
-          setCurrency(localSettings.currency);
-        }
     };
     
     return (
@@ -213,7 +189,7 @@ function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings
             <CardContent className="space-y-4">
                  <div className="space-y-2">
                     <Label htmlFor="currency-symbol">Currency</Label>
-                    <Select value={localSettings.currency} onValueChange={(value) => handleChange('currency', value)} disabled={isGuest}>
+                    <Select value={localSettings.currency} onValueChange={handleCurrencyChange} disabled={isGuest}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a currency" />
                       </SelectTrigger>
@@ -249,86 +225,19 @@ function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings
 }
 
 export default function SettingsPage() {
-    const { user, loading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const [settings, setSettings] = useState<UserSettings | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
+    const { settings, loading: settingsLoading, saveSettings } = useSettings();
+    
     const isGuest = !user;
 
-    const fetchSettings = useCallback(async () => {
-        setIsLoading(true);
-        if (!user) {
-            setSettings(defaultSettings);
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            const docRef = doc(db, 'users', user.uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data() as UserSettings;
-                const mergedSettings = {
-                    ...defaultSettings,
-                    ...data,
-                    profile: { ...defaultSettings.profile, ...data.profile },
-                    general: { ...defaultSettings.general, ...data.general },
-                    appearance: { ...defaultSettings.appearance, ...data.appearance },
-                    billing: { ...defaultSettings.billing, ...data.billing },
-                };
-                setSettings(mergedSettings);
-            } else {
-                const userDefaultSettings = {
-                    ...defaultSettings,
-                     profile: {
-                        displayName: user.displayName || user.email || 'User',
-                        email: user.email || '',
-                    },
-                }
-                await setDoc(docRef, userDefaultSettings);
-                setSettings(userDefaultSettings);
-            }
-        } catch (error) {
-            console.error("Error fetching settings:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not fetch settings."});
-        } finally {
-            setIsLoading(false);
-        }
-    }, [user, toast]);
-
-    useEffect(() => {
-        if (!loading) {
-            fetchSettings();
-        }
-    }, [loading, fetchSettings]);
-    
     const handleSaveSettings = async (dataToSave: Partial<UserSettings>) => {
         if (!user || !settings) return;
-        
-        try {
-            const docRef = doc(db, 'users', user.uid);
-            await updateDoc(docRef, dataToSave);
-            
-            const updatedSettings = {
-                ...settings,
-                ...dataToSave,
-                profile: { ...settings.profile, ...dataToSave.profile },
-                general: { ...settings.general, ...dataToSave.general },
-                appearance: { ...settings.appearance, ...dataToSave.appearance },
-                billing: { ...settings.billing, ...dataToSave.billing },
-            };
-            setSettings(updatedSettings);
-
-            toast({ title: 'Success', description: "Your settings have been saved."});
-        } catch (error) {
-            console.error("Error saving settings:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not save settings."});
-        }
+        await saveSettings(dataToSave);
     }
     
-    if (isLoading || loading || !settings) {
+    if (authLoading || settingsLoading || !settings) {
         return (
             <MainLayout>
                 <div className="flex h-[80vh] items-center justify-center">
