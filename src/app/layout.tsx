@@ -12,14 +12,11 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-// Metadata can't be in a client component, so we export it from the server component wrapper.
-export const metadata: Metadata = {
-  title: "Adhunik Invoicer",
-  description: "Inventory Management & Billing System for Adhunik Marbles",
-};
-
+// This component must be a client component to use the useSettings hook.
 function AppBody({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
+
+  // Determine the theme class. The new themes are prefixed with "theme-".
   const themeClass = settings?.appearance?.theme === 'light' || settings?.appearance?.theme === 'dark' 
     ? settings.appearance.theme 
     : `dark theme-${settings?.appearance?.theme}`;
@@ -31,25 +28,32 @@ function AppBody({ children }: { children: React.ReactNode }) {
   );
 }
 
-
-export default function RootLayout({
+// We wrap the layout in a new component that is NOT a client component, so it can export metadata.
+function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head />
-      <AuthProvider>
-        <SettingsProvider>
-          <CurrencyProvider>
-            <AppBody>
-              {children}
-              <Toaster />
-            </AppBody>
-          </CurrencyProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </html>
-  );
+    return (
+        <html lang="en" suppressHydrationWarning>
+        <head />
+        <AuthProvider>
+            <SettingsProvider>
+            <CurrencyProvider>
+                <AppBody>
+                    {children}
+                    <Toaster />
+                </AppBody>
+            </CurrencyProvider>
+            </SettingsProvider>
+        </AuthProvider>
+        </html>
+    );
 }
+
+export const metadata: Metadata = {
+  title: "Adhunik Invoicer",
+  description: "Inventory Management & Billing System for Adhunik Marbles",
+};
+
+export default AppLayout;
