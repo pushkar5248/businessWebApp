@@ -1,6 +1,4 @@
 
-"use client";
-
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import { CurrencyProvider } from "@/context/currency-context";
@@ -9,11 +7,11 @@ import { SettingsProvider, useSettings } from "@/context/settings-context";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 // This component must be a client component to use the useSettings hook.
 function AppBody({ children }: { children: React.ReactNode }) {
+  "use client";
   const { settings } = useSettings();
 
   // Determine the theme class. The new themes are prefixed with "theme-".
