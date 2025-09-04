@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const currencies = [
   { value: 'USD', label: '$ (USD)' },
@@ -32,10 +33,40 @@ const currencies = [
   { value: 'INR', label: '₹ (INR)' },
 ];
 
-function ProfileSettings({ settings, onSave }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => Promise<void> }) {
+const defaultSettings: UserSettings = {
+    profile: {
+        displayName: 'Guest User',
+        email: '',
+    },
+    general: {
+        businessName: 'Adhunik Marbles (Sample)',
+        businessGstin: '27ABCDE1234F1Z5',
+        businessAddress: '123 Marble Street, Stoneville, ST 45678',
+        businessPhone: '+91 98765 43210',
+        businessEmail: 'contact@adhunikmarbles.com'
+    },
+    appearance: {
+        theme: 'light',
+    },
+    billing: {
+        currency: 'INR',
+        defaultCgstRate: 9,
+        defaultSgstRate: 9,
+        invoiceFooter: 'Thank you for your business!',
+        invoiceTerms: '1. Payment due within 30 days. \n2. All sales are final.',
+    }
+};
+
+function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => Promise<void>, isGuest: boolean }) {
     const { user } = useAuth();
-    const [displayName, setDisplayName] = useState(user?.displayName || '');
-    const [email, setEmail] = useState(user?.email || '');
+    const [displayName, setDisplayName] = useState(settings.profile.displayName);
+    const [email, setEmail] = useState(settings.profile.email);
+
+    useEffect(() => {
+        setDisplayName(settings.profile.displayName);
+        setEmail(settings.profile.email);
+    }, [settings]);
+
 
     const handleSave = async () => {
         if (user && user.displayName !== displayName) {
@@ -53,20 +84,20 @@ function ProfileSettings({ settings, onSave }: { settings: UserSettings, onSave:
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="display-name">Display Name</Label>
-                    <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+                    <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} disabled={isGuest} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <Input id="email" type="email" value={email} disabled />
                 </div>
-                <Button onClick={handleSave}>Save Changes</Button>
+                <Button onClick={handleSave} disabled={isGuest}>Save Changes</Button>
             </CardContent>
         </Card>
     );
 }
 
 
-function GeneralSettings({ settings, onSave }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void }) {
+function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
     const [localSettings, setLocalSettings] = useState(settings.general);
 
     useEffect(() => {
@@ -90,33 +121,33 @@ function GeneralSettings({ settings, onSave }: { settings: UserSettings, onSave:
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="business-name">Business Name</Label>
-                    <Input id="business-name" value={localSettings.businessName} onChange={e => handleChange('businessName', e.target.value)} />
+                    <Input id="business-name" value={localSettings.businessName} onChange={e => handleChange('businessName', e.target.value)} disabled={isGuest} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="business-gstin">Business GSTIN</Label>
-                    <Input id="business-gstin" value={localSettings.businessGstin} onChange={e => handleChange('businessGstin', e.target.value)} />
+                    <Input id="business-gstin" value={localSettings.businessGstin} onChange={e => handleChange('businessGstin', e.target.value)} disabled={isGuest} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="business-address">Business Address</Label>
-                    <Textarea id="business-address" value={localSettings.businessAddress} onChange={e => handleChange('businessAddress', e.target.value)} />
+                    <Textarea id="business-address" value={localSettings.businessAddress} onChange={e => handleChange('businessAddress', e.target.value)} disabled={isGuest} />
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="business-phone">Business Phone</Label>
-                        <Input id="business-phone" value={localSettings.businessPhone} onChange={e => handleChange('businessPhone', e.target.value)} />
+                        <Input id="business-phone" value={localSettings.businessPhone} onChange={e => handleChange('businessPhone', e.target.value)} disabled={isGuest} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="business-email">Business Email</Label>
-                        <Input id="business-email" type="email" value={localSettings.businessEmail} onChange={e => handleChange('businessEmail', e.target.value)} />
+                        <Input id="business-email" type="email" value={localSettings.businessEmail} onChange={e => handleChange('businessEmail', e.target.value)} disabled={isGuest} />
                     </div>
                 </div>
-                <Button onClick={handleSave}>Save Changes</Button>
+                <Button onClick={handleSave} disabled={isGuest}>Save Changes</Button>
             </CardContent>
         </Card>
     );
 }
 
-function AppearanceSettings({ settings, onSave }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void }) {
+function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
     const [isDarkMode, setIsDarkMode] = useState(settings.appearance.theme === 'dark');
 
     useEffect(() => {
@@ -147,14 +178,14 @@ function AppearanceSettings({ settings, onSave }: { settings: UserSettings, onSa
                             Enable a darker color scheme for the interface.
                         </p>
                     </div>
-                    <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
+                    <Switch checked={isDarkMode} onCheckedChange={toggleTheme} disabled={isGuest} />
                 </div>
             </CardContent>
         </Card>
     );
 }
 
-function BillingSettings({ settings, onSave }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void }) {
+function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
     const { currency, setCurrency } = useCurrency();
     const [localSettings, setLocalSettings] = useState(settings.billing);
 
@@ -185,7 +216,7 @@ function BillingSettings({ settings, onSave }: { settings: UserSettings, onSave:
             <CardContent className="space-y-4">
                  <div className="space-y-2">
                     <Label htmlFor="currency-symbol">Currency</Label>
-                    <Select value={localSettings.currency} onValueChange={(value) => handleChange('currency', value)}>
+                    <Select value={localSettings.currency} onValueChange={(value) => handleChange('currency', value)} disabled={isGuest}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a currency" />
                       </SelectTrigger>
@@ -199,65 +230,48 @@ function BillingSettings({ settings, onSave }: { settings: UserSettings, onSave:
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="default-cgst">Default CGST (%)</Label>
-                        <Input id="default-cgst" type="number" value={localSettings.defaultCgstRate} onChange={e => handleChange('defaultCgstRate', Number(e.target.value))} />
+                        <Input id="default-cgst" type="number" value={localSettings.defaultCgstRate} onChange={e => handleChange('defaultCgstRate', Number(e.target.value))} disabled={isGuest} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="default-sgst">Default SGST (%)</Label>
-                        <Input id="default-sgst" type="number" value={localSettings.defaultSgstRate} onChange={e => handleChange('defaultSgstRate', Number(e.target.value))} />
+                        <Input id="default-sgst" type="number" value={localSettings.defaultSgstRate} onChange={e => handleChange('defaultSgstRate', Number(e.target.value))} disabled={isGuest} />
                     </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="invoice-footer">Invoice Footer</Label>
-                    <Input id="invoice-footer" value={localSettings.invoiceFooter} onChange={e => handleChange('invoiceFooter', e.target.value)} />
+                    <Input id="invoice-footer" value={localSettings.invoiceFooter} onChange={e => handleChange('invoiceFooter', e.target.value)} disabled={isGuest}/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="invoice-terms">Terms & Conditions</Label>
-                    <Textarea id="invoice-terms" value={localSettings.invoiceTerms} onChange={e => handleChange('invoiceTerms', e.target.value)} />
+                    <Textarea id="invoice-terms" value={localSettings.invoiceTerms} onChange={e => handleChange('invoiceTerms', e.target.value)} disabled={isGuest}/>
                 </div>
-                <Button onClick={handleSave}>Save Changes</Button>
+                <Button onClick={handleSave} disabled={isGuest}>Save Changes</Button>
             </CardContent>
         </Card>
     );
 }
 
 export default function SettingsPage() {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     const [settings, setSettings] = useState<UserSettings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const defaultSettings: UserSettings = {
-        profile: {
-            displayName: user?.displayName || user?.email || 'User',
-            email: user?.email || '',
-        },
-        general: {
-            businessName: 'Adhunik Marbles',
-            businessGstin: '27ABCDE1234F1Z5',
-            businessAddress: '123 Marble Street, Stoneville, ST 45678',
-            businessPhone: '+91 98765 43210',
-            businessEmail: 'contact@adhunikmarbles.com'
-        },
-        appearance: {
-            theme: 'light',
-        },
-        billing: {
-            currency: 'INR',
-            defaultCgstRate: 9,
-            defaultSgstRate: 9,
-            invoiceFooter: 'Thank you for your business!',
-            invoiceTerms: '1. Payment due within 30 days. \n2. All sales are final.',
-        }
-    };
-    
+    const isGuest = !user;
+
     const fetchSettings = useCallback(async () => {
-        if (!user) return;
         setIsLoading(true);
+        if (!user) {
+            setSettings(defaultSettings);
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const docRef = doc(db, 'users', user.uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                // Deep merge with defaults to avoid errors if some fields are missing
                 const data = docSnap.data() as UserSettings;
                 const mergedSettings = {
                     ...defaultSettings,
@@ -269,9 +283,15 @@ export default function SettingsPage() {
                 };
                 setSettings(mergedSettings);
             } else {
-                // If no settings, create them with defaults
-                await setDoc(docRef, defaultSettings);
-                setSettings(defaultSettings);
+                const userDefaultSettings = {
+                    ...defaultSettings,
+                     profile: {
+                        displayName: user.displayName || user.email || 'User',
+                        email: user.email || '',
+                    },
+                }
+                await setDoc(docRef, userDefaultSettings);
+                setSettings(userDefaultSettings);
             }
         } catch (error) {
             console.error("Error fetching settings:", error);
@@ -282,8 +302,10 @@ export default function SettingsPage() {
     }, [user, toast]);
 
     useEffect(() => {
-        fetchSettings();
-    }, [fetchSettings]);
+        if (!loading) {
+            fetchSettings();
+        }
+    }, [loading, fetchSettings]);
     
     const handleSaveSettings = async (dataToSave: Partial<UserSettings>) => {
         if (!user || !settings) return;
@@ -292,7 +314,6 @@ export default function SettingsPage() {
             const docRef = doc(db, 'users', user.uid);
             await updateDoc(docRef, dataToSave);
             
-            // Optimistically update local state
             const updatedSettings = {
                 ...settings,
                 ...dataToSave,
@@ -310,7 +331,7 @@ export default function SettingsPage() {
         }
     }
     
-    if (isLoading || !settings) {
+    if (isLoading || loading || !settings) {
         return (
             <MainLayout>
                 <div className="flex h-[80vh] items-center justify-center">
@@ -318,6 +339,28 @@ export default function SettingsPage() {
                 </div>
             </MainLayout>
         );
+    }
+    
+    if (isGuest) {
+      return (
+        <MainLayout>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold font-headline">Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your application settings.
+            </p>
+          </div>
+          <Card>
+            <CardHeader>
+                <CardTitle>Guest Mode</CardTitle>
+                <CardDescription>You are currently in guest mode. Please log in to save your settings.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={() => router.push('/login')}>Login to Save Settings</Button>
+            </CardContent>
+          </Card>
+        </MainLayout>
+      )
     }
 
   return (
@@ -336,16 +379,16 @@ export default function SettingsPage() {
           <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
-          <ProfileSettings settings={settings} onSave={handleSaveSettings} />
+          <ProfileSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
         </TabsContent>
         <TabsContent value="general">
-          <GeneralSettings settings={settings} onSave={handleSaveSettings} />
+          <GeneralSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
         </TabsContent>
         <TabsContent value="appearance">
-          <AppearanceSettings settings={settings} onSave={handleSaveSettings} />
+          <AppearanceSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
         </TabsContent>
         <TabsContent value="billing">
-          <BillingSettings settings={settings} onSave={handleSaveSettings} />
+          <BillingSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
         </TabsContent>
       </Tabs>
     </MainLayout>

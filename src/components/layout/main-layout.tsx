@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CircleUser, LogOut, Loader2 } from "lucide-react";
+import { CircleUser, LogOut, Loader2, LogIn } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/icons";
 import { Nav } from "./nav";
@@ -45,17 +45,67 @@ export function MainLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
+  const renderFooter = () => {
+    if (loading) {
+      return <div className="p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    }
 
-  if (!user) {
-    return null; // or a redirect component, though the context handles redirection
-  }
+    if (user) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-3 p-2 cursor-pointer hover:bg-sidebar-accent rounded-md">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={user.photoURL ?? "https://picsum.photos/100"} alt="@user" />
+                <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'A'}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col text-left group-data-[collapsible=icon]:hidden">
+                <span className="text-sm font-medium">{user.displayName ?? "Admin User"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {user.email}
+                </span>
+              </div>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user.displayName ?? "Admin"}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <Link href="/settings">
+                <DropdownMenuItem>
+                    <CircleUser className="mr-2 h-4 w-4" />
+                    <span>Profile & Settings</span>
+                </DropdownMenuItem>
+            </Link>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    return (
+        <div className="flex flex-col gap-2 group-data-[collapsible=icon]:hidden">
+            <Link href="/login">
+                <Button className="w-full">
+                    <LogIn className="mr-2"/> Login
+                </Button>
+            </Link>
+            <Link href="/signup">
+                <Button variant="outline" className="w-full">Sign Up</Button>
+            </Link>
+        </div>
+    );
+  };
+
 
   return (
     <SidebarProvider>
@@ -71,41 +121,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Nav />
           </SidebarContent>
           <SidebarFooter>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 p-2 cursor-pointer hover:bg-sidebar-accent rounded-md">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.photoURL ?? "https://picsum.photos/100"} alt="@user" />
-                    <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'A'}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col text-left group-data-[collapsible=icon]:hidden">
-                    <span className="text-sm font-medium">{user.displayName ?? "Admin User"}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {user.email}
-                    </span>
-                  </div>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName ?? "Admin"}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <CircleUser className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {renderFooter()}
           </SidebarFooter>
         </Sidebar>
 

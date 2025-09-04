@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
 import { type Purchase } from "@/lib/types";
+import { purchasesData } from "@/lib/data";
 import { PlusCircle, Search, Trash2, Archive, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
@@ -58,8 +59,13 @@ export default function PurchasesPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchPurchases = useCallback(async () => {
-        if (!user) return;
         setIsLoading(true);
+        if (!user) {
+            setPurchases(purchasesData.filter(p => !p.deletedAt));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const q = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "==", null));
             const querySnapshot = await getDocs(q);
@@ -85,6 +91,10 @@ export default function PurchasesPage() {
 
     const handleDeletePurchase = async (e: React.MouseEvent, purchaseId: string) => {
         e.stopPropagation(); // Prevent row click event
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.'})
+            return;
+        }
         try {
             const purchaseRef = doc(db, "purchases", purchaseId);
             await updateDoc(purchaseRef, {
@@ -180,7 +190,7 @@ export default function PurchasesPage() {
                   <TableCell className="text-right">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" disabled={!user} onClick={(e) => e.stopPropagation()}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </AlertDialogTrigger>

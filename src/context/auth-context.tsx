@@ -33,9 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
 
-    if (!user && !isAuthPage) {
-      router.push('/login');
-    } else if (user && isAuthPage) {
+    // If a user is logged in, they should not be able to see the login/signup pages
+    if (user && isAuthPage) {
       router.push('/');
     }
   }, [user, loading, router, pathname]);

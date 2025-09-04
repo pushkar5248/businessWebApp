@@ -41,6 +41,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
 import { type InventoryItem } from "@/lib/types";
+import { inventoryData } from "@/lib/data";
 import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,7 +64,7 @@ const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
   supplier: 'Supplier'
 };
 
-const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id'>) => void; onCancel: () => void }) => {
+const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id' | 'userId'>>({
     name: "",
     category: "",
@@ -145,8 +146,12 @@ export default function InventoryPage() {
   });
   
   const fetchItems = useCallback(async () => {
-    if (!user) return;
     setIsLoading(true);
+    if (!user) {
+        setItems(inventoryData);
+        setIsLoading(false);
+        return;
+    }
     try {
       const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
       const querySnapshot = await getDocs(q);
@@ -184,7 +189,10 @@ export default function InventoryPage() {
 
 
   const handleAddItem = async (item: Omit<InventoryItem, 'id' | 'userId'>) => {
-    if (!user) return;
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add an item.'})
+        return;
+    }
     try {
       const docRef = await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
       setItems(prev => [{ ...item, id: docRef.id }, ...prev]);
@@ -197,6 +205,10 @@ export default function InventoryPage() {
   };
   
   const handleDeleteItem = useCallback(async (itemId: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to delete an item.'})
+        return;
+    }
     try {
       await deleteDoc(doc(db, "inventory", itemId));
       setItems(prev => prev.filter(item => item.id !== itemId));
@@ -205,13 +217,15 @@ export default function InventoryPage() {
       console.error("Error deleting item:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not delete item." });
     }
-  }, [toast]);
+  }, [user, toast]);
 
   const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id'>, value: string | number) => {
-     setItems(prev => prev.map(item => 
+    setItems(prev => prev.map(item => 
       item.id === itemId ? { ...item, [field]: value } : item
     ));
     
+    if (!user) return; // Don't save changes for guest users
+
     try {
         const itemRef = doc(db, "inventory", itemId);
         await updateDoc(itemRef, { [field]: value });
@@ -251,7 +265,10 @@ export default function InventoryPage() {
   };
   
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user) return;
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to import items.'})
+        return;
+    };
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -409,6 +426,7 @@ export default function InventoryPage() {
                         <Input
                           type={typeof (item as any)[key] === 'number' ? 'number' : 'text'}
                           value={(item as any)[key]}
+                          readOnly={!user}
                           onChange={(e) =>
                             handleItemChange(
                               item.id,
@@ -423,7 +441,7 @@ export default function InventoryPage() {
                       <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" disabled={!user}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </AlertDialogTrigger>

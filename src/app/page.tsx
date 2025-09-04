@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { MainLayout } from "@/components/layout/main-layout";
-import { chartData } from "@/lib/data";
+import { chartData, salesData, inventoryData } from "@/lib/data";
 import { DollarSign, Boxes, ShoppingCart, Users, Loader2 } from "lucide-react";
 import { useCurrency } from '@/context/currency-context';
 import { useAuth } from '@/context/auth-context';
@@ -41,7 +41,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { formatCurrency } = useCurrency();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSalesCount, setTotalSalesCount] = useState(0);
@@ -49,15 +49,21 @@ export default function Dashboard() {
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+      setIsLoading(true);
       if (!user) {
-        setIsLoading(false);
-        return;
-      };
+          // Guest mode: use sample data
+          const revenue = salesData.reduce((acc, sale) => acc + sale.amount, 0);
+          setTotalRevenue(revenue);
+          setTotalSalesCount(salesData.length);
+          setRecentSales(salesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          setStockItemsCount(inventoryData.length);
+          setIsLoading(false);
+          return;
+      }
 
+      // Authenticated user: fetch from Firestore
       try {
-        // Fetch Sales
         const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid));
         const salesSnapshot = await getDocs(salesQuery);
         const salesList = salesSnapshot.docs.map(doc => doc.data() as Sale);
@@ -66,7 +72,6 @@ export default function Dashboard() {
         setTotalSalesCount(salesList.length);
         setRecentSales(salesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         
-        // Fetch Inventory
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const inventorySnapshot = await getDocs(inventoryQuery);
         setStockItemsCount(inventorySnapshot.size);
@@ -76,11 +81,16 @@ export default function Dashboard() {
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchData();
   }, [user]);
 
-  if (isLoading) {
+  useEffect(() => {
+    // We wait for the auth loading to finish before fetching data
+    if (!loading) {
+      fetchData();
+    }
+  }, [user, loading, fetchData]);
+
+  if (isLoading || loading) {
     return (
         <MainLayout>
             <div className="flex h-[80vh] items-center justify-center">
