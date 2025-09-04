@@ -53,10 +53,11 @@ export default function Dashboard() {
       setIsLoading(true);
       if (!user) {
           // Guest mode: use sample data
-          const revenue = salesData.reduce((acc, sale) => acc + sale.amount, 0);
+          const activeSales = salesData.filter(s => !s.deletedAt);
+          const revenue = activeSales.reduce((acc, sale) => acc + sale.amount, 0);
           setTotalRevenue(revenue);
-          setTotalSalesCount(salesData.length);
-          setRecentSales(salesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          setTotalSalesCount(activeSales.length);
+          setRecentSales(activeSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
           setStockItemsCount(inventoryData.length);
           setIsLoading(false);
           return;
@@ -64,7 +65,7 @@ export default function Dashboard() {
 
       // Authenticated user: fetch from Firestore
       try {
-        const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid));
+        const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
         const salesSnapshot = await getDocs(salesQuery);
         const salesList = salesSnapshot.docs.map(doc => doc.data() as Sale);
         const revenue = salesList.reduce((acc, sale) => acc + sale.amount, 0);
