@@ -300,12 +300,21 @@ export default function PurchasesPage() {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    onClick={() => requestSort(key as keyof ColumnKeys)}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-move p-0"
                   >
-                    <div className="flex items-center gap-2">
-                      {COLUMN_NAMES[key as keyof ColumnKeys]}
-                      {sortConfig?.key === key && <ArrowUpDown className="h-4 w-4" />}
+                    <div className="flex items-center justify-between p-4">
+                        <span>{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                requestSort(key as keyof ColumnKeys);
+                            }}
+                            className="h-6 w-6 ml-2"
+                        >
+                            <ArrowUpDown className="h-4 w-4" />
+                        </Button>
                     </div>
                   </TableHead>
                 ))}

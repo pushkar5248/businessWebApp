@@ -521,10 +521,9 @@ export default function InventoryPage() {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    onClick={() => requestSort(key as keyof ColumnKeys)}
                     className="cursor-move p-0"
                   >
-                    <div className="flex items-center gap-2 p-4">
+                    <div className="flex items-center justify-between p-4">
                        <Input
                             type="text"
                             value={columns[key]}
@@ -532,7 +531,14 @@ export default function InventoryPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full"
                         />
-                      {sortConfig?.key === key && <ArrowUpDown className="h-4 w-4" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => requestSort(key as keyof ColumnKeys)}
+                        className="h-6 w-6 ml-2"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableHead>
                 ))}
