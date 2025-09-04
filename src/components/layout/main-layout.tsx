@@ -21,12 +21,41 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CircleUser, LogOut } from "lucide-react";
+import { CircleUser, LogOut, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/icons";
 import { Nav } from "./nav";
+import { useAuth } from "@/context/auth-context";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
 
 export function MainLayout({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null; // or a redirect component, though the context handles redirection
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
@@ -45,13 +74,13 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 p-2 cursor-pointer hover:bg-sidebar-accent rounded-md">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="https://picsum.photos/100" alt="@user" />
-                    <AvatarFallback>AM</AvatarFallback>
+                    <AvatarImage src={user.photoURL ?? "https://picsum.photos/100"} alt="@user" />
+                    <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'A'}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col text-left group-data-[collapsible=icon]:hidden">
-                    <span className="text-sm font-medium">Admin User</span>
+                    <span className="text-sm font-medium">{user.displayName ?? "Admin User"}</span>
                     <span className="text-xs text-muted-foreground">
-                      admin@adhunik.co
+                      {user.email}
                     </span>
                   </div>
                 </div>
@@ -59,9 +88,9 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Admin</p>
+                    <p className="text-sm font-medium leading-none">{user.displayName ?? "Admin"}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      admin@adhunik.co
+                      {user.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -70,7 +99,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
                   <CircleUser className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
