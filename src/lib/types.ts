@@ -84,5 +84,3 @@ export type UserSettings = {
     invoiceTerms: string;
   }
 }
-
-    
