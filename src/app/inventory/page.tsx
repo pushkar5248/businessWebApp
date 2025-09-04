@@ -346,10 +346,16 @@ export default function InventoryPage() {
 
             const headerRow = allRows[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
             const dataRows = allRows.slice(1);
-
+            
             const batch = writeBatch(db);
             const newItems: InventoryItem[] = [];
 
+            // 1. Delete existing items
+            const existingItemsQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
+            const existingItemsSnapshot = await getDocs(existingItemsQuery);
+            existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            // 2. Add new items from CSV
             const expectedHeaders = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
             const headerMap = expectedHeaders.reduce((acc, curr) => {
                 acc[curr] = headerRow.indexOf(curr);
@@ -379,12 +385,13 @@ export default function InventoryPage() {
                  toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import." });
                  return;
             }
-
+            
+            // 3. Commit batch
             await batch.commit();
 
-            setItems(prev => [...newItems, ...prev]);
+            setItems(newItems);
             setImportModalOpen(false);
-            toast({ title: "Success", description: `${newItems.length} items imported successfully.` });
+            toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -458,7 +465,7 @@ export default function InventoryPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Inventory</DialogTitle>
-            <DialogDescription>Upload a CSV file to add items to your inventory.</DialogDescription>
+            <DialogDescription>Upload a CSV file to replace your current inventory.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
@@ -602,3 +609,5 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
+
+    
