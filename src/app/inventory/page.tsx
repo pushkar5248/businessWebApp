@@ -54,7 +54,7 @@ import { useAuth } from "@/context/auth-context";
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
 
-const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
+const DEFAULT_COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
   id: 'Item ID',
   name: 'Name',
   category: 'Category',
@@ -133,8 +133,8 @@ export default function InventoryPage() {
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isImportModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [columns, setColumns] = useState<Record<string, string>>(COLUMN_NAMES);
-  const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
+  const [columns, setColumns] = useState<Record<string, string>>(DEFAULT_COLUMN_NAMES);
+  const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
   const dragItem = useRef<string | null>(null);
   const dragOverItem = useRef<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
@@ -188,6 +188,10 @@ export default function InventoryPage() {
     if (savedSortConfig) {
       setSortConfig(JSON.parse(savedSortConfig));
     }
+    const savedColumnNames = localStorage.getItem("inventoryColumnNames");
+    if (savedColumnNames) {
+        setColumns(JSON.parse(savedColumnNames));
+    }
   }, []);
   
   useEffect(() => {
@@ -201,6 +205,10 @@ export default function InventoryPage() {
   useEffect(() => {
     localStorage.setItem('inventorySortConfig', JSON.stringify(sortConfig));
   }, [sortConfig]);
+  
+   useEffect(() => {
+    localStorage.setItem('inventoryColumnNames', JSON.stringify(columns));
+  }, [columns]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
@@ -318,7 +326,7 @@ export default function InventoryPage() {
     toast({ title: "Success", description: "Inventory exported successfully." });
   };
   
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+ const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to import items.'})
         return;
@@ -328,45 +336,66 @@ export default function InventoryPage() {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      try {
-        const text = e.target?.result as string;
-        const rows = text.split('\n').filter(row => row.trim() !== '').slice(1); // Skip header
-        
-        if (rows.length === 0) {
-          toast({ variant: "destructive", title: "Error", description: "CSV file is empty or has no data rows." });
-          return;
+        try {
+            const text = e.target?.result as string;
+            const allRows = text.split('\n').filter(row => row.trim() !== '');
+            if (allRows.length <= 1) {
+                toast({ variant: "destructive", title: "Error", description: "CSV file is empty or has no data rows." });
+                return;
+            }
+
+            const headerRow = allRows[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+            const dataRows = allRows.slice(1);
+
+            const batch = writeBatch(db);
+            const newItems: InventoryItem[] = [];
+
+            const expectedHeaders = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
+            const headerMap = expectedHeaders.reduce((acc, curr) => {
+                acc[curr] = headerRow.indexOf(curr);
+                return acc;
+            }, {} as Record<string, number>);
+
+            dataRows.forEach(row => {
+                const values = row.split(',');
+                const newItemData: Omit<InventoryItem, 'id'> = {
+                    name: values[headerMap['name']]?.trim() || '',
+                    category: values[headerMap['category']]?.trim() || '',
+                    subcategory: values[headerMap['subcategory']]?.trim() || '',
+                    stock: Number(values[headerMap['stock']]) || 0,
+                    price: Number(values[headerMap['price']]) || 0,
+                    supplier: values[headerMap['supplier']]?.trim() || '',
+                    userId: user.uid,
+                };
+                
+                if(!newItemData.name) return; // Skip rows without a name
+
+                const docRef = doc(collection(db, "inventory"));
+                batch.set(docRef, newItemData);
+                newItems.push({ ...newItemData, id: docRef.id });
+            });
+
+            if (newItems.length === 0) {
+                 toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import." });
+                 return;
+            }
+
+            await batch.commit();
+
+            setItems(prev => [...newItems, ...prev]);
+            setImportModalOpen(false);
+            toast({ title: "Success", description: `${newItems.length} items imported successfully.` });
+
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
+        } finally {
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
-
-        const batch = writeBatch(db);
-        const newItems: InventoryItem[] = [];
-
-        rows.forEach(row => {
-          const [name, category, subcategory, stock, price, supplier] = row.split(',');
-          const newItemData: Omit<InventoryItem, 'id'> = {
-            name: name?.trim() || '',
-            category: category?.trim() || '',
-            subcategory: subcategory?.trim() || '',
-            stock: Number(stock) || 0,
-            price: Number(price) || 0,
-            supplier: supplier?.trim() || '',
-            userId: user.uid,
-          };
-          const docRef = doc(collection(db, "inventory"));
-          batch.set(docRef, newItemData);
-          newItems.push({ ...newItemData, id: docRef.id });
-        });
-
-        await batch.commit();
-
-        setItems(prev => [...newItems, ...prev]);
-        setImportModalOpen(false);
-        toast({ title: "Success", description: "Inventory imported successfully." });
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
-      }
     };
     reader.readAsText(file);
-  };
+};
   
   const openImportDialog = () => {
       setImportModalOpen(true);
@@ -399,6 +428,10 @@ export default function InventoryPage() {
     return sortableItems;
   }, [items, sortConfig, searchTerm]);
 
+   const handleColumnNameChange = (key: string, newName: string) => {
+    setColumns(prev => ({ ...prev, [key]: newName }));
+  };
+
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-4">
@@ -430,7 +463,7 @@ export default function InventoryPage() {
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
             <p className="text-sm text-muted-foreground mt-2">
-                CSV headers must be: name, category, subcategory, stock, price, supplier
+                CSV headers must include: name, category, subcategory, stock, price, supplier
             </p>
           </div>
            <DialogFooter>
@@ -459,7 +492,7 @@ export default function InventoryPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {columnOrder.map((key) => (
+                        {Object.keys(columnOrder).map((key) => (
                           <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
@@ -489,10 +522,14 @@ export default function InventoryPage() {
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
                     className="cursor-move"
-                    onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
-                    <div className="flex items-center gap-2">
-                      {columns[key]}
+                    <div className="flex items-center gap-2" onClick={() => requestSort(key as keyof ColumnKeys)}>
+                       <Input
+                            type="text"
+                            value={columns[key]}
+                            onChange={(e) => handleColumnNameChange(key, e.target.value)}
+                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none"
+                        />
                       {sortConfig?.key === key && <ArrowUpDown className="h-4 w-4" />}
                     </div>
                   </TableHead>
@@ -554,3 +591,5 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
+
+    
