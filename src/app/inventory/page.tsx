@@ -134,6 +134,9 @@ export default function InventoryPage() {
   const [isImportModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [columns, setColumns] = useState<Record<string, string>>(COLUMN_NAMES);
+  const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
+  const dragItem = useRef<string | null>(null);
+  const dragOverItem = useRef<string | null>(null);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     id: false,
@@ -175,17 +178,50 @@ export default function InventoryPage() {
     if (savedVisibility) {
       setColumnVisibility(JSON.parse(savedVisibility));
     }
+    const savedOrder = localStorage.getItem("inventoryColumnOrder");
+    if (savedOrder) {
+      setColumnOrder(JSON.parse(savedOrder));
+    }
   }, []);
   
   useEffect(() => {
     localStorage.setItem("inventoryColumnVisibility", JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
+  useEffect(() => {
+    localStorage.setItem("inventoryColumnOrder", JSON.stringify(columnOrder));
+  }, [columnOrder]);
+
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
-  const visibleColumns = Object.keys(columns).filter(key => columnVisibility[key as keyof ColumnKeys]);
+  const visibleColumns = columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
+  
+  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    dragItem.current = key;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    dragOverItem.current = key;
+    const dragItemIndex = columnOrder.findIndex(item => item === dragItem.current);
+    const dragOverItemIndex = columnOrder.findIndex(item => item === dragOverItem.current);
+
+    if (dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) {
+        setColumnOrder(currentOrder => {
+            const newOrder = [...currentOrder];
+            const [reorderedItem] = newOrder.splice(dragItemIndex, 1);
+            newOrder.splice(dragOverItemIndex, 0, reorderedItem);
+            return newOrder;
+        });
+    }
+  };
+  
+  const handleDragEnd = () => {
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
 
 
   const handleAddItem = async (item: Omit<InventoryItem, 'id' | 'userId'>) => {
@@ -378,7 +414,7 @@ export default function InventoryPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columns).map((key) => (
+                        {columnOrder.map((key) => (
                           <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
@@ -400,7 +436,17 @@ export default function InventoryPage() {
             <TableHeader>
               <TableRow>
                 {visibleColumns.map((key) => (
-                  <TableHead key={key}>{columns[key]}</TableHead>
+                  <TableHead 
+                    key={key}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, key)}
+                    onDragEnter={(e) => handleDragEnter(e, key)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="cursor-move"
+                  >
+                    {columns[key]}
+                  </TableHead>
                 ))}
                 <TableHead />
               </TableRow>
