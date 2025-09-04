@@ -37,7 +37,7 @@ interface SettingsContextType {
   settings: UserSettings | null;
   loading: boolean;
   saveSettings: (dataToSave: Partial<UserSettings>) => Promise<void>;
-  applyTheme: (theme: 'light' | 'dark') => void;
+  applyTheme: (theme: UserSettings['appearance']['theme']) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -48,9 +48,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [settings, setSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const applyTheme = useCallback((theme: 'light' | 'dark') => {
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(theme);
+    const applyTheme = useCallback((theme: UserSettings['appearance']['theme']) => {
+        document.documentElement.classList.remove('light', 'dark', 'theme-zinc', 'theme-slate', 'theme-stone');
+        
+        if (theme === 'light' || theme === 'dark') {
+            document.documentElement.classList.add(theme);
+        } else {
+            // For other named themes, we assume they are dark variants for now
+            document.documentElement.classList.add('dark', `theme-${theme}`);
+        }
     }, []);
 
     const fetchSettings = useCallback(async () => {

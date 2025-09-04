@@ -1,4 +1,5 @@
 
+
 export type InventoryItem = {
   id: string;
   name: string;
@@ -73,7 +74,7 @@ export type UserSettings = {
     businessEmail: string;
   },
   appearance: {
-    theme: 'light' | 'dark';
+    theme: 'light' | 'dark' | 'zinc' | 'slate' | 'stone';
   },
   billing: {
     currency: string;

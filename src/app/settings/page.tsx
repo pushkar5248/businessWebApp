@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MainLayout } from "@/components/layout/main-layout";
@@ -19,6 +18,8 @@ import { Loader2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 
 const currencies = [
   { value: 'USD', label: '$ (USD)' },
@@ -31,6 +32,14 @@ const currencies = [
   { value: 'CNY', label: '¥ (CNY)' },
   { value: 'INR', label: '₹ (INR)' },
 ];
+
+const themes = [
+    { name: 'light', label: 'Light' },
+    { name: 'dark', label: 'Dark' },
+    { name: 'zinc', label: 'Zinc' },
+    { name: 'slate', label: 'Slate' },
+    { name: 'stone', label: 'Stone' },
+]
 
 
 function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => Promise<void>, isGuest: boolean }) {
@@ -125,17 +134,10 @@ function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings
 
 function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
     const { applyTheme } = useSettings();
-    const [isDarkMode, setIsDarkMode] = useState(settings.appearance.theme === 'dark');
 
-    useEffect(() => {
-        setIsDarkMode(settings.appearance.theme === 'dark');
-    }, [settings.appearance.theme]);
-
-    const toggleTheme = (checked: boolean) => {
-        const newTheme = checked ? 'dark' : 'light';
-        setIsDarkMode(checked);
-        applyTheme(newTheme); // Apply theme immediately
-        onSave({ appearance: { theme: newTheme } });
+    const handleThemeChange = (newTheme: string) => {
+        applyTheme(newTheme as UserSettings['appearance']['theme']);
+        onSave({ appearance: { theme: newTheme as UserSettings['appearance']['theme'] } });
     };
 
     return (
@@ -145,15 +147,29 @@ function AppearanceSettings({ settings, onSave, isGuest }: { settings: UserSetti
                 <CardDescription>Customize the look and feel of your application.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                        <Label className="text-base">Dark Mode</Label>
-                        <p className="text-sm text-muted-foreground">
-                            Enable a darker color scheme for the interface.
-                        </p>
-                    </div>
-                    <Switch checked={isDarkMode} onCheckedChange={toggleTheme} disabled={isGuest} />
+                <div className="space-y-2">
+                    <Label className="text-base">Theme</Label>
+                    <p className="text-sm text-muted-foreground">Select a theme for your dashboard.</p>
                 </div>
+                <RadioGroup 
+                    value={settings.appearance.theme} 
+                    onValueChange={handleThemeChange}
+                    className="grid max-w-md grid-cols-2 gap-8 pt-2"
+                    disabled={isGuest}
+                >
+                    {themes.map((theme) => (
+                         <Label
+                            key={theme.name}
+                            className={cn(
+                                "flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground",
+                                settings.appearance.theme === theme.name && "border-primary"
+                            )}
+                         >
+                            <RadioGroupItem value={theme.name} id={theme.name} className="sr-only" />
+                            <span className="flex-1 text-center">{theme.label}</span>
+                         </Label>
+                    ))}
+                </RadioGroup>
             </CardContent>
         </Card>
     );
