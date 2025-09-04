@@ -24,13 +24,14 @@ function AppBody({ children }: { children: React.ReactNode }) {
   return (
     <body className={`font-sans antialiased ${inter.variable} ${themeClass}`}>
       {children}
+      <Toaster />
     </body>
   );
 }
 
 // We need to wrap the layout in a component that is NOT a client component, so it can export metadata.
 // However, the providers themselves rely on client-side state. So we create a structure where the top-level
-// layout is a server component, but it renders client-side providers.
+// layout is a server component, but it renders client-side providers which in turn render a client component for the body.
 function AppLayout({
   children,
 }: Readonly<{
@@ -44,7 +45,6 @@ function AppLayout({
             <CurrencyProvider>
                 <AppBody>
                     {children}
-                    <Toaster />
                 </AppBody>
             </CurrencyProvider>
             </SettingsProvider>
