@@ -138,7 +138,7 @@ export default function InventoryPageClient() {
   const [isAddColumnModalOpen, setAddColumnModalOpen] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [columns, setColumns] = useState<Record<string, string>>(DEFAULT_COLUMN_NAMES);
+  const [columns, setColumns] = useState<Record<string, string>>({...DEFAULT_COLUMN_NAMES});
   const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,14 +162,14 @@ export default function InventoryPageClient() {
   });
 
   const setupRealtimeListener = useCallback(() => {
-    if (!user) return;
+    if (!user) return null;
 
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
     }
     
     const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
-    unsubscribeRef.current = onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
         setItems(inventoryList);
         setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
@@ -179,8 +179,30 @@ export default function InventoryPageClient() {
         toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
         setIsLoading(false);
     });
+
+    unsubscribeRef.current = unsubscribe;
+    return unsubscribe;
   }, [user, toast]);
   
+  const fetchAndSetData = useCallback(async () => {
+    if (!user) {
+      const guestData = inventoryData.map(item => ({...item, id: item.id || `GUEST_${Math.random().toString(36).substr(2, 9)}`}));
+      setItems(guestData);
+      setOriginalItems(JSON.parse(JSON.stringify(guestData)));
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    const querySnapshot = await getDocs(q);
+    const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+    setItems(inventoryList);
+    setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
+    setIsLoading(false);
+  }, [user]);
+
+
   useEffect(() => {
     setIsLoading(true);
     if (!user) {
@@ -191,11 +213,11 @@ export default function InventoryPageClient() {
         return;
     }
     
-    setupRealtimeListener();
+    const unsubscribe = setupRealtimeListener();
 
     return () => {
-        if (unsubscribeRef.current) {
-            unsubscribeRef.current();
+        if (unsubscribe) {
+            unsubscribe();
         }
     }
   }, [user, setupRealtimeListener]);
@@ -213,7 +235,14 @@ export default function InventoryPageClient() {
         if (savedSortConfig) setSortConfig(JSON.parse(savedSortConfig));
 
         const savedColumnNames = localStorage.getItem(getLocalStorageKey("columnNames"));
-        if (savedColumnNames) setColumns(JSON.parse(savedColumnNames));
+        if (savedColumnNames) {
+          try {
+            const parsedNames = JSON.parse(savedColumnNames);
+            setColumns(current => ({...current, ...parsedNames}));
+          } catch(e) {
+            console.error("Failed to parse column names from local storage", e);
+          }
+        }
     }
   }, [getLocalStorageKey]);
   
@@ -346,7 +375,7 @@ const handleSaveChanges = async () => {
       }).join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-t;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.href) {
       URL.revokeObjectURL(link.href);
@@ -372,7 +401,7 @@ const handleSaveChanges = async () => {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
     }
-
+    
     setIsLoading(true);
 
     const reader = new FileReader();
@@ -390,26 +419,43 @@ const handleSaveChanges = async () => {
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
-            const existingItemsMap = new Map(items.map(item => [item.name, item.id]));
+            const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
+            const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
+
+            // Handle new columns
+            const newColumns = new Map<string, string>();
+            headerRow.forEach(csvHeader => {
+                const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
+                if (!columns[customKey]) {
+                    newColumns.set(customKey, csvHeader);
+                }
+            });
+
+            if (newColumns.size > 0) {
+              const newColumnKeys = Array.from(newColumns.keys());
+              setColumns(prev => ({ ...prev, ...Object.fromEntries(newColumns) }));
+              setColumnOrder(prev => [...prev, ...newColumnKeys]);
+              setColumnVisibility(prev => {
+                  const newVis = { ...prev };
+                  newColumnKeys.forEach(key => newVis[key] = true);
+                  return newVis;
+              });
+            }
 
             const BATCH_SIZE = 499; 
-            const batches:any[] = [writeBatch(db)];
-            let currentBatchIndex = 0;
+            const batches:any[] = [];
+            let currentBatch = writeBatch(db);
             let operationsInCurrentBatch = 0;
-
-            let importedCount = 0;
-            let updatedCount = 0;
             
-            for (const row of dataRows) {
+            for (let i = 0; i < dataRows.length; i++) {
+                 const row = dataRows[i];
                  const values = row.split(',').map(v => v.trim());
                  const newItemData: { [key: string]: any } = {};
 
                 const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
                 if (nameIndex === -1) {
                     toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
-                    setIsLoading(false);
-                    setupRealtimeListener();
-                    return;
+                    return; // Exit if no name column
                 }
                 
                 const itemName = values[nameIndex];
@@ -423,54 +469,45 @@ const handleSaveChanges = async () => {
                         const value = values[index];
                         if (internalKey === 'stock' || internalKey === 'price') {
                             newItemData[internalKey] = Number(value) || 0;
-                        } else if (internalKey !== 'id') { // Do not import the ID from CSV
+                        } else if (internalKey !== 'id') { 
                            newItemData[internalKey] = value;
                         }
                     } else {
-                        // Handle custom columns
                         const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
                         newItemData[customKey] = values[index];
-                        if (!columns[customKey]) {
-                            setColumns(prev => ({...prev, [customKey]: csvHeader }));
-                            if (!columnOrder.includes(customKey)) {
-                               setColumnOrder(prev => [...prev, customKey]);
-                            }
-                            setColumnVisibility(prev => ({...prev, [customKey]: true}));
-                        }
                     }
                 });
 
-                newItemData.name = itemName;
                 newItemData.userId = user.uid;
                 delete newItemData.id; 
 
                 const existingItemId = existingItemsMap.get(itemName);
                 
                 if (operationsInCurrentBatch >= BATCH_SIZE) {
-                    batches.push(writeBatch(db));
-                    currentBatchIndex++;
+                    batches.push(currentBatch);
+                    currentBatch = writeBatch(db);
                     operationsInCurrentBatch = 0;
                 }
                 
-                const currentBatch = batches[currentBatchIndex];
-
                 if (existingItemId) {
                     const itemRef = doc(db, "inventory", existingItemId);
                     currentBatch.update(itemRef, newItemData);
-                    updatedCount++;
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
                     currentBatch.set(newDocRef, newItemData);
-                    importedCount++;
                 }
                 operationsInCurrentBatch++;
             }
+            
+            if (operationsInCurrentBatch > 0) {
+              batches.push(currentBatch);
+            }
 
-            if (importedCount === 0 && updatedCount === 0) {
-                 toast({ title: "No new items", description: "No new items found in CSV to import." });
-            } else {
+            if (batches.length > 0) {
               await Promise.all(batches.map(batch => batch.commit()));
-              toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
+              toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
+            } else {
+              toast({ title: "No items to import", description: "The CSV file was empty or contained no valid data." });
             }
 
         } catch (error: any) {
@@ -480,7 +517,8 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            setupRealtimeListener();
+            await fetchAndSetData(); // Fetch fresh data after import
+            setupRealtimeListener(); // Re-attach listener
         }
     };
     reader.readAsText(file);
