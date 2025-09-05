@@ -411,11 +411,11 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    className="cursor-pointer p-0 h-12"
+                    className="cursor-pointer h-12 px-4"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
                     <div
-                      className="flex items-center justify-between h-full px-4"
+                      className="flex items-center justify-between"
                       suppressHydrationWarning
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
@@ -531,3 +531,5 @@ export default function PurchasesPage() {
     </MainLayout>
   );
 }
+
+    

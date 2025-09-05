@@ -736,10 +736,10 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead
                     key={key}
-                    className="p-0 h-12"
+                    className="h-12 px-4"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
-                    <div className="flex items-center justify-between h-full px-4" suppressHydrationWarning>
+                    <div className="flex items-center justify-between" suppressHydrationWarning>
                       <Input
                           type="text"
                           value={columns[key]}
@@ -857,3 +857,5 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
+
+    
