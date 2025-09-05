@@ -1,0 +1,32 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users can only read and write their own settings document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Users can only manage their own inventory items
+    match /inventory/{itemId} {
+      allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    }
+
+    // Users can only manage their own sales records
+    match /sales/{saleId} {
+       allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    }
+
+    // Users can only manage their own purchase records
+    match /purchases/{purchaseId} {
+       allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    }
+  }
+}
