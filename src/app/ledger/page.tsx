@@ -31,6 +31,8 @@ import { useSettings } from "@/context/settings-context";
 import { generateLedgerPdf } from "@/ai/flows/generate-ledger-pdf";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type LedgerEntry = {
   date: string;
@@ -50,8 +52,10 @@ export default function CustomerLedgerPage() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [people, setPeople] = useState<string[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
-  const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
-  const [openingBalance, setOpeningBalance] = useState(0);
+  const [allLedgerData, setAllLedgerData] = useState<LedgerEntry[]>([]);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
 
   const fetchPeople = useCallback(async () => {
     if (!user) {
@@ -93,7 +97,7 @@ export default function CustomerLedgerPage() {
   
   const fetchLedgerData = useCallback(async (person: string) => {
     if (!user) {
-        setLedgerData([]);
+        setAllLedgerData([]);
         return;
     };
     
@@ -143,7 +147,7 @@ export default function CustomerLedgerPage() {
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
       
-      setLedgerData(combinedEntries);
+      setAllLedgerData(combinedEntries);
       
     } catch (error) {
         console.error("Error fetching ledger data:", error);
@@ -156,11 +160,26 @@ export default function CustomerLedgerPage() {
     if (selectedPerson) {
       fetchLedgerData(selectedPerson);
     } else {
-      setLedgerData([]);
+      setAllLedgerData([]);
     }
   }, [selectedPerson, fetchLedgerData]);
 
-  const { totalDebit, totalCredit, closingBalance, processedLedger } = useMemo(() => {
+  const { openingBalance, ledgerData, totalDebit, totalCredit, closingBalance, processedLedger } = useMemo(() => {
+    
+    const openingBalance = allLedgerData
+        .filter(entry => !startDate || new Date(entry.date) < new Date(startDate))
+        .reduce((acc, entry) => acc + entry.debit - entry.credit, 0);
+
+    const ledgerData = allLedgerData.filter(entry => {
+        const entryDate = new Date(entry.date);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        if(start && end) return entryDate >= start && entryDate <= end;
+        if(start) return entryDate >= start;
+        if(end) return entryDate <= end;
+        return true;
+    });
+
     let runningBalance = openingBalance;
     const processedLedger = ledgerData.map(entry => {
       runningBalance = runningBalance + entry.debit - entry.credit;
@@ -171,8 +190,8 @@ export default function CustomerLedgerPage() {
     const totalCredit = ledgerData.reduce((acc, entry) => acc + entry.credit, 0);
     const closingBalance = openingBalance + totalDebit - totalCredit;
     
-    return { totalDebit, totalCredit, closingBalance, processedLedger };
-  }, [ledgerData, openingBalance]);
+    return { openingBalance, ledgerData, totalDebit, totalCredit, closingBalance, processedLedger };
+  }, [allLedgerData, startDate, endDate]);
   
   const handleGeneratePdf = async () => {
     if (!selectedPerson || !settings) {
@@ -190,6 +209,8 @@ export default function CustomerLedgerPage() {
             businessAddress: settings.general.businessAddress,
             reportDate: new Date().toLocaleDateString(),
             personName: selectedPerson,
+            fromDate: startDate ? new Date(startDate).toLocaleDateString() : undefined,
+            toDate: endDate ? new Date(endDate).toLocaleDateString() : undefined,
             entries: processedLedger.map(e => ({
                 ...e,
                 date: new Date(e.date).toLocaleDateString(),
@@ -254,21 +275,34 @@ export default function CustomerLedgerPage() {
         <CardHeader>
           <CardTitle>Ledger Report</CardTitle>
           <CardDescription>
-            Select a person to view their complete transaction history.
+            Select a person and a date range to view their transaction history.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="max-w-md mb-6">
-            <Select onValueChange={setSelectedPerson} value={selectedPerson || ""}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a customer or vendor..." />
-              </SelectTrigger>
-              <SelectContent>
-                {people.map(p => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-end gap-4 mb-6">
+            <div className="flex-1 max-w-md">
+                <Label>Customer / Vendor</Label>
+                <Select onValueChange={setSelectedPerson} value={selectedPerson || ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a customer or vendor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {people.map(p => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="start-date">From</Label>
+                    <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                 <div>
+                    <Label htmlFor="end-date">To</Label>
+                    <Input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                </div>
+             </div>
           </div>
 
           {isLoading && selectedPerson && (
@@ -280,10 +314,15 @@ export default function CustomerLedgerPage() {
           {!isLoading && selectedPerson && (
             <div>
               <div className="flex justify-between items-center mb-2 p-2 bg-muted/50 rounded-md">
-                 <h3 className="font-semibold text-lg">{selectedPerson}'s Ledger</h3>
+                 <div>
+                    <h3 className="font-semibold text-lg">{selectedPerson}'s Ledger</h3>
+                    <p className="text-sm text-muted-foreground">
+                        {startDate && endDate ? `From ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}` : "For all dates"}
+                    </p>
+                 </div>
                  <div className="text-right">
                     <p className="text-sm text-muted-foreground">Opening Balance</p>
-                    <p className="font-semibold">{formatCurrency(openingBalance)}</p>
+                    <p className="font-semibold">{formatCurrency(openingBalance)} {openingBalance >= 0 ? 'Dr' : 'Cr'}</p>
                  </div>
               </div>
               <Table>
@@ -301,7 +340,7 @@ export default function CustomerLedgerPage() {
                 <TableBody>
                   {processedLedger.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={7} className="text-center h-24">No transactions found for this person.</TableCell>
+                        <TableCell colSpan={7} className="text-center h-24">No transactions found for this period.</TableCell>
                     </TableRow>
                   )}
                   {processedLedger.map((entry, index) => (

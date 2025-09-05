@@ -29,6 +29,8 @@ const GenerateLedgerPdfInputSchema = z.object({
   totalDebit: z.string(),
   totalCredit: z.string(),
   closingBalance: z.string(),
+  fromDate: z.string().optional().describe("The start date for the ledger report."),
+  toDate: z.string().optional().describe("The end date for the ledger report."),
 });
 
 export type GenerateLedgerPdfInput = z.infer<typeof GenerateLedgerPdfInputSchema>;
@@ -85,7 +87,7 @@ const generateLedgerHtmlFlow = ai.defineFlow(
                 <h1>{{{businessName}}}</h1>
                 <p>{{{businessAddress}}}</p>
                 <h2>Ledger Account: {{{personName}}}</h2>
-                <p>From ............ To ............</p>
+                <p>From {{#if fromDate}}{{{fromDate}}}{{else}}............{{/if}} To {{#if toDate}}{{{toDate}}}{{else}}............{{/if}}</p>
             </div>
 
             <div class="meta-info">
