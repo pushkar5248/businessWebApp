@@ -42,8 +42,8 @@ const currencies = [
   { value: 'JPY', label: '¥ (JPY)' },
   { value: 'GBP', label: '£ (GBP)' },
   { value: 'AUD', label: 'A$ (AUD)' },
-  { value: 'CAD', 'C$ (CAD)' },
-  { value: 'CHF', 'Fr (CHF)' },
+  { value: 'CAD', label: 'C$ (CAD)' },
+  { value: 'CHF', label: 'Fr (CHF)' },
   { value: 'CNY', '¥ (CNY)' },
   { value: 'INR', '₹ (INR)' },
 ];
