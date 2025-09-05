@@ -184,8 +184,9 @@ export default function InventoryPageClient() {
   useEffect(() => {
     setIsLoading(true);
     if (!user) {
-        setItems(inventoryData);
-        setOriginalItems(JSON.parse(JSON.stringify(inventoryData)));
+        const guestData = inventoryData.map(item => ({...item, id: item.id || `GUEST_${Math.random().toString(36).substr(2, 9)}`}));
+        setItems(guestData);
+        setOriginalItems(JSON.parse(JSON.stringify(guestData)));
         setIsLoading(false);
         return;
     }
@@ -367,7 +368,6 @@ const handleSaveChanges = async () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Temporarily disable the realtime listener to prevent UI flashes
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
@@ -382,17 +382,15 @@ const handleSaveChanges = async () => {
             const allRows = text.split('\n').filter(row => row.trim() !== '');
             if (allRows.length <= 1) {
                 toast({ variant: "destructive", title: "Error", description: "CSV file is empty or has no data rows." });
+                setIsLoading(false);
+                setupRealtimeListener();
                 return;
             }
             
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
-            // Fetch existing items to check for updates
-            const inventoryCollection = collection(db, "inventory");
-            const q = query(inventoryCollection, where("userId", "==", user.uid));
-            const querySnapshot = await getDocs(q);
-            const existingItemsMap = new Map(querySnapshot.docs.map(doc => [doc.data().name, doc.id]));
+            const existingItemsMap = new Map(items.map(item => [item.name, item.id]));
 
             const BATCH_SIZE = 499; 
             const batches:any[] = [writeBatch(db)];
@@ -409,6 +407,8 @@ const handleSaveChanges = async () => {
                 const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
                 if (nameIndex === -1) {
                     toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
+                    setIsLoading(false);
+                    setupRealtimeListener();
                     return;
                 }
                 
@@ -423,14 +423,24 @@ const handleSaveChanges = async () => {
                         const value = values[index];
                         if (internalKey === 'stock' || internalKey === 'price') {
                             newItemData[internalKey] = Number(value) || 0;
-                        } else {
-                            newItemData[internalKey] = value;
+                        } else if (internalKey !== 'id') { // Do not import the ID from CSV
+                           newItemData[internalKey] = value;
+                        }
+                    } else {
+                        // Handle custom columns
+                        const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
+                        newItemData[customKey] = values[index];
+                        if (!columns[customKey]) {
+                            setColumns(prev => ({...prev, [customKey]: csvHeader }));
+                            setColumnOrder(prev => [...prev, customKey]);
+                            setColumnVisibility(prev => ({...prev, [customKey]: true}));
                         }
                     }
                 });
 
                 newItemData.name = itemName;
                 newItemData.userId = user.uid;
+                delete newItemData.id; 
 
                 const existingItemId = existingItemsMap.get(itemName);
                 
@@ -456,12 +466,10 @@ const handleSaveChanges = async () => {
 
             if (importedCount === 0 && updatedCount === 0) {
                  toast({ title: "No new items", description: "No new items found in CSV to import." });
-                 return;
+            } else {
+              await Promise.all(batches.map(batch => batch.commit()));
+              toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
             }
-            
-            await Promise.all(batches.map(batch => batch.commit()));
-
-            toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -470,7 +478,6 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            // Re-enable listener to get fresh data and resume real-time updates
             setupRealtimeListener();
         }
     };
