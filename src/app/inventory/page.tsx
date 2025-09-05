@@ -147,6 +147,12 @@ export default function InventoryPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+  const [isDraggable, setIsDraggable] = useState(false);
+
+  useEffect(() => {
+    // Defer setting draggable to true until after the initial render to avoid hydration errors.
+    setIsDraggable(true);
+  }, []);
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -749,7 +755,7 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="h-12 px-4" style={{ width: '40px' }}>
+                <TableHead className="px-4" style={{ width: '40px' }}>
                   <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
@@ -767,7 +773,7 @@ const handleSaveChanges = async () => {
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move h-12 px-4 transition-all duration-300 ease-in-out"
+                    className="cursor-move px-4 transition-all duration-300 ease-in-out"
                   >
                     <div className="flex items-center justify-between">
                        <Input
@@ -791,7 +797,7 @@ const handleSaveChanges = async () => {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="border-l h-12"/>
+                <TableHead className="border-l"/>
               </TableRow>
             </TableHeader>
             <TableBody>
