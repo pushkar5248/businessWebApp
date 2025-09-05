@@ -56,7 +56,7 @@ import { cn } from "@/lib/utils";
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
 
-const DEFAULT_COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
+const DEFAULT_COLUMN_NAMES: Record<string, string> = {
   id: 'Item ID',
   name: 'Name',
   category: 'Category',
@@ -422,25 +422,23 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            // Handle new columns
-            const newColumns = new Map<string, string>();
+            // Handle new columns from CSV
+            const newColumnNames: Record<string, string> = {};
+            const newColumnOrder: string[] = [];
+            const newColumnVisibility: Record<string, boolean> = { id: false }; // Keep ID hidden
+
             headerRow.forEach(csvHeader => {
                 const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
-                if (!columns[customKey]) {
-                    newColumns.set(customKey, csvHeader);
-                }
+                newColumnNames[customKey] = csvHeader;
+                newColumnOrder.push(customKey);
+                newColumnVisibility[customKey] = true;
             });
-
-            if (newColumns.size > 0) {
-              const newColumnKeys = Array.from(newColumns.keys());
-              setColumns(prev => ({ ...prev, ...Object.fromEntries(newColumns) }));
-              setColumnOrder(prev => [...prev, ...newColumnKeys]);
-              setColumnVisibility(prev => {
-                  const newVis = { ...prev };
-                  newColumnKeys.forEach(key => newVis[key] = true);
-                  return newVis;
-              });
-            }
+            
+            newColumnOrder.unshift('id'); // Ensure id is always first but hidden
+            
+            setColumns({...DEFAULT_COLUMN_NAMES, ...newColumnNames});
+            setColumnOrder(newColumnOrder);
+            setColumnVisibility(prev => ({...prev, ...newColumnVisibility}));
 
             const BATCH_SIZE = 499; 
             const batches:any[] = [];
@@ -465,16 +463,15 @@ const handleSaveChanges = async () => {
                     const internalKey = Object.keys(DEFAULT_COLUMN_NAMES).find(key => 
                         DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
                     );
-                    if (internalKey && values[index] !== undefined) {
+                     const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
+
+                    if (values[index] !== undefined) {
                         const value = values[index];
-                        if (internalKey === 'stock' || internalKey === 'price') {
-                            newItemData[internalKey] = Number(value) || 0;
+                        if (['stock', 'price'].includes(internalKey || customKey)) {
+                            newItemData[internalKey || customKey] = Number(value) || 0;
                         } else if (internalKey !== 'id') { 
-                           newItemData[internalKey] = value;
+                           newItemData[internalKey || customKey] = value;
                         }
-                    } else {
-                        const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
-                        newItemData[customKey] = values[index];
                     }
                 });
 
@@ -737,7 +734,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columns).map((key) => (
+                        {Object.keys(columns).filter(key => key !== 'id').map((key) => (
                            <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
                              <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
                                <Checkbox
