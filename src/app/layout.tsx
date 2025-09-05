@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AuthProvider } from "@/context/auth-context";
 import { CurrencyProvider } from "@/context/currency-context";
 import { SettingsProvider } from "@/context/settings-context";
+import { DataSyncProvider } from "@/context/data-sync-context";
 import { AppBody } from "@/components/layout/app-body";
 import "./globals.css";
 
@@ -23,10 +24,12 @@ export default function RootLayout({
       <head />
       <AuthProvider>
         <SettingsProvider>
-          <CurrencyProvider>
-            {/* AppBody is a client component that will render the body tag and children */}
-            <AppBody>{children}</AppBody>
-          </CurrencyProvider>
+          <DataSyncProvider>
+            <CurrencyProvider>
+              {/* AppBody is a client component that will render the body tag and children */}
+              <AppBody>{children}</AppBody>
+            </CurrencyProvider>
+          </DataSyncProvider>
         </SettingsProvider>
       </AuthProvider>
     </html>

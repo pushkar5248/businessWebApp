@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useDataSync } from '@/context/data-sync-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -82,6 +83,7 @@ export default function SalesPageClient() {
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
+    const { syncKey, triggerSync } = useDataSync();
     const [sales, setSales] = useState<Sale[]>([]);
     const [originalSales, setOriginalSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -123,7 +125,7 @@ export default function SalesPageClient() {
 
     useEffect(() => {
       fetchSales();
-    }, [fetchSales]);
+    }, [fetchSales, syncKey]);
 
     useEffect(() => {
         const savedOrder = localStorage.getItem("salesColumnOrder");
@@ -166,6 +168,7 @@ export default function SalesPageClient() {
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Sale status has been updated." });
             }
+            triggerSync();
         } catch (error) {
             console.error(`Error updating sale ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
@@ -200,6 +203,7 @@ export default function SalesPageClient() {
             await batch.commit();
             setOriginalSales(JSON.parse(JSON.stringify(sales)));
             toast({ title: "Success", description: `${changesCount} sale(s) updated successfully.` });
+            triggerSync();
         } catch (error) {
             console.error("Error updating sales:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
@@ -229,6 +233,7 @@ export default function SalesPageClient() {
                 title: "Sale(s) Moved to Bin",
                 description: `${saleIds.length} sale(s) have been successfully moved to the bin.`,
             });
+            triggerSync();
         } catch (error) {
           console.error("Error moving sales to bin:", error);
           toast({ variant: "destructive", title: "Error", description: "Could not move sales to bin." });

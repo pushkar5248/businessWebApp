@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useDataSync } from '@/context/data-sync-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -80,6 +81,7 @@ export default function PurchasesPageClient() {
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
+    const { syncKey, triggerSync } = useDataSync();
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [originalPurchases, setOriginalPurchases] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -122,7 +124,7 @@ export default function PurchasesPageClient() {
 
     useEffect(() => {
         fetchPurchases();
-    }, [fetchPurchases]);
+    }, [fetchPurchases, syncKey]);
 
     useEffect(() => {
         const savedOrder = localStorage.getItem("purchasesColumnOrder");
@@ -167,6 +169,7 @@ export default function PurchasesPageClient() {
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Purchase status has been updated." });
             }
+            triggerSync();
         } catch (error) {
              console.error(`Error updating purchase ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
@@ -201,6 +204,7 @@ export default function PurchasesPageClient() {
             await batch.commit();
             setOriginalPurchases(JSON.parse(JSON.stringify(purchases)));
             toast({ title: "Success", description: `${changesCount} purchase(s) updated successfully.` });
+            triggerSync();
         } catch (error) {
             console.error("Error updating purchases:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
@@ -230,6 +234,7 @@ export default function PurchasesPageClient() {
               title: `Purchase(s) Moved to Bin`,
               description: `${purchaseIds.length} purchase order(s) have been moved to the bin.`,
             });
+            triggerSync();
         } catch (error) {
             console.error("Error moving purchases to bin:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not move purchases to bin." });

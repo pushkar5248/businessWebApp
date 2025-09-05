@@ -31,6 +31,7 @@ import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import type { Sale } from '@/lib/types';
+import { useDataSync } from '@/context/data-sync-context';
 
 
 const chartConfig = {
@@ -42,6 +43,7 @@ const chartConfig = {
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
+  const { syncKey } = useDataSync();
   const { formatCurrency, formatCurrencyValue } = useCurrency();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSalesCount, setTotalSalesCount] = useState(0);
@@ -148,7 +150,7 @@ export default function Dashboard() {
     if (!loading) {
       fetchData();
     }
-  }, [user, loading, fetchData]);
+  }, [user, loading, fetchData, syncKey]);
 
   if (isLoading || loading) {
     return (

@@ -52,6 +52,7 @@ import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, w
 import { useAuth } from "@/context/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { useDataSync } from "@/context/data-sync-context";
 
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
@@ -130,6 +131,7 @@ export default function InventoryPageClient() {
   const { user } = useAuth();
   const { formatCurrency, formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
+  const { syncKey, triggerSync } = useDataSync();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [originalItems, setOriginalItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -182,7 +184,7 @@ export default function InventoryPageClient() {
   
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+  }, [fetchItems, syncKey]);
   
 
   useEffect(() => {
@@ -246,12 +248,10 @@ export default function InventoryPageClient() {
         return;
     }
     try {
-      const docRef = await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
-      const newItem = { ...item, userId: user.uid, id: docRef.id };
-      setItems(prev => [newItem, ...prev]);
-      setOriginalItems(prev => [JSON.parse(JSON.stringify(newItem)), ...prev]);
+      await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
       setAddModalOpen(false);
       toast({ title: "Success", description: "New item added to inventory." });
+      triggerSync();
     } catch (error) {
       console.error("Error adding item:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not add item." });
@@ -275,6 +275,7 @@ export default function InventoryPageClient() {
       setOriginalItems(prev => prev.filter(item => !itemIds.includes(item.id)));
       setSelectedRows([]);
       toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
+      triggerSync();
     } catch (error) {
       console.error("Error deleting items:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not delete items." });
@@ -313,6 +314,7 @@ const handleSaveChanges = async () => {
       await batch.commit();
       setOriginalItems(JSON.parse(JSON.stringify(items)));
       toast({ title: "Success", description: `${changesCount} item(s) updated successfully.` });
+      triggerSync();
     } catch (error) {
       console.error("Error updating items:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
@@ -443,6 +445,7 @@ const handleSaveChanges = async () => {
             setColumnVisibility(newColumnVisibility);
             setImportModalOpen(false);
             toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
+            triggerSync();
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
