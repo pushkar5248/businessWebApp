@@ -16,11 +16,11 @@ export const defaultSettings: UserSettings = {
         photoURL: '',
     },
     general: {
-        businessName: 'Adhunik Minerals',
-        businessGstin: '09AJPPC1234F1Z5',
-        businessAddress: '123 Marble Street, Fatehabad Road, Agra, UP 282001',
-        businessPhone: '9760026605',
-        businessEmail: 'contact@adhunikminerals.com'
+        businessName: 'Your Business Name',
+        businessGstin: 'XXABCDE1234F1ZX',
+        businessAddress: '123 Business Avenue, Suite 100, City, State 12345',
+        businessPhone: '(123) 456-7890',
+        businessEmail: 'contact@yourbusiness.com'
     },
     appearance: {
         theme: 'light',
@@ -30,7 +30,7 @@ export const defaultSettings: UserSettings = {
         defaultCgstRate: 9,
         defaultSgstRate: 9,
         invoiceFooter: 'Thank you for your business!',
-        invoiceTerms: '1. Goods once sold will not be taken back or exchanged.\n2. Subject to Agra Jurisdiction only.',
+        invoiceTerms: 'All sales are final.\nPlease make payments to the account details provided.',
     }
 };
 
