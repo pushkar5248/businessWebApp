@@ -98,12 +98,6 @@ export default function PurchasesPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
     const dragItem = useRef<string | null>(null);
     const dragOverItem = useRef<string | null>(null);
-    const [isDraggable, setIsDraggable] = useState(false);
-
-    useEffect(() => {
-      // Defer setting draggable to true until after the initial render.
-      setIsDraggable(true);
-    }, []);
 
     const fetchPurchases = useCallback(async () => {
         setIsLoading(true);
@@ -431,7 +425,7 @@ export default function PurchasesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead className="h-12 px-4" style={{ width: '40px' }}>
+                 <TableHead className="px-4" style={{ width: '40px' }}>
                   <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedPurchases.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
@@ -444,12 +438,12 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    draggable={isDraggable}
+                    draggable={true}
                     onDragStart={(e) => handleDragStart(e, key)}
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move h-12 p-0 transition-all duration-300 ease-in-out"
+                    className="cursor-move p-0 transition-all duration-300 ease-in-out"
                   >
                     <div className="flex items-center justify-between p-4" onClick={() => requestSort(key as keyof ColumnKeys)}>
                         <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
@@ -463,7 +457,7 @@ export default function PurchasesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-right border-l h-12 px-4">Actions</TableHead>
+                <TableHead className="text-right border-l px-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
