@@ -411,7 +411,7 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    className="cursor-pointer h-12 px-4"
+                    className="h-12 px-4 cursor-pointer"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
                     <div

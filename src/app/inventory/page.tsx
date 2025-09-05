@@ -487,10 +487,6 @@ const handleSaveChanges = async () => {
     return sortableItems;
   }, [items, sortConfig, searchTerm]);
 
-   const handleColumnNameChange = (key: string, newName: string) => {
-    setColumns(prev => ({ ...prev, [key]: newName }));
-  };
-
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
       setSelectedRows(sortedItems.map(item => item.id));
@@ -736,17 +732,11 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead
                     key={key}
-                    className="h-12 px-4"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
+                    className="h-12 px-4 cursor-pointer"
                   >
                     <div className="flex items-center justify-between" suppressHydrationWarning>
-                      <Input
-                          type="text"
-                          value={columns[key]}
-                          onChange={(e) => handleColumnNameChange(key, e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
-                      />
+                      <span className="font-medium">{columns[key]}</span>
                       <Button
                         variant="ghost"
                         size="icon"
