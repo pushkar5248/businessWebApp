@@ -340,7 +340,7 @@ const handleSaveChanges = async () => {
     toast({ title: "Success", description: "Inventory exported successfully." });
   };
   
- const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+ const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to import items.'})
         return;
@@ -358,6 +358,7 @@ const handleSaveChanges = async () => {
                 return;
             }
             
+            // Use current items from state, which is kept in sync via onSnapshot
             const existingItemsMap = new Map(items.map(item => [item.name, item]));
 
             const headerRow = allRows[0].split(',').map(h => h.trim());
@@ -367,8 +368,6 @@ const handleSaveChanges = async () => {
             let importedCount = 0;
             let updatedCount = 0;
             
-            const inventoryCollection = collection(db, "inventory");
-
             for (const row of dataRows) {
                  const values = row.split(',');
                  const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
@@ -378,6 +377,7 @@ const handleSaveChanges = async () => {
                     stock: 0,
                     price: 0,
                     supplier: '',
+                    userId: user.uid,
                 };
 
                 const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
@@ -389,22 +389,11 @@ const handleSaveChanges = async () => {
                 const itemName = values[nameIndex]?.trim();
                 if (!itemName) continue;
 
-                const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
-                const csvToInternalHeaderMap: Record<string, string> = {};
-                 headerRow.forEach(csvHeader => {
-                    const normalizedCsvHeader = csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '');
-                    const matchedKey = defaultKeys.find(key => 
-                        key.toLowerCase() === normalizedCsvHeader
-                    );
-                    if (matchedKey) {
-                        csvToInternalHeaderMap[csvHeader] = matchedKey;
-                    } else {
-                         csvToInternalHeaderMap[csvHeader] = csvHeader;
-                    }
-                });
-
+                // Build the new item data from the CSV row
                 headerRow.forEach((csvHeader, index) => {
-                    const internalKey = csvToInternalHeaderMap[csvHeader];
+                    const internalKey = Object.keys(DEFAULT_COLUMN_NAMES).find(key => 
+                        DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
+                    );
                     if (internalKey && values[index] !== undefined) {
                         const value = values[index].trim();
                         if (internalKey === 'stock' || internalKey === 'price') {
@@ -415,17 +404,19 @@ const handleSaveChanges = async () => {
                     }
                 });
 
+                newItemData.name = itemName;
+
                 const existingItem = existingItemsMap.get(itemName);
 
                 if (existingItem) {
                     // Update existing item
                     const itemRef = doc(db, "inventory", existingItem.id);
-                    batch.update(itemRef, { ...newItemData, userId: user.uid });
+                    batch.update(itemRef, newItemData);
                     updatedCount++;
                 } else {
                     // Add new item
-                    const docRef = doc(inventoryCollection);
-                    batch.set(docRef, { ...newItemData, userId: user.uid });
+                    const newDocRef = doc(collection(db, "inventory"));
+                    batch.set(newDocRef, newItemData);
                     importedCount++;
                 }
             }
@@ -437,7 +428,6 @@ const handleSaveChanges = async () => {
             
             await batch.commit();
 
-            setImportModalOpen(false);
             toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
         } catch (error: any) {
@@ -446,6 +436,7 @@ const handleSaveChanges = async () => {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
+            setImportModalOpen(false);
         }
     };
     reader.readAsText(file);
@@ -721,7 +712,7 @@ const handleSaveChanges = async () => {
                 <TableHead className="p-0 h-12">
                   <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
                      <Checkbox
-                        checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
+                        checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
                         onCheckedChange={handleSelectAll}
                         aria-label="Select all"
                         disabled={!user}
