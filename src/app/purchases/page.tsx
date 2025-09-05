@@ -96,13 +96,6 @@ export default function PurchasesPage() {
         amount: true,
     });
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
-    const dragItem = useRef<string | null>(null);
-    const dragOverItem = useRef<string | null>(null);
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
 
     const fetchPurchases = useCallback(async () => {
         setIsLoading(true);
@@ -245,31 +238,6 @@ export default function PurchasesPage() {
     };
     
     const visibleColumns = columnOrder.filter(key => columnVisibility[key]);
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, key: string) => {
-        dragItem.current = key;
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, key: string) => {
-        dragOverItem.current = key;
-        const dragItemIndex = columnOrder.findIndex(item => item === dragItem.current);
-        const dragOverItemIndex = columnOrder.findIndex(item => item === dragOverItem.current);
-
-        if (dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) {
-            setColumnOrder(currentOrder => {
-                const newOrder = [...currentOrder];
-                const [reorderedItem] = newOrder.splice(dragItemIndex, 1);
-                newOrder.splice(dragOverItemIndex, 0, reorderedItem);
-                return newOrder;
-            });
-        }
-    };
-
-    const handleDragEnd = () => {
-        dragItem.current = null;
-        dragOverItem.current = null;
-    };
 
     const requestSort = (key: keyof ColumnKeys) => {
         let direction: 'ascending' | 'descending' = 'ascending';
@@ -445,15 +413,8 @@ export default function PurchasesPage() {
                     key={key}
                   >
                     <div
-                      className={cn("flex items-center justify-between px-4 h-12 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
+                      className="flex items-center justify-between px-4 h-12"
                       onClick={() => requestSort(key as keyof ColumnKeys)}
-                       {...(isClient ? {
-                        draggable: true,
-                        onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
-                        onDragEnter: (e: React.DragEvent<HTMLDivElement>) => handleDragEnter(e, key),
-                        onDragEnd: handleDragEnd,
-                        onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
-                      } : {})}
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                       <Button
@@ -568,5 +529,3 @@ export default function PurchasesPage() {
     </MainLayout>
   );
 }
-
-    

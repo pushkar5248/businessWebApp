@@ -141,18 +141,11 @@ export default function InventoryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [columns, setColumns] = useState<Record<string, string>>(DEFAULT_COLUMN_NAMES);
   const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
-  const dragItem = useRef<string | null>(null);
-  const dragOverItem = useRef<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -239,31 +232,6 @@ export default function InventoryPage() {
   
   const visibleColumns = columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
   
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, key: string) => {
-    dragItem.current = key;
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, key: string) => {
-    dragOverItem.current = key;
-    const dragItemIndex = columnOrder.findIndex(item => item === dragItem.current);
-    const dragOverItemIndex = columnOrder.findIndex(item => item === dragOverItem.current);
-
-    if (dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) {
-        setColumnOrder(currentOrder => {
-            const newOrder = [...currentOrder];
-            const [reorderedItem] = newOrder.splice(dragItemIndex, 1);
-            newOrder.splice(dragOverItemIndex, 0, reorderedItem);
-            return newOrder;
-        });
-    }
-  };
-  
-  const handleDragEnd = () => {
-    dragItem.current = null;
-    dragOverItem.current = null;
-  };
-
   const requestSort = (key: keyof ColumnKeys) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -767,16 +735,7 @@ const handleSaveChanges = async () => {
                 </TableHead>
                 {visibleColumns.map((key) => (
                   <TableHead key={key}>
-                    <div
-                      className={cn("flex items-center justify-between px-4 h-12 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
-                      {...(isClient ? {
-                        draggable: true,
-                        onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
-                        onDragEnter: (e: React.DragEvent<HTMLDivElement>) => handleDragEnter(e, key),
-                        onDragEnd: handleDragEnd,
-                        onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
-                      } : {})}
-                    >
+                    <div className="flex items-center justify-between px-4 h-12">
                       <Input
                           type="text"
                           value={columns[key]}
@@ -898,5 +857,3 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
-
-    
