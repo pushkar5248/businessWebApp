@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -270,8 +271,7 @@ export default function InventoryPageClient() {
       });
       await batch.commit();
 
-      setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
-      setOriginalItems(prev => prev.filter(item => !itemIds.includes(item.id)));
+      await fetchItems(); // Re-fetch data from Firestore
       setSelectedRows([]);
       toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
     } catch (error) {
@@ -718,7 +718,7 @@ const handleSaveChanges = async () => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="p-0 h-12">
-                  <div className="flex items-center justify-center h-full px-4">
+                  <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -731,9 +731,9 @@ const handleSaveChanges = async () => {
                   <TableHead
                     key={key}
                     onClick={() => requestSort(key as keyof ColumnKeys)}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-12 px-4"
                   >
-                    <div className="flex items-center justify-between px-4 h-12" suppressHydrationWarning>
+                    <div className="flex items-center justify-between" suppressHydrationWarning>
                       <span className="font-medium">{columns[key]}</span>
                       <Button
                         variant="ghost"
@@ -794,7 +794,7 @@ const handleSaveChanges = async () => {
                                 disabled={!isEditMode || !user}
                             />
                         ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
-                            <Input
+                             <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}

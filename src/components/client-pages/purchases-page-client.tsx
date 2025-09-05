@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -222,8 +223,7 @@ export default function PurchasesPageClient() {
             });
             await batch.commit();
             
-            setPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
-            setOriginalPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
+            await fetchPurchases(); // Re-fetch data from Firestore
             setSelectedRows([]);
             toast({
               title: `Purchase(s) Moved to Bin`,
@@ -397,7 +397,7 @@ export default function PurchasesPageClient() {
             <TableHeader>
               <TableRow className="bg-muted/50">
                  <TableHead className="p-0 h-12">
-                  <div className="flex items-center justify-center h-full px-4">
+                  <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedPurchases.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -409,11 +409,11 @@ export default function PurchasesPageClient() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-12 px-4"
                     onClick={() => requestSort(key as keyof ColumnKeys)}
                   >
                     <div
-                      className="flex items-center justify-between px-4 h-12"
+                      className="flex items-center justify-between"
                       suppressHydrationWarning
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
