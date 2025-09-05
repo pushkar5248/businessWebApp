@@ -168,6 +168,12 @@ export default function CustomerLedgerPage() {
     }
   }, [selectedPerson, fetchLedgerData]);
 
+  const uniqueDates = useMemo(() => {
+    if (!allLedgerData) return [];
+    const dates = allLedgerData.map(entry => entry.date);
+    return [...new Set(dates)].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+  }, [allLedgerData]);
+
   const { openingBalance, ledgerData, totalDebit, totalCredit, closingBalance, processedLedger } = useMemo(() => {
     
     const openingBalance = allLedgerData
@@ -326,11 +332,33 @@ export default function CustomerLedgerPage() {
              <div className="flex items-end gap-2">
                 <div>
                     <Label htmlFor="start-date">From</Label>
-                    <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                    <Select value={startDate} onValueChange={setStartDate}>
+                        <SelectTrigger id="start-date">
+                            <SelectValue placeholder="Select start date" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueDates.map(date => (
+                                <SelectItem key={`start-${date}`} value={date}>
+                                    {new Date(date).toLocaleDateString()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                  <div>
                     <Label htmlFor="end-date">To</Label>
-                    <Input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                     <Select value={endDate} onValueChange={setEndDate}>
+                        <SelectTrigger id="end-date">
+                            <SelectValue placeholder="Select end date" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueDates.map(date => (
+                                <SelectItem key={`end-${date}`} value={date}>
+                                    {new Date(date).toLocaleDateString()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Button variant="outline" onClick={() => { setStartDate(''); setEndDate('')}}>All Dates</Button>
              </div>
