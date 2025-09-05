@@ -43,6 +43,9 @@ type LedgerEntry = {
   credit: number;
 };
 
+type TransactionFilter = "all" | "sales" | "purchases";
+
+
 export default function CustomerLedgerPage() {
   const { user } = useAuth();
   const { settings } = useSettings();
@@ -55,6 +58,7 @@ export default function CustomerLedgerPage() {
   const [allLedgerData, setAllLedgerData] = useState<LedgerEntry[]>([]);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [transactionType, setTransactionType] = useState<TransactionFilter>("all");
 
 
   const fetchPeople = useCallback(async () => {
@@ -167,17 +171,30 @@ export default function CustomerLedgerPage() {
   const { openingBalance, ledgerData, totalDebit, totalCredit, closingBalance, processedLedger } = useMemo(() => {
     
     const openingBalance = allLedgerData
-        .filter(entry => !startDate || new Date(entry.date) < new Date(startDate))
+        .filter(entry => {
+            const typeFilter = transactionType === 'all' || 
+                               (transactionType === 'sales' && entry.voucherType === 'Sale') ||
+                               (transactionType === 'purchases' && entry.voucherType === 'Purchase');
+            const dateFilter = !startDate || new Date(entry.date) < new Date(startDate);
+            return typeFilter && dateFilter;
+        })
         .reduce((acc, entry) => acc + entry.debit - entry.credit, 0);
 
     const ledgerData = allLedgerData.filter(entry => {
+        const typeFilter = transactionType === 'all' || 
+                           (transactionType === 'sales' && entry.voucherType === 'Sale') ||
+                           (transactionType === 'purchases' && entry.voucherType === 'Purchase');
+        
         const entryDate = new Date(entry.date);
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
-        if(start && end) return entryDate >= start && entryDate <= end;
-        if(start) return entryDate >= start;
-        if(end) return entryDate <= end;
-        return true;
+        
+        let dateFilter = true;
+        if (start && end) dateFilter = entryDate >= start && entryDate <= end;
+        else if (start) dateFilter = entryDate >= start;
+        else if (end) dateFilter = entryDate <= end;
+
+        return typeFilter && dateFilter;
     });
 
     let runningBalance = openingBalance;
@@ -191,7 +208,7 @@ export default function CustomerLedgerPage() {
     const closingBalance = openingBalance + totalDebit - totalCredit;
     
     return { openingBalance, ledgerData, totalDebit, totalCredit, closingBalance, processedLedger };
-  }, [allLedgerData, startDate, endDate]);
+  }, [allLedgerData, startDate, endDate, transactionType]);
   
   const handleGeneratePdf = async () => {
     if (!selectedPerson || !settings) {
@@ -275,12 +292,12 @@ export default function CustomerLedgerPage() {
         <CardHeader>
           <CardTitle>Ledger Report</CardTitle>
           <CardDescription>
-            Select a person and a date range to view their transaction history.
+            Select a person and filters to view their transaction history.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-4 mb-6">
-            <div className="flex-1 max-w-md">
+          <div className="flex flex-wrap items-end gap-4 mb-6">
+            <div className="flex-1 min-w-[250px]">
                 <Label>Customer / Vendor</Label>
                 <Select onValueChange={setSelectedPerson} value={selectedPerson || ""}>
                   <SelectTrigger>
@@ -293,7 +310,20 @@ export default function CustomerLedgerPage() {
                   </SelectContent>
                 </Select>
             </div>
-             <div className="grid grid-cols-2 gap-4">
+             <div className="flex-1 min-w-[200px]">
+                <Label>Transaction Type</Label>
+                <Select onValueChange={(v) => setTransactionType(v as TransactionFilter)} value={transactionType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Transactions</SelectItem>
+                      <SelectItem value="sales">Sales Only</SelectItem>
+                      <SelectItem value="purchases">Purchases Only</SelectItem>
+                  </SelectContent>
+                </Select>
+            </div>
+             <div className="flex items-end gap-2">
                 <div>
                     <Label htmlFor="start-date">From</Label>
                     <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
@@ -302,6 +332,7 @@ export default function CustomerLedgerPage() {
                     <Label htmlFor="end-date">To</Label>
                     <Input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
+                <Button variant="outline" onClick={() => { setStartDate(''); setEndDate('')}}>All Dates</Button>
              </div>
           </div>
 
@@ -317,7 +348,7 @@ export default function CustomerLedgerPage() {
                  <div>
                     <h3 className="font-semibold text-lg">{selectedPerson}'s Ledger</h3>
                     <p className="text-sm text-muted-foreground">
-                        {startDate && endDate ? `From ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}` : "For all dates"}
+                        {startDate || endDate ? `From ${startDate ? new Date(startDate).toLocaleDateString() : 'start'} to ${endDate ? new Date(endDate).toLocaleDateString() : 'end'}` : "For all dates"}
                     </p>
                  </div>
                  <div className="text-right">
@@ -340,7 +371,7 @@ export default function CustomerLedgerPage() {
                 <TableBody>
                   {processedLedger.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={7} className="text-center h-24">No transactions found for this period.</TableCell>
+                        <TableCell colSpan={7} className="text-center h-24">No transactions found for the selected filters.</TableCell>
                     </TableRow>
                   )}
                   {processedLedger.map((entry, index) => (
