@@ -15,7 +15,7 @@ import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
 import { Loader2, Trash2, Upload } from 'lucide-react';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, updateEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -71,7 +71,9 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
 
 
     const handleSave = async () => {
-        if (user) {
+        if (!user) return;
+        
+        try {
             const updates: { displayName?: string, photoURL?: string } = {};
             if(user.displayName !== displayName) updates.displayName = displayName;
             if(user.photoURL !== photoURL) updates.photoURL = photoURL;
@@ -79,8 +81,22 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
             if(Object.keys(updates).length > 0) {
               await updateProfile(user, updates);
             }
+
+            if (user.email !== email) {
+                await updateEmail(user, email);
+                toast({ title: 'Email Verification Sent', description: 'Please check your new email address to verify the change.' });
+            }
+
+            onSave({ profile: { displayName, email, photoURL } });
+
+        } catch (error: any) {
+            console.error("Error updating profile:", error);
+            if (error.code === 'auth/requires-recent-login') {
+                 toast({ variant: 'destructive', title: 'Action Required', description: 'This is a sensitive action. Please log out and log back in to change your email.' });
+            } else {
+                 toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not update your profile.' });
+            }
         }
-        onSave({ profile: { displayName, email, photoURL } });
     }
 
     const handleFileSelect = () => {
@@ -136,7 +152,7 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" value={email} disabled />
+                    <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={isGuest} />
                 </div>
                 <Button onClick={handleSave} disabled={isGuest}>Save Changes</Button>
             </CardContent>
@@ -468,3 +484,5 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
+    
