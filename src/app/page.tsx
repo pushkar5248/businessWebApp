@@ -54,11 +54,12 @@ export default function Dashboard() {
       setIsLoading(true);
       if (!user) {
           // Guest mode: use sample data
-          const activeSales = salesData.filter(s => !s.deletedAt);
-          const revenue = activeSales.reduce((acc, sale) => acc + sale.amount, 0);
+          const paidSales = salesData.filter(s => !s.deletedAt && s.status === 'Paid');
+          const allSales = salesData.filter(s => !s.deletedAt);
+          const revenue = paidSales.reduce((acc, sale) => acc + sale.amount, 0);
           setTotalRevenue(revenue);
-          setTotalSalesCount(activeSales.length);
-          setRecentSales(activeSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          setTotalSalesCount(paidSales.length);
+          setRecentSales(allSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
           setStockItemsCount(inventoryData.length);
           setIsLoading(false);
           return;
@@ -66,19 +67,27 @@ export default function Dashboard() {
 
       // Authenticated user: fetch from Firestore
       try {
-        const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
-        const salesSnapshot = await getDocs(salesQuery);
-        const salesList = salesSnapshot.docs.map(doc => doc.data() as Sale);
-        const revenue = salesList.reduce((acc, sale) => acc + sale.amount, 0);
+        const paidSalesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null), where("status", "==", "Paid"));
+        const allSalesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+
+        const [paidSalesSnapshot, allSalesSnapshot] = await Promise.all([
+            getDocs(paidSalesQuery),
+            getDocs(allSalesQuery)
+        ]);
+
+        const paidSalesList = paidSalesSnapshot.docs.map(doc => doc.data() as Sale);
+        const allSalesList = allSalesSnapshot.docs.map(doc => doc.data() as Sale);
+
+        const revenue = paidSalesList.reduce((acc, sale) => acc + sale.amount, 0);
         setTotalRevenue(revenue);
-        setTotalSalesCount(salesList.length);
-        setRecentSales(salesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setTotalSalesCount(paidSalesList.length);
+        setRecentSales(allSalesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const inventorySnapshot = await getDocs(inventoryQuery);
         setStockItemsCount(inventorySnapshot.size);
         
-        // Process data for chart
+        // Process data for chart using only paid sales
         const months = Array(6).fill(0).map((_, i) => {
             const d = new Date();
             d.setMonth(d.getMonth() - i);
@@ -90,7 +99,7 @@ export default function Dashboard() {
             };
         }).reverse();
 
-        salesList.forEach(sale => {
+        paidSalesList.forEach(sale => {
             const saleDate = new Date(sale.date);
             const saleYear = saleDate.getFullYear();
             const saleMonth = saleDate.getMonth();
@@ -138,7 +147,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              Based on all-time sales
+              Based on all-time paid sales
             </p>
           </CardContent>
         </Card>
@@ -150,7 +159,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">+{totalSalesCount}</div>
             <p className="text-xs text-muted-foreground">
-              Total number of invoices created
+              Total number of paid invoices
             </p>
           </CardContent>
         </Card>
@@ -182,7 +191,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Sales Overview</CardTitle>
             <CardDescription>
-              Your total sales revenue over the last 6 months.
+              Your total paid sales revenue over the last 6 months.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -214,7 +223,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Recent Sales</CardTitle>
             <CardDescription>
-              Your most recent sales.
+              Your most recent sales invoices (all statuses).
             </CardDescription>
           </CardHeader>
           <CardContent>
