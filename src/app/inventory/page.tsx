@@ -146,7 +146,7 @@ export default function InventoryPage() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isEditMode, setIsEditMode]_useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -798,7 +798,7 @@ const handleSaveChanges = async () => {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="border-l h-12"/>
+                <TableHead className="h-12 px-4 border-l"/>
               </TableRow>
             </TableHeader>
             <TableBody>
