@@ -173,7 +173,7 @@ export default function PurchaseDetailsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                     {purchaseStatuses.map(status => (
-                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)} disabled={purchase.status === status}>
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)} disabled={purchase.status === status || !user}>
                             {status}
                         </DropdownMenuItem>
                     ))}

@@ -15,10 +15,10 @@ export const defaultSettings: UserSettings = {
         email: '',
     },
     general: {
-        businessName: 'Adhunik Minerals (Sample)',
-        businessGstin: '27ABCDE1234F1Z5',
-        businessAddress: '123 Marble Street, Stoneville, ST 45678',
-        businessPhone: '+91 98765 43210',
+        businessName: 'Adhunik Minerals',
+        businessGstin: '09AJPPC1234F1Z5',
+        businessAddress: '123 Marble Street, Fatehabad Road, Agra, UP 282001',
+        businessPhone: '9760026605',
         businessEmail: 'contact@adhunikminerals.com'
     },
     appearance: {
@@ -29,7 +29,7 @@ export const defaultSettings: UserSettings = {
         defaultCgstRate: 9,
         defaultSgstRate: 9,
         invoiceFooter: 'Thank you for your business!',
-        invoiceTerms: '1. Payment due within 30 days. \n2. All sales are final.',
+        invoiceTerms: '1. Goods once sold will not be taken back or exchanged.\n2. Subject to Agra Jurisdiction only.',
     }
 };
 
@@ -39,7 +39,6 @@ interface SettingsContextType {
   saveSettings: (dataToSave: Partial<UserSettings>) => Promise<void>;
   applyTheme: (theme: UserSettings['appearance']['theme']) => void;
   resetSettings: () => Promise<void>;
-  defaultSettings: UserSettings;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -147,7 +146,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
     };
     
-    const value = { settings, loading, saveSettings, applyTheme, resetSettings, defaultSettings };
+    const value = { settings, loading, saveSettings, applyTheme, resetSettings };
 
     return (
         <SettingsContext.Provider value={value}>

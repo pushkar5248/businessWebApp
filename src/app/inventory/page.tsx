@@ -566,9 +566,9 @@ const handleSaveChanges = async () => {
           <p className="text-muted-foreground">Manage your stock items.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={openImportDialog}><FileUp className="mr-2" /> Import</Button>
+          <Button variant="outline" onClick={openImportDialog} disabled={!user}><FileUp className="mr-2" /> Import</Button>
           <Button variant="outline" onClick={handleExport}><FileDown className="mr-2" /> Export</Button>
-          <Button onClick={() => setAddModalOpen(true)}><PlusCircle className="mr-2" /> Add Item</Button>
+          <Button onClick={() => setAddModalOpen(true)} disabled={!user}><PlusCircle className="mr-2" /> Add Item</Button>
         </div>
       </div>
        <Dialog open={isAddModalOpen} onOpenChange={setAddModalOpen}>

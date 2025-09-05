@@ -61,6 +61,30 @@ export default function Dashboard() {
           setTotalSalesCount(paidSales.length);
           setRecentSales(allSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
           setStockItemsCount(inventoryData.length);
+          
+          const months = Array(6).fill(0).map((_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            return {
+                label: d.toLocaleString('default', { month: 'short' }),
+                year: d.getFullYear(),
+                month: d.getMonth(),
+                sales: 0
+            };
+           }).reverse();
+
+            paidSales.forEach(sale => {
+                const saleDate = new Date(sale.date);
+                const saleYear = saleDate.getFullYear();
+                const saleMonth = saleDate.getMonth();
+
+                const monthData = months.find(m => m.year === saleYear && m.month === saleMonth);
+                if (monthData) {
+                    monthData.sales += sale.amount;
+                }
+            });
+            setSalesChartData(months.map(m => ({ month: m.label, sales: m.sales })));
+          
           setIsLoading(false);
           return;
       }

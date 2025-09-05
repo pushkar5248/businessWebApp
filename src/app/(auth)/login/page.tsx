@@ -22,7 +22,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UserCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -84,6 +85,10 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
+  const handleGuestLogin = () => {
+    router.push('/');
+  }
 
   return (
     <Card className="mx-auto max-w-sm">
@@ -132,6 +137,14 @@ export default function LoginPage() {
             Login
           </Button>
         </form>
+        <div className="relative my-4">
+          <Separator />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 bg-background text-sm text-muted-foreground">OR</div>
+        </div>
+        <Button variant="outline" className="w-full" onClick={handleGuestLogin}>
+            <UserCircle className="mr-2" />
+            Continue as Guest
+        </Button>
         <div className="mt-4 text-center text-sm">
           Don&apos;t have an account?{' '}
           <Link href="/signup" className="underline">

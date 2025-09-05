@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 
 export default function NewPurchasePage() {
@@ -62,6 +63,18 @@ export default function NewPurchasePage() {
         });
     }
   };
+
+  if (!user) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-full text-center">
+            <h1 className="text-2xl font-bold mb-4">Guest Mode</h1>
+            <p className="text-muted-foreground mb-6">Creating new purchases is disabled in guest mode.</p>
+            <Button onClick={() => router.push('/login')}>Login to Create a Purchase</Button>
+        </div>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout>

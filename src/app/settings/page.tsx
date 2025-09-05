@@ -302,7 +302,7 @@ export default function SettingsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const { settings, loading: settingsLoading, saveSettings, defaultSettings, resetSettings } = useSettings();
+    const { settings, loading: settingsLoading, saveSettings, resetSettings } = useSettings();
     const [isResetting, setIsResetting] = useState(false);
     
     const isGuest = !user;
@@ -370,7 +370,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
                 <CardTitle>Guest Mode</CardTitle>
-                <CardDescription>You are currently in guest mode. Please log in to save your settings.</CardDescription>
+                <CardDescription>You are currently in guest mode. Settings are read-only.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Button onClick={() => router.push('/login')}>Login to Save Settings</Button>
