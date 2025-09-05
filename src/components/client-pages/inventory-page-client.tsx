@@ -432,7 +432,9 @@ const handleSaveChanges = async () => {
                         newItemData[customKey] = values[index];
                         if (!columns[customKey]) {
                             setColumns(prev => ({...prev, [customKey]: csvHeader }));
-                            setColumnOrder(prev => [...prev, customKey]);
+                            if (!columnOrder.includes(customKey)) {
+                               setColumnOrder(prev => [...prev, customKey]);
+                            }
                             setColumnVisibility(prev => ({...prev, [customKey]: true}));
                         }
                     }
