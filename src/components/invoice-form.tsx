@@ -62,7 +62,7 @@ const formSchema = z.object({
   deliveryGstin: z.string().optional(),
   transporterName: z.string().optional(),
   transporterVehicleNumber: z.string().optional(),
-  placeOfSupply: zstring().optional(),
+  placeOfSupply: z.string().optional(),
   transportDate: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
   cgstRate: z.coerce.number().min(0).optional(),
@@ -614,5 +614,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
-    
