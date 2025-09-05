@@ -97,12 +97,11 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     name: "items",
   });
 
-  const watchedItems = watch("items");
-  const igstRate = watch("igstRate");
-
+  const watchedFormValues = watch();
 
   useEffect(() => {
-    const newSubtotal = watchedItems.reduce(
+    const { items, igstRate } = watchedFormValues;
+    const newSubtotal = (items || []).reduce(
       (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
       0
     );
@@ -111,7 +110,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     setSubtotal(newSubtotal);
     setTotalTaxes(igst);
     setTotal(newSubtotal + igst);
-  }, [watchedItems, igstRate]);
+  }, [watchedFormValues]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
@@ -215,8 +214,8 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrencyValue(
-                        (watchedItems[index]?.quantity || 0) *
-                        (watchedItems[index]?.price || 0)
+                        (watchedFormValues.items?.[index]?.quantity || 0) *
+                        (watchedFormValues.items?.[index]?.price || 0)
                       )}
                     </TableCell>
                     <TableCell>
@@ -297,5 +296,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     </FormProvider>
   );
 }
+
+    
 
     

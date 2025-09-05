@@ -62,7 +62,7 @@ const formSchema = z.object({
   deliveryGstin: z.string().optional(),
   transporterName: z.string().optional(),
   transporterVehicleNumber: z.string().optional(),
-  placeOfSupply: z.string().optional(),
+  placeOfSupply: zstring().optional(),
   transportDate: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
   cgstRate: z.coerce.number().min(0).optional(),
@@ -142,13 +142,11 @@ export function InvoiceForm() {
     name: "items",
   });
 
-  const watchedItems = watch("items");
-  const cgstRate = watch("cgstRate");
-  const sgstRate = watch("sgstRate");
-  const igstRate = watch("igstRate");
+  const watchedFormValues = watch();
 
   useEffect(() => {
-    const newSubtotal = watchedItems.reduce(
+    const { items, cgstRate, sgstRate, igstRate } = watchedFormValues;
+    const newSubtotal = (items || []).reduce(
       (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
       0
     );
@@ -161,7 +159,7 @@ export function InvoiceForm() {
     setSubtotal(newSubtotal);
     setTotalTaxes(newTotalTaxes);
     setTotal(newSubtotal + newTotalTaxes);
-  }, [watchedItems, cgstRate, sgstRate, igstRate]);
+  }, [watchedFormValues]);
 
   const handleCreateSale = async (data: InvoiceFormValues) => {
     if (!user) {
@@ -515,8 +513,8 @@ export function InvoiceForm() {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrencyValue(
-                        (watchedItems[index]?.quantity || 0) *
-                        (watchedItems[index]?.price || 0)
+                        (watchedFormValues.items?.[index]?.quantity || 0) *
+                        (watchedFormValues.items?.[index]?.price || 0)
                       )}
                     </TableCell>
                     <TableCell>
@@ -616,3 +614,5 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
+
+    

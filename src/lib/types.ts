@@ -1,5 +1,6 @@
 
 
+
 export type InventoryItem = {
   id: string;
   name: string;
@@ -85,3 +86,5 @@ export type UserSettings = {
     invoiceTerms: string;
   }
 }
+
+    
