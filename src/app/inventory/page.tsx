@@ -403,29 +403,28 @@ const handleSaveChanges = async () => {
             };
 
             const internalKeys: (keyof ColumnKeys)[] = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
-            const headerMap: Record<keyof ColumnKeys, number> = {} as any;
+            const headerMap: Record<string, number> = {};
 
             const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
             const newColumnOrder: string[] = [];
             const newColumnVisibility: Record<string, boolean> = {};
 
             headerRow.forEach((csvHeader, index) => {
+                const internalKey = `custom_${index}`; // Use a unique key for mapping
+                const normalizedCsvHeader = csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '');
+
                 const matchedKey = internalKeys.find(key => 
-                    key.toLowerCase().replace(/ /g, '') === csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '')
+                    key.toLowerCase() === normalizedCsvHeader
                 );
-                
-                const internalKey = matchedKey || `custom_${index}`;
 
                 if (matchedKey) {
                     headerMap[matchedKey] = index;
                     newColumnNames[matchedKey] = csvHeader;
-                } else {
-                    // For now, we are only mapping known columns. Custom columns are ignored in data processing.
-                }
-
-                if (matchedKey) {
                     newColumnOrder.push(matchedKey);
                     newColumnVisibility[matchedKey] = true;
+                } else {
+                    // For now, custom columns are not deeply integrated. 
+                    // This can be expanded if custom columns need special handling.
                 }
             });
 
@@ -450,7 +449,7 @@ const handleSaveChanges = async () => {
                 };
 
                 (Object.keys(headerMap) as (keyof typeof headerMap)[]).forEach(key => {
-                    const index = headerMap[key];
+                    const index = headerMap[key as keyof typeof headerMap];
                     if (index !== -1 && values[index] !== undefined) {
                         const value = values[index].trim();
                         if (key === 'stock' || key === 'price') {
@@ -626,7 +625,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
+                        {Object.keys(columns).map((key) => (
                           <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
