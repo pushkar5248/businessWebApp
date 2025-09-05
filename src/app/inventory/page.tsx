@@ -734,8 +734,12 @@ const handleSaveChanges = async () => {
                   </div>
                 </TableHead>
                 {visibleColumns.map((key) => (
-                  <TableHead key={key} className="p-0 h-12">
-                    <div className="flex items-center justify-between h-full px-4">
+                  <TableHead
+                    key={key}
+                    className="p-0 h-12"
+                    onClick={() => requestSort(key as keyof ColumnKeys)}
+                  >
+                    <div className="flex items-center justify-between h-full px-4" suppressHydrationWarning>
                       <Input
                           type="text"
                           value={columns[key]}
@@ -746,10 +750,6 @@ const handleSaveChanges = async () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            requestSort(key as keyof ColumnKeys);
-                        }}
                         className="h-6 w-6 ml-2"
                       >
                         <ArrowUpDown className="h-4 w-4" />
@@ -857,5 +857,3 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
-
-    

@@ -410,11 +410,12 @@ export default function SalesPage() {
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
-                        className="p-0 h-12"
+                        className="cursor-pointer p-0 h-12"
+                        onClick={() => requestSort(key as keyof ColumnKeys)}
                       >
                         <div
-                          className="flex items-center justify-between h-full px-4 cursor-pointer"
-                          onClick={() => requestSort(key as keyof ColumnKeys)}
+                          className="flex items-center justify-between h-full px-4"
+                          suppressHydrationWarning
                         >
                             <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                             <Button
@@ -530,5 +531,3 @@ export default function SalesPage() {
     </MainLayout>
   );
 }
-
-    
