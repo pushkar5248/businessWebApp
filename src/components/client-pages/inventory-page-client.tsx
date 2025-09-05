@@ -147,6 +147,7 @@ export default function InventoryPageClient() {
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
   const [columnToRename, setColumnToRename] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const unsubscribeRef = useRef<() => void | null>(null);
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -159,6 +160,26 @@ export default function InventoryPageClient() {
         id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true
     };
   });
+
+  const setupRealtimeListener = useCallback(() => {
+    if (!user) return;
+
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+    }
+    
+    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    unsubscribeRef.current = onSnapshot(q, (querySnapshot) => {
+        const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+        setItems(inventoryList);
+        setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching inventory:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
+        setIsLoading(false);
+    });
+  }, [user, toast]);
   
   useEffect(() => {
     setIsLoading(true);
@@ -169,20 +190,14 @@ export default function InventoryPageClient() {
         return;
     }
     
-    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
-        setItems(inventoryList);
-        setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching inventory:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
-        setIsLoading(false);
-    });
+    setupRealtimeListener();
 
-    return () => unsubscribe();
-  }, [user, toast]);
+    return () => {
+        if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+        }
+    }
+  }, [user, setupRealtimeListener]);
   
 
   useEffect(() => {
@@ -350,6 +365,13 @@ const handleSaveChanges = async () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+    }
+
+    setIsLoading(true);
+
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
@@ -363,21 +385,22 @@ const handleSaveChanges = async () => {
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
-            const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+            const inventoryCollection = collection(db, "inventory");
+            const q = query(inventoryCollection, where("userId", "==", user.uid));
             const querySnapshot = await getDocs(q);
             const existingItemsMap = new Map(querySnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            const BATCH_SIZE = 499; // Firestore batch limit is 500
-            const batches = [writeBatch(db)];
+            const BATCH_SIZE = 499; 
+            const batches:any[] = [writeBatch(db)];
             let currentBatchIndex = 0;
             let operationsInCurrentBatch = 0;
 
             let importedCount = 0;
             let updatedCount = 0;
 
-            const newColumns = { ...columns };
-            const newColumnOrder = [...columnOrder];
-            const newColumnVisibility = { ...columnVisibility };
+            let newColumns = { ...columns };
+            let newColumnOrder = [...columnOrder];
+            let newColumnVisibility = { ...columnVisibility };
 
             headerRow.forEach(header => {
                 const headerKey = header.toLowerCase().replace(/\s+/g, '_');
@@ -442,7 +465,7 @@ const handleSaveChanges = async () => {
             }
 
             if (importedCount === 0 && updatedCount === 0) {
-                 toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import or update." });
+                 toast({ variant: "destructive", title: "No valid items", description: "No items found in CSV to import or update." });
                  return;
             }
             
@@ -451,6 +474,12 @@ const handleSaveChanges = async () => {
             setColumnVisibility(newColumnVisibility);
             
             await Promise.all(batches.map(batch => batch.commit()));
+
+            const freshSnapshot = await getDocs(q);
+            const freshItems = freshSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+            setItems(freshItems);
+            setOriginalItems(JSON.parse(JSON.stringify(freshItems)));
+
 
             toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
@@ -461,6 +490,8 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
+            setIsLoading(false);
+            setupRealtimeListener();
         }
     };
     reader.readAsText(file);
@@ -756,7 +787,7 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead
                     key={key}
-                    className="cursor-pointer h-12 px-4"
+                    className="h-12 px-4"
                   >
                     <div className="flex items-center justify-between" suppressHydrationWarning>
                      {columnToRename === key ? (
@@ -771,7 +802,7 @@ const handleSaveChanges = async () => {
                           />
                         </div>
                       ) : (
-                        <span className="font-medium" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key]}</span>
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key]}</span>
                       )}
                       <Button
                         variant="ghost"
@@ -820,7 +851,7 @@ const handleSaveChanges = async () => {
                                 type="number"
                                 value={item.price}
                                 onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
-                                className={cn("w-24", !isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn("w-24", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
                            </div>
@@ -829,23 +860,23 @@ const handleSaveChanges = async () => {
                                 type="number"
                                 value={item.stock}
                                 onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
-                                className={cn("w-20", !isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
-                        ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
+                        ) : ['name', 'category', 'subcategory', 'supplier', 'id'].includes(key) ? (
                              <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user}
+                                className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
+                                disabled={!isEditMode || !user || key === 'id'}
                             />
                         ) : (
                             <Input
                                 type="text"
                                 value={(item as any)[key] ?? ''}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
                         )}
