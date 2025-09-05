@@ -396,38 +396,84 @@ const handleSaveChanges = async () => {
             
             const findHeaderIndex = (headers: string[], possibleNames: string[]) => {
                 for (const name of possibleNames) {
-                    const index = headers.findIndex(h => h === name);
+                    const index = headers.findIndex(h => h.toLowerCase().replace(/_/g, ' ') === name.toLowerCase().replace(/_/g, ' '));
                     if (index !== -1) return index;
                 }
                 return -1;
             };
 
-            const headerMap = {
-                name: findHeaderIndex(headerRow, ['name', 'Item Name']),
-                category: findHeaderIndex(headerRow, ['category', 'Category']),
-                subcategory: findHeaderIndex(headerRow, ['subcategory', 'Subcategory']),
-                stock: findHeaderIndex(headerRow, ['stock', 'Stock', 'quantity', 'Quantity']),
-                price: findHeaderIndex(headerRow, ['price', 'Price', 'rate', 'Rate']),
-                supplier: findHeaderIndex(headerRow, ['supplier', 'Supplier', 'vendor', 'Vendor']),
-            };
+            const internalKeys: (keyof ColumnKeys)[] = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
+            const headerMap: Record<keyof ColumnKeys, number> = {} as any;
+
+            const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
+            const newColumnOrder: string[] = [];
+            const newColumnVisibility: Record<string, boolean> = {};
+
+            headerRow.forEach((csvHeader, index) => {
+                const matchedKey = internalKeys.find(key => 
+                    key.toLowerCase().replace(/ /g, '') === csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '')
+                );
+                
+                const internalKey = matchedKey || `custom_${index}`;
+
+                if (matchedKey) {
+                    headerMap[matchedKey] = index;
+                    newColumnNames[matchedKey] = csvHeader;
+                } else {
+                    // For now, we are only mapping known columns. Custom columns are ignored in data processing.
+                }
+
+                if (matchedKey) {
+                    newColumnOrder.push(matchedKey);
+                    newColumnVisibility[matchedKey] = true;
+                }
+            });
+
+            // Ensure all default columns are present if not in CSV
+            Object.keys(DEFAULT_COLUMN_NAMES).forEach(key => {
+                if(!newColumnOrder.includes(key)) {
+                    newColumnOrder.push(key);
+                    newColumnVisibility[key] = false; // Hide by default if not in CSV
+                }
+            });
+
 
             dataRows.forEach(row => {
                 const values = row.split(',');
-                const newItemData: Omit<InventoryItem, 'id'> = {
-                    name: headerMap.name !== -1 ? values[headerMap.name]?.trim() || '' : '',
-                    category: headerMap.category !== -1 ? values[headerMap.category]?.trim() || '' : '',
-                    subcategory: headerMap.subcategory !== -1 ? values[headerMap.subcategory]?.trim() || '' : '',
-                    stock: headerMap.stock !== -1 ? Number(values[headerMap.stock]) || 0 : 0,
-                    price: headerMap.price !== -1 ? Number(values[headerMap.price]) || 0 : 0,
-                    supplier: headerMap.supplier !== -1 ? values[headerMap.supplier]?.trim() || '' : '',
-                    userId: user.uid,
+                const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
+                    name: '',
+                    category: '',
+                    subcategory: '',
+                    stock: 0,
+                    price: 0,
+                    supplier: '',
                 };
+
+                (Object.keys(headerMap) as (keyof typeof headerMap)[]).forEach(key => {
+                    const index = headerMap[key];
+                    if (index !== -1 && values[index] !== undefined) {
+                        const value = values[index].trim();
+                        if (key === 'stock' || key === 'price') {
+                            newItemData[key] = Number(value) || 0;
+                        } else {
+                            newItemData[key] = value;
+                        }
+                    }
+                });
                 
                 if(!newItemData.name) return; // Skip rows without a name
 
                 const docRef = doc(collection(db, "inventory"));
-                batch.set(docRef, newItemData);
-                newItems.push({ ...newItemData, id: docRef.id });
+                batch.set(docRef, {
+                    name: newItemData.name,
+                    category: newItemData.category,
+                    subcategory: newItemData.subcategory,
+                    stock: newItemData.stock,
+                    price: newItemData.price,
+                    supplier: newItemData.supplier,
+                    userId: user.uid,
+                });
+                newItems.push({ ...newItemData, id: docRef.id, userId: user.uid });
             });
 
             if (newItems.length === 0) {
@@ -439,6 +485,9 @@ const handleSaveChanges = async () => {
 
             setItems(newItems);
             setOriginalItems(JSON.parse(JSON.stringify(newItems)));
+            setColumns(newColumnNames);
+            setColumnOrder(newColumnOrder);
+            setColumnVisibility(newColumnVisibility);
             setImportModalOpen(false);
             toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
 
