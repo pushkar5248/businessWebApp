@@ -37,7 +37,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { type InventoryItem } from "@/lib/types";
@@ -362,30 +361,7 @@ const handleSaveChanges = async () => {
             const dataRows = allRows.slice(1);
             
             const batch = writeBatch(db);
-            const newItems: InventoryItem[] = [];
-            
-            const internalToCsvHeaderMap: Record<string, string> = {};
-            const csvToInternalHeaderMap: Record<string, string> = {};
-            
-            const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
-
-            headerRow.forEach(csvHeader => {
-                const normalizedCsvHeader = csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '');
-                const matchedKey = defaultKeys.find(key => 
-                    key.toLowerCase() === normalizedCsvHeader
-                );
-                if (matchedKey) {
-                    internalToCsvHeaderMap[matchedKey] = csvHeader;
-                    csvToInternalHeaderMap[csvHeader] = matchedKey;
-                } else {
-                     internalToCsvHeaderMap[csvHeader] = csvHeader;
-                     csvToInternalHeaderMap[csvHeader] = csvHeader;
-                }
-            });
-            
-            const newColumnNames: Record<string, string> = headerRow.reduce((acc, h) => ({...acc, [csvToInternalHeaderMap[h]]: h}), {});
-            const newColumnOrder = headerRow.map(h => csvToInternalHeaderMap[h]);
-            const newColumnVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
+            let importedCount = 0;
 
             dataRows.forEach(row => {
                 const values = row.split(',');
@@ -397,6 +373,20 @@ const handleSaveChanges = async () => {
                     price: 0,
                     supplier: '',
                 };
+
+                const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
+                const csvToInternalHeaderMap: Record<string, string> = {};
+                 headerRow.forEach(csvHeader => {
+                    const normalizedCsvHeader = csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '');
+                    const matchedKey = defaultKeys.find(key => 
+                        key.toLowerCase() === normalizedCsvHeader
+                    );
+                    if (matchedKey) {
+                        csvToInternalHeaderMap[csvHeader] = matchedKey;
+                    } else {
+                         csvToInternalHeaderMap[csvHeader] = csvHeader;
+                    }
+                });
 
                 headerRow.forEach((csvHeader, index) => {
                     const internalKey = csvToInternalHeaderMap[csvHeader];
@@ -414,21 +404,18 @@ const handleSaveChanges = async () => {
 
                 const docRef = doc(collection(db, "inventory"));
                 batch.set(docRef, { ...newItemData, userId: user.uid });
-                newItems.push({ ...newItemData, id: docRef.id, userId: user.uid });
+                importedCount++;
             });
 
-            if (newItems.length === 0) {
+            if (importedCount === 0) {
                  toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import." });
                  return;
             }
             
             await batch.commit();
 
-            setColumns(newColumnNames);
-            setColumnOrder(newColumnOrder);
-            setColumnVisibility(newColumnVisibility);
             setImportModalOpen(false);
-            toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
+            toast({ title: "Success", description: `Successfully imported ${importedCount} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -836,5 +823,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
-    
