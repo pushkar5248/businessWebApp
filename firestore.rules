@@ -1,6 +1,5 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -9,24 +8,30 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // Users can only read and write their own profile document
+    // Rules for the 'users' collection
     match /users/{userId} {
+      // Users can read and write their own settings document
       allow read, write: if isOwner(userId);
     }
 
-    // Users can only manage their own inventory items
+    // Rules for the 'inventory' collection
     match /inventory/{itemId} {
-      allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+      // Allow create if the new document's userId matches the user's uid
+      allow create: if isOwner(request.resource.data.userId);
+      // Allow read, update, delete if the existing document's userId matches the user's uid
+      allow read, update, delete: if isOwner(resource.data.userId);
     }
 
-    // Users can only manage their own sales
+    // Rules for the 'sales' collection
     match /sales/{saleId} {
-      allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow read, update, delete: if isOwner(resource.data.userId);
     }
-    
-    // Users can only manage their own purchases
+
+    // Rules for the 'purchases' collection
     match /purchases/{purchaseId} {
-      allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow read, update, delete: if isOwner(resource.data.userId);
     }
   }
 }
