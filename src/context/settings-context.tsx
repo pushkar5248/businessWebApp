@@ -51,15 +51,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const applyTheme = useCallback((theme: UserSettings['appearance']['theme']) => {
-        // The theme class is now applied in the RootLayout, so this function is just for updating state.
-        // We could add logic here if needed in the future.
+        // The theme class is now applied in the AppBody component based on the settings state.
     }, []);
 
     const fetchSettings = useCallback(async () => {
         setLoading(true);
         if (!user) {
-            setSettings(defaultSettings);
-            applyTheme(defaultSettings.appearance.theme);
+            const guestSettings = {
+                ...defaultSettings,
+                profile: {
+                    displayName: 'Guest User',
+                    email: 'guest@example.com',
+                    photoURL: '',
+                }
+            };
+            setSettings(guestSettings);
+            applyTheme(guestSettings.appearance.theme);
             setLoading(false);
             return;
         }
@@ -106,19 +113,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (!authLoading) {
             fetchSettings();
         }
-    }, [authLoading, fetchSettings]);
+    }, [authLoading, user, fetchSettings]);
 
     const saveSettings = async (dataToSave: Partial<UserSettings>) => {
         if (!user || !settings) return;
         
         try {
             const docRef = doc(db, 'users', user.uid);
-            // This needs to be a proper deep merge on the Firestore document
-            const currentDoc = await getDoc(docRef);
-            const currentData = currentDoc.exists() ? currentDoc.data() : {};
-            const mergedData = deepmerge(currentData, dataToSave);
-
-            await setDoc(docRef, mergedData, { merge: true });
+            await setDoc(docRef, dataToSave, { merge: true });
             
             const updatedSettings = deepmerge(settings, dataToSave as Partial<UserSettings>);
             setSettings(updatedSettings);

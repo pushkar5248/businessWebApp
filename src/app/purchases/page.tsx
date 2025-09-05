@@ -158,12 +158,14 @@ export default function PurchasesPage() {
          if (!user) return;
         
         // Optimistic UI update
-        setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
+        const tempPurchases = purchases.map(p => p.id === purchaseId ? { ...p, [field]: value } : p);
+        setPurchases(tempPurchases);
         
         try {
             const purchaseRef = doc(db, "purchases", purchaseId);
             await updateDoc(purchaseRef, { [field]: value });
-            // The originalPurchases state will be updated on successful save to prevent reverts on other edits
+            
+            // On successful save, update the original state
             setOriginalPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Purchase status has been updated." });
@@ -205,7 +207,7 @@ export default function PurchasesPage() {
         } catch (error) {
             console.error("Error updating purchases:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
-            fetchPurchases(); // Revert on failure
+            fetchPurchases(); // Re-fetch to revert changes
         } finally {
             setIsEditMode(false);
         }
@@ -319,7 +321,7 @@ export default function PurchasesPage() {
           setSelectedRows(prev => prev.filter(id => id !== itemId));
         }
     };
-
+    
     const handleEditToggle = () => {
         if (isEditMode) {
             handleSaveChanges();
@@ -490,7 +492,7 @@ export default function PurchasesPage() {
                                         onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
                                         disabled={!user}
                                     >
-                                        <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none", !isEditMode ? "bg-transparent border-0" : "")}>
+                                        <SelectTrigger className="w-[120px] focus:ring-0 shadow-none bg-transparent border-0">
                                             <SelectValue>
                                                 <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                                             </SelectValue>
