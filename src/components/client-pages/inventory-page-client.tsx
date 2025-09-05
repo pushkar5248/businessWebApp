@@ -145,6 +145,8 @@ export default function InventoryPageClient() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+  const [columnToRename, setColumnToRename] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -361,7 +363,6 @@ const handleSaveChanges = async () => {
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
-            // Use current items from state, which is kept in sync via onSnapshot
             const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
             const querySnapshot = await getDocs(q);
             const existingItemsMap = new Map(querySnapshot.docs.map(doc => [doc.data().name, doc.id]));
@@ -369,17 +370,23 @@ const handleSaveChanges = async () => {
             const batch = writeBatch(db);
             let importedCount = 0;
             let updatedCount = 0;
+
+            const newColumns = { ...columns };
+            const newColumnOrder = [...columnOrder];
+            const newColumnVisibility = { ...columnVisibility };
+
+            headerRow.forEach(header => {
+                const headerKey = header.toLowerCase().replace(/\s+/g, '_');
+                if (!newColumns[headerKey]) {
+                    newColumns[headerKey] = header;
+                    newColumnOrder.push(headerKey);
+                    newColumnVisibility[headerKey] = true;
+                }
+            });
             
             for (const row of dataRows) {
                  const values = row.split(',').map(v => v.trim());
-                 const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
-                    name: '',
-                    category: '',
-                    subcategory: '',
-                    stock: 0,
-                    price: 0,
-                    supplier: '',
-                };
+                 const newItemData: { [key: string]: any } = {};
 
                 const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
                 if (nameIndex === -1) {
@@ -390,11 +397,11 @@ const handleSaveChanges = async () => {
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
 
-                // Build the new item data from the CSV row
                 headerRow.forEach((csvHeader, index) => {
-                    const internalKey = Object.keys(DEFAULT_COLUMN_NAMES).find(key => 
-                        DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
+                    const internalKey = Object.keys(newColumns).find(key => 
+                        newColumns[key].toLowerCase() === csvHeader.toLowerCase()
                     );
+
                     if (internalKey && values[index] !== undefined) {
                         const value = values[index];
                         if (internalKey === 'stock' || internalKey === 'price') {
@@ -406,18 +413,17 @@ const handleSaveChanges = async () => {
                 });
 
                 newItemData.name = itemName;
+                newItemData.userId = user.uid;
 
                 const existingItemId = existingItemsMap.get(itemName);
 
                 if (existingItemId) {
-                    // Update existing item
                     const itemRef = doc(db, "inventory", existingItemId);
-                    batch.update(itemRef, { ...newItemData, userId: user.uid });
+                    batch.update(itemRef, newItemData);
                     updatedCount++;
                 } else {
-                    // Add new item
                     const newDocRef = doc(collection(db, "inventory"));
-                    batch.set(newDocRef, { ...newItemData, userId: user.uid });
+                    batch.set(newDocRef, newItemData);
                     importedCount++;
                 }
             }
@@ -426,6 +432,10 @@ const handleSaveChanges = async () => {
                  toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import or update." });
                  return;
             }
+            
+            setColumns(newColumns);
+            setColumnOrder(newColumnOrder);
+            setColumnVisibility(newColumnVisibility);
             
             await batch.commit();
 
@@ -540,6 +550,16 @@ const handleSaveChanges = async () => {
 
   const handleConfirmDelete = (itemIds: string[]) => {
     handleDeleteItems(itemIds);
+  };
+  
+  const handleRenameColumn = (key: string) => {
+    if (!renameValue.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Column name cannot be empty.'});
+        return;
+    }
+    setColumns(prev => ({ ...prev, [key]: renameValue }));
+    setColumnToRename(null);
+    setRenameValue("");
   };
 
 
@@ -723,15 +743,28 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead
                     key={key}
-                    onClick={() => requestSort(key as keyof ColumnKeys)}
                     className="cursor-pointer h-12 px-4"
                   >
                     <div className="flex items-center justify-between" suppressHydrationWarning>
-                      <span className="font-medium">{columns[key]}</span>
+                     {columnToRename === key ? (
+                        <div className="flex items-center gap-1">
+                          <Input 
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => handleRenameColumn(key)}
+                            onKeyDown={(e) => { if(e.key === 'Enter') handleRenameColumn(key) }}
+                            autoFocus
+                            className="h-8"
+                          />
+                        </div>
+                      ) : (
+                        <span className="font-medium" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key]}</span>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 ml-2"
+                        onClick={() => requestSort(key as keyof ColumnKeys)}
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
