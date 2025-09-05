@@ -69,7 +69,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
-      igstRate: 0,
+      igstRate: 9,
     },
   });
   
