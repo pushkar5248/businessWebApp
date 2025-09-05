@@ -222,7 +222,8 @@ export default function SalesPageClient() {
             });
             await batch.commit();
 
-            await fetchSales(); // Re-fetch data from Firestore
+            setSales(prev => prev.filter(s => !saleIds.includes(s.id)));
+            setOriginalSales(prev => prev.filter(s => !saleIds.includes(s.id)));
             setSelectedRows([]);
             toast({
                 title: "Sale(s) Moved to Bin",

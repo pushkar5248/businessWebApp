@@ -223,7 +223,8 @@ export default function PurchasesPageClient() {
             });
             await batch.commit();
             
-            await fetchPurchases(); // Re-fetch data from Firestore
+            setPurchases(prev => prev.filter(p => !purchaseIds.includes(p.id)));
+            setOriginalPurchases(prev => prev.filter(p => !purchaseIds.includes(p.id)));
             setSelectedRows([]);
             toast({
               title: `Purchase(s) Moved to Bin`,

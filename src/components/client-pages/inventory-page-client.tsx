@@ -271,7 +271,8 @@ export default function InventoryPageClient() {
       });
       await batch.commit();
 
-      await fetchItems(); // Re-fetch data from Firestore
+      setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
+      setOriginalItems(prev => prev.filter(item => !itemIds.includes(item.id)));
       setSelectedRows([]);
       toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
     } catch (error) {
