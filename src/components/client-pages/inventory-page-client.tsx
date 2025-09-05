@@ -357,6 +357,8 @@ const handleSaveChanges = async () => {
                 toast({ variant: "destructive", title: "Error", description: "CSV file is empty or has no data rows." });
                 return;
             }
+            
+            const existingItemsMap = new Map(items.map(item => [item.name, item]));
 
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
@@ -413,13 +415,12 @@ const handleSaveChanges = async () => {
                     }
                 });
 
-                const q = query(inventoryCollection, where("userId", "==", user.uid), where("name", "==", itemName));
-                const existingItemsSnapshot = await getDocs(q);
+                const existingItem = existingItemsMap.get(itemName);
 
-                if (!existingItemsSnapshot.empty) {
+                if (existingItem) {
                     // Update existing item
-                    const docToUpdate = existingItemsSnapshot.docs[0];
-                    batch.update(docToUpdate.ref, { ...newItemData, userId: user.uid });
+                    const itemRef = doc(db, "inventory", existingItem.id);
+                    batch.update(itemRef, { ...newItemData, userId: user.uid });
                     updatedCount++;
                 } else {
                     // Add new item
