@@ -755,7 +755,7 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead style={{ width: '40px' }}>
+                <TableHead>
                   <div className="flex items-center justify-center px-4 h-12">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}

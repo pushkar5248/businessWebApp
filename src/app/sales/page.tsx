@@ -429,7 +429,7 @@ export default function SalesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead style={{ width: '40px' }}>
+                 <TableHead>
                   <div className="flex items-center justify-center px-4 h-12">
                      <Checkbox
                         checked={selectedRows.length > 0 && sortedSales.length > 0 && selectedRows.length === sortedSales.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
@@ -445,7 +445,6 @@ export default function SalesPage() {
                       >
                         <div
                           className={cn("flex items-center justify-between px-4 h-12 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
-                          onClick={() => requestSort(key as keyof ColumnKeys)}
                           {...(isClient ? {
                             draggable: true,
                             onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
@@ -459,6 +458,7 @@ export default function SalesPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 ml-2"
+                                onClick={() => requestSort(key as keyof ColumnKeys)}
                             >
                                 <ArrowUpDown className="h-4 w-4" />
                             </Button>
