@@ -138,6 +138,7 @@ export default function InventoryPageClient() {
   const [isAddColumnModalOpen, setAddColumnModalOpen] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -416,25 +417,29 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            // Handle new columns from CSV
             const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
             const newColumnVisibility: Record<string, boolean> = { id: false }; 
+            const newColumnOrderSet = new Set<string>(['id']);
 
-            const uniqueHeaders = new Set(headerRow);
-            const finalHeaders = Array.from(uniqueHeaders);
-
-            const newColumnOrder = finalHeaders.map(header => {
+            headerRow.forEach(header => {
               const key = header.toLowerCase().replace(/\s+/g, '_');
-              newColumnNames[key] = header;
-              newColumnVisibility[key] = true;
-              return key;
+              if (key) {
+                  newColumnNames[key] = header;
+                  newColumnVisibility[key] = true;
+                  newColumnOrderSet.add(key);
+              }
             });
-            
-            newColumnOrder.unshift('id');
+
+            const newColumnOrder = Array.from(newColumnOrderSet);
+
             setColumns(newColumnNames);
             setColumnOrder(newColumnOrder);
             setColumnVisibility(newColumnVisibility);
             
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumnNames));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(newColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newColumnVisibility));
+
             const BATCH_SIZE = 499; 
             const batches:any[] = [];
             let currentBatch = writeBatch(db);
@@ -445,7 +450,7 @@ const handleSaveChanges = async () => {
                  const values = row.split(',').map(v => v.trim());
                  const newItemData: { [key: string]: any } = {};
 
-                const nameIndex = finalHeaders.findIndex(h => h.toLowerCase() === 'name');
+                const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
                 if (nameIndex === -1) {
                     toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
                     return; 
@@ -454,7 +459,7 @@ const handleSaveChanges = async () => {
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
 
-                finalHeaders.forEach((csvHeader, index) => {
+                headerRow.forEach((csvHeader, index) => {
                     const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
                     const value = values[index];
                     
