@@ -337,7 +337,7 @@ export default function SalesPage() {
                   placeholder="Search sales..." 
                   className="pl-8 w-64"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
               <DropdownMenu>
@@ -412,7 +412,7 @@ export default function SalesPage() {
                         key={key}
                       >
                         <div
-                          className="flex items-center justify-between px-4 h-12"
+                          className="flex items-center justify-between px-4 h-12 cursor-pointer"
                           onClick={() => requestSort(key as keyof ColumnKeys)}
                         >
                             <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
@@ -529,3 +529,5 @@ export default function SalesPage() {
     </MainLayout>
   );
 }
+
+    

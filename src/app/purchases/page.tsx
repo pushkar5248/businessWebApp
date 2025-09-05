@@ -413,7 +413,7 @@ export default function PurchasesPage() {
                     key={key}
                   >
                     <div
-                      className="flex items-center justify-between px-4 h-12"
+                      className="flex items-center justify-between px-4 h-12 cursor-pointer"
                       onClick={() => requestSort(key as keyof ColumnKeys)}
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
@@ -529,3 +529,5 @@ export default function PurchasesPage() {
     </MainLayout>
   );
 }
+
+    
