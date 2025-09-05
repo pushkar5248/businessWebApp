@@ -100,6 +100,12 @@ export default function SalesPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
     const dragItem = useRef<string | null>(null);
     const dragOverItem = useRef<string | null>(null);
+    const [isDraggable, setIsDraggable] = useState(false);
+
+    useEffect(() => {
+      // Defer setting draggable to true until after the initial render.
+      setIsDraggable(true);
+    }, []);
 
     const fetchSales = useCallback(async () => {
       setIsLoading(true);
@@ -424,8 +430,8 @@ export default function SalesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead className="p-0" style={{ width: '40px' }}>
-                  <div className="flex items-center justify-center p-4">
+                 <TableHead className="h-12 px-4" style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedSales.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -437,12 +443,12 @@ export default function SalesPage() {
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
-                        draggable
+                        draggable={isDraggable}
                         onDragStart={(e) => handleDragStart(e, key)}
                         onDragEnter={(e) => handleDragEnter(e, key)}
                         onDragEnd={handleDragEnd}
                         onDragOver={(e) => e.preventDefault()}
-                        className="cursor-move p-0 transition-all duration-300 ease-in-out"
+                        className="cursor-move h-12 p-0 transition-all duration-300 ease-in-out"
                       >
                     <div className="flex items-center justify-between p-4" onClick={() => requestSort(key as keyof ColumnKeys)}>
                         <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
@@ -456,7 +462,7 @@ export default function SalesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-right border-l">Actions</TableHead>
+                <TableHead className="text-right border-l h-12 px-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

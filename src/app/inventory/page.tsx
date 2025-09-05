@@ -749,8 +749,8 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="p-0" style={{ width: '40px' }}>
-                  <div className="flex items-center justify-center p-4">
+                <TableHead className="h-12 px-4" style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -762,14 +762,14 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    draggable
+                    draggable={isDraggable}
                     onDragStart={(e) => handleDragStart(e, key)}
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move p-0 transition-all duration-300 ease-in-out"
+                    className="cursor-move h-12 px-4 transition-all duration-300 ease-in-out"
                   >
-                    <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center justify-between">
                        <Input
                             type="text"
                             value={columns[key]}
@@ -791,7 +791,7 @@ const handleSaveChanges = async () => {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="border-l"/>
+                <TableHead className="border-l h-12"/>
               </TableRow>
             </TableHeader>
             <TableBody>

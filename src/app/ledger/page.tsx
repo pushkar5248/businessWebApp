@@ -387,13 +387,13 @@ export default function CustomerLedgerPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Particulars</TableHead>
-                    <TableHead>Vch Type</TableHead>
-                    <TableHead>Vch No.</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="h-12 px-4">Date</TableHead>
+                    <TableHead className="h-12 px-4">Particulars</TableHead>
+                    <TableHead className="h-12 px-4">Vch Type</TableHead>
+                    <TableHead className="h-12 px-4">Vch No.</TableHead>
+                    <TableHead className="text-right h-12 px-4">Debit</TableHead>
+                    <TableHead className="text-right h-12 px-4">Credit</TableHead>
+                    <TableHead className="text-right h-12 px-4">Balance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

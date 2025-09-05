@@ -33,7 +33,7 @@ import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
-import { db } from '@/lib/firebase';
+import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { purchasesData } from '@/lib/data';
 
@@ -156,12 +156,12 @@ export default function PurchasesBinPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>PO #</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Time in Bin</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="h-12 px-4">PO #</TableHead>
+                <TableHead className="h-12 px-4">Vendor</TableHead>
+                <TableHead className="h-12 px-4">Time in Bin</TableHead>
+                <TableHead className="h-12 px-4">Status</TableHead>
+                <TableHead className="text-right h-12 px-4">Amount</TableHead>
+                <TableHead className="text-right h-12 px-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

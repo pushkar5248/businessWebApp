@@ -475,11 +475,11 @@ export function InvoiceForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50%]">Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="w-[50%] h-12 px-4">Item</TableHead>
+                  <TableHead className="h-12 px-4">Quantity</TableHead>
+                  <TableHead className="h-12 px-4">Price</TableHead>
+                  <TableHead className="text-right h-12 px-4">Total</TableHead>
+                  <TableHead className="h-12 px-4"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

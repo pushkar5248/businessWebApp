@@ -33,7 +33,7 @@ import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
-import { db } from '@/lib/firebase';
+import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { salesData } from '@/lib/data';
 
@@ -157,12 +157,12 @@ export default function SalesBinPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Time in Bin</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="h-12 px-4">Invoice #</TableHead>
+                <TableHead className="h-12 px-4">Customer</TableHead>
+                <TableHead className="h-12 px-4">Time in Bin</TableHead>
+                <TableHead className="h-12 px-4">Status</TableHead>
+                <TableHead className="text-right h-12 px-4">Amount</TableHead>
+                <TableHead className="text-right h-12 px-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

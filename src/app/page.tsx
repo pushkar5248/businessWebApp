@@ -254,8 +254,8 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="h-12 px-4">Customer</TableHead>
+                  <TableHead className="text-right h-12 px-4">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
