@@ -367,7 +367,11 @@ const handleSaveChanges = async () => {
             const querySnapshot = await getDocs(q);
             const existingItemsMap = new Map(querySnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            const batch = writeBatch(db);
+            const BATCH_SIZE = 499; // Firestore batch limit is 500
+            const batches = [writeBatch(db)];
+            let currentBatchIndex = 0;
+            let operationsInCurrentBatch = 0;
+
             let importedCount = 0;
             let updatedCount = 0;
 
@@ -416,16 +420,25 @@ const handleSaveChanges = async () => {
                 newItemData.userId = user.uid;
 
                 const existingItemId = existingItemsMap.get(itemName);
+                
+                if (operationsInCurrentBatch >= BATCH_SIZE) {
+                    batches.push(writeBatch(db));
+                    currentBatchIndex++;
+                    operationsInCurrentBatch = 0;
+                }
+                
+                const currentBatch = batches[currentBatchIndex];
 
                 if (existingItemId) {
                     const itemRef = doc(db, "inventory", existingItemId);
-                    batch.update(itemRef, newItemData);
+                    currentBatch.update(itemRef, newItemData);
                     updatedCount++;
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
-                    batch.set(newDocRef, newItemData);
+                    currentBatch.set(newDocRef, newItemData);
                     importedCount++;
                 }
+                operationsInCurrentBatch++;
             }
 
             if (importedCount === 0 && updatedCount === 0) {
@@ -437,7 +450,7 @@ const handleSaveChanges = async () => {
             setColumnOrder(newColumnOrder);
             setColumnVisibility(newColumnVisibility);
             
-            await batch.commit();
+            await Promise.all(batches.map(batch => batch.commit()));
 
             toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
