@@ -358,18 +358,20 @@ const handleSaveChanges = async () => {
                 return;
             }
             
-            // Use current items from state, which is kept in sync via onSnapshot
-            const existingItemsMap = new Map(items.map(item => [item.name, item]));
-
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
+            // Use current items from state, which is kept in sync via onSnapshot
+            const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+            const querySnapshot = await getDocs(q);
+            const existingItemsMap = new Map(querySnapshot.docs.map(doc => [doc.data().name, doc.id]));
+
             const batch = writeBatch(db);
             let importedCount = 0;
             let updatedCount = 0;
             
             for (const row of dataRows) {
-                 const values = row.split(',');
+                 const values = row.split(',').map(v => v.trim());
                  const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
                     name: '',
                     category: '',
@@ -377,7 +379,6 @@ const handleSaveChanges = async () => {
                     stock: 0,
                     price: 0,
                     supplier: '',
-                    userId: user.uid,
                 };
 
                 const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
@@ -386,7 +387,7 @@ const handleSaveChanges = async () => {
                     return;
                 }
                 
-                const itemName = values[nameIndex]?.trim();
+                const itemName = values[nameIndex];
                 if (!itemName) continue;
 
                 // Build the new item data from the CSV row
@@ -395,7 +396,7 @@ const handleSaveChanges = async () => {
                         DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
                     );
                     if (internalKey && values[index] !== undefined) {
-                        const value = values[index].trim();
+                        const value = values[index];
                         if (internalKey === 'stock' || internalKey === 'price') {
                             newItemData[internalKey] = Number(value) || 0;
                         } else {
@@ -406,17 +407,17 @@ const handleSaveChanges = async () => {
 
                 newItemData.name = itemName;
 
-                const existingItem = existingItemsMap.get(itemName);
+                const existingItemId = existingItemsMap.get(itemName);
 
-                if (existingItem) {
+                if (existingItemId) {
                     // Update existing item
-                    const itemRef = doc(db, "inventory", existingItem.id);
-                    batch.update(itemRef, newItemData);
+                    const itemRef = doc(db, "inventory", existingItemId);
+                    batch.update(itemRef, { ...newItemData, userId: user.uid });
                     updatedCount++;
                 } else {
                     // Add new item
                     const newDocRef = doc(collection(db, "inventory"));
-                    batch.set(newDocRef, newItemData);
+                    batch.set(newDocRef, { ...newItemData, userId: user.uid });
                     importedCount++;
                 }
             }
