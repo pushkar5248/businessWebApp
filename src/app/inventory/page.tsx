@@ -146,7 +146,7 @@ export default function InventoryPage() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode]_useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -768,6 +768,7 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead key={key} className="p-0">
                     <div
+                      className={cn("flex items-center justify-between p-4 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
                       {...(isClient ? {
                         draggable: true,
                         onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
@@ -775,7 +776,6 @@ const handleSaveChanges = async () => {
                         onDragEnd: handleDragEnd,
                         onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
                       } : {})}
-                      className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
                     >
                       <Input
                           type="text"

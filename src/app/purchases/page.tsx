@@ -446,15 +446,15 @@ export default function PurchasesPage() {
                     className="p-0"
                   >
                     <div
-                      {...(isClient ? {
+                      className={cn("flex items-center justify-between p-4 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
+                      onClick={() => requestSort(key as keyof ColumnKeys)}
+                       {...(isClient ? {
                         draggable: true,
                         onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
                         onDragEnter: (e: React.DragEvent<HTMLDivElement>) => handleDragEnter(e, key),
                         onDragEnd: handleDragEnd,
                         onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
                       } : {})}
-                      onClick={() => requestSort(key as keyof ColumnKeys)}
-                      className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                       <Button
