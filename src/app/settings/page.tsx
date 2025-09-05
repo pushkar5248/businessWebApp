@@ -49,10 +49,6 @@ const currencies = [
 const themes = [
     { name: 'light', label: 'Light' },
     { name: 'dark', label: 'Dark' },
-    { name: 'dracula', label: 'Dracula' },
-    { name: 'ocean', label: 'Ocean' },
-    { name: 'forest', label: 'Forest' },
-    { name: 'sunset', label: 'Sunset' },
 ]
 
 

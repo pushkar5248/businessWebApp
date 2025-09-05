@@ -11,10 +11,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 export function AppBody({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
 
-  // Determine the theme class. The new themes are prefixed with "theme-".
-  const themeClass = settings?.appearance?.theme === 'light' || settings?.appearance?.theme === 'dark' 
-    ? settings.appearance.theme 
-    : `dark theme-${settings?.appearance?.theme}`;
+  // Determine the theme class.
+  const themeClass = settings?.appearance?.theme;
 
   return (
     <body className={`font-sans antialiased ${inter.variable} ${themeClass}`}>
