@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { MainLayout } from "@/components/layout/main-layout";
-import { inventoryData, salesData } from "@/lib/data";
-import { DollarSign, Boxes, ShoppingCart, Users, Loader2 } from "lucide-react";
+import { inventoryData, salesData, purchasesData } from "@/lib/data";
+import { DollarSign, Boxes, ShoppingCart, Users, Loader2, Truck } from "lucide-react";
 import { useCurrency } from '@/context/currency-context';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSalesCount, setTotalSalesCount] = useState(0);
   const [stockItemsCount, setStockItemsCount] = useState(0);
+  const [totalPurchasesCount, setTotalPurchasesCount] = useState(0);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [salesChartData, setSalesChartData] = useState<{ month: string; sales: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +59,7 @@ export default function Dashboard() {
     setTotalSalesCount(paidSales.length);
     setRecentSales(allSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     setStockItemsCount(inventoryData.length);
+    setTotalPurchasesCount(purchasesData.filter(p => !p.deletedAt).length);
     
     const months = Array(6).fill(0).map((_, i) => {
       const d = new Date();
@@ -94,7 +96,6 @@ export default function Dashboard() {
         return;
     }
 
-    // Real-time listener for sales data
     const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
     const unsubscribeSales = onSnapshot(salesQuery, (querySnapshot) => {
         const allSalesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
@@ -132,7 +133,6 @@ export default function Dashboard() {
         setIsLoading(false);
     });
 
-    // Real-time listener for inventory data
     const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
     const unsubscribeInventory = onSnapshot(inventoryQuery, (querySnapshot) => {
         setStockItemsCount(querySnapshot.size);
@@ -140,11 +140,18 @@ export default function Dashboard() {
         console.error("Error fetching inventory count:", error);
     });
 
+    const purchasesQuery = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+    const unsubscribePurchases = onSnapshot(purchasesQuery, (querySnapshot) => {
+        setTotalPurchasesCount(querySnapshot.size);
+    }, (error) => {
+        console.error("Error fetching purchases count:", error);
+    });
 
-    // Cleanup function
+
     return () => {
       unsubscribeSales();
       unsubscribeInventory();
+      unsubscribePurchases();
     };
   }, [user, authLoading]);
 
@@ -187,24 +194,24 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{totalPurchasesCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Total number of purchase orders
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stock Items</CardTitle>
             <Boxes className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stockItemsCount}</div>
             <p className="text-xs text-muted-foreground">Different items in inventory</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">...</div>
-            <p className="text-xs text-muted-foreground">
-              Feature coming soon
-            </p>
           </CardContent>
         </Card>
       </div>
