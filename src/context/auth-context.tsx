@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 
@@ -21,30 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   
   useEffect(() => {
-    const initializeAuth = async () => {
-      // Use session persistence to log out on tab close
-      // This addresses the user's request to be logged out on reload in the dev environment.
-      await setPersistence(auth, browserSessionPersistence);
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        setUser(user);
-        setLoading(false);
-      });
-      return unsubscribe;
-    };
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      setLoading(false);
+    });
 
-    const unsubscribePromise = initializeAuth();
-
-    return () => {
-      unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
-    };
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     if (loading) return;
 
-    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
+    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/forgot-password');
 
-    // If a user is logged in, they should not be able to see the login/signup pages
+    // If a user is logged in, they should not be able to see the auth pages
     if (user && isAuthPage) {
       router.push('/');
     }
