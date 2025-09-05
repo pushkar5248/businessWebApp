@@ -755,8 +755,8 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="px-4 h-12" style={{ width: '40px' }}>
-                  <div className="flex items-center justify-center">
+                <TableHead style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center px-4 h-12">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -766,9 +766,9 @@ const handleSaveChanges = async () => {
                   </div>
                 </TableHead>
                 {visibleColumns.map((key) => (
-                  <TableHead key={key} className="p-0">
+                  <TableHead key={key}>
                     <div
-                      className={cn("flex items-center justify-between p-4 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
+                      className={cn("flex items-center justify-between px-4 h-12 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
                       {...(isClient ? {
                         draggable: true,
                         onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
@@ -798,7 +798,7 @@ const handleSaveChanges = async () => {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="h-12 px-4 border-l"/>
+                <TableHead className="h-12 px-4"/>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -817,7 +817,7 @@ const handleSaveChanges = async () => {
               ) : (
                 sortedItems.map((item) => (
                   <TableRow key={item.id} data-state={selectedRows.includes(item.id) && "selected"}>
-                    <TableCell className="border-l">
+                    <TableCell>
                        <Checkbox
                           checked={selectedRows.includes(item.id)}
                           onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
@@ -826,7 +826,7 @@ const handleSaveChanges = async () => {
                         />
                     </TableCell>
                     {visibleColumns.map((key) => (
-                      <TableCell key={key} className="border-l">
+                      <TableCell key={key}>
                          {key === 'price' ? (
                            <div className="flex items-center gap-2">
                             <span>{formatCurrencyValue(0).charAt(0)}</span>
@@ -865,7 +865,7 @@ const handleSaveChanges = async () => {
                         )}
                       </TableCell>
                     ))}
-                      <TableCell className="border-l">
+                      <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" disabled={!user}>
@@ -898,3 +898,5 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
+
+    

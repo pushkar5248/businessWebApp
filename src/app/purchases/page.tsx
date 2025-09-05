@@ -430,8 +430,8 @@ export default function PurchasesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead className="px-4 h-12" style={{ width: '40px' }}>
-                  <div className="flex items-center justify-center">
+                 <TableHead style={{ width: '40px' }}>
+                  <div className="flex items-center justify-center px-4 h-12">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedPurchases.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -443,10 +443,9 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    className="p-0"
                   >
                     <div
-                      className={cn("flex items-center justify-between p-4 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
+                      className={cn("flex items-center justify-between px-4 h-12 transition-all duration-300 ease-in-out", isClient && "cursor-move")}
                       onClick={() => requestSort(key as keyof ColumnKeys)}
                        {...(isClient ? {
                         draggable: true,
@@ -467,7 +466,7 @@ export default function PurchasesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-right border-l px-4 h-12">Actions</TableHead>
+                <TableHead className="text-right px-4 h-12">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -485,7 +484,7 @@ export default function PurchasesPage() {
                 </TableRow>
               ) : (sortedPurchases.map((purchase) => (
                 <TableRow key={purchase.id} data-state={selectedRows.includes(purchase.id) && "selected"}>
-                   <TableCell className="border-l" onClick={(e) => e.stopPropagation()}>
+                   <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
                           checked={selectedRows.includes(purchase.id)}
                           onCheckedChange={(checked) => handleRowSelect(purchase.id, !!checked)}
@@ -494,7 +493,7 @@ export default function PurchasesPage() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l" onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(purchase.id); }}>
+                      <TableCell key={key} onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(purchase.id); }}>
                            {key === 'status' ? (
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <Select
@@ -537,7 +536,7 @@ export default function PurchasesPage() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right border-l" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" disabled={!user}>
@@ -569,3 +568,5 @@ export default function PurchasesPage() {
     </MainLayout>
   );
 }
+
+    
