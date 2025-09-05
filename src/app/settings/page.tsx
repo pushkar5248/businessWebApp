@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,12 +14,25 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { db } from '@/lib/firebase';
+import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
+
 
 const currencies = [
   { value: 'USD', label: '$ (USD)' },
@@ -241,11 +254,60 @@ function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings
     );
 }
 
+function AdvancedSettings({ onReset, isResetting, isGuest }: { onReset: () => void, isResetting: boolean, isGuest: boolean }) {
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+
+    return (
+        <>
+            <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all your inventory, sales, and purchases data. Your account and profile settings will not be affected.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={onReset} disabled={isResetting}>
+                            {isResetting ? <Loader2 className="mr-2 animate-spin" /> : null}
+                            Yes, delete all data
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Advanced</CardTitle>
+                    <CardDescription>Perform destructive actions. Please be careful.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Card className="border-destructive">
+                        <CardHeader>
+                             <CardTitle>Reset Application Data</CardTitle>
+                             <CardDescription>
+                                This will permanently delete all your inventory, sales, and purchase data. Your user account will not be deleted. This action is irreversible.
+                             </CardDescription>
+                        </CardHeader>
+                        <CardFooter>
+                             <Button variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isGuest || isResetting}>
+                                <Trash2 className="mr-2" />
+                                Reset All Data
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </CardContent>
+            </Card>
+        </>
+    )
+}
+
 export default function SettingsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const { settings, loading: settingsLoading, saveSettings } = useSettings();
+    const { settings, loading: settingsLoading, saveSettings, defaultSettings, resetSettings } = useSettings();
+    const [isResetting, setIsResetting] = useState(false);
     
     const isGuest = !user;
 
@@ -253,6 +315,42 @@ export default function SettingsPage() {
         if (!user || !settings) return;
         await saveSettings(dataToSave);
     }
+
+    const handleResetData = async () => {
+        if (!user) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "You must be logged in to reset data.",
+            });
+            return;
+        }
+        setIsResetting(true);
+        try {
+            const collectionsToDelete = ["inventory", "sales", "purchases"];
+            const batch = writeBatch(db);
+
+            for (const collectionName of collectionsToDelete) {
+                const q = query(collection(db, collectionName), where("userId", "==", user.uid));
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+            }
+            await batch.commit();
+            await resetSettings();
+            
+            toast({ title: "Data Reset", description: "All your data has been permanently deleted." });
+            // Full page reload to ensure all states are reset
+            window.location.href = '/';
+
+        } catch (error) {
+            console.error("Error resetting data:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to reset data." });
+        } finally {
+            setIsResetting(false);
+        }
+    };
     
     if (authLoading || settingsLoading || !settings) {
         return (
@@ -295,11 +393,12 @@ export default function SettingsPage() {
           </p>
         </div>
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <ProfileSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
@@ -312,6 +411,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="billing">
           <BillingSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
+        </TabsContent>
+        <TabsContent value="advanced">
+            <AdvancedSettings onReset={handleResetData} isResetting={isResetting} isGuest={isGuest} />
         </TabsContent>
       </Tabs>
     </MainLayout>

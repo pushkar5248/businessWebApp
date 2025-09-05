@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
 import deepmerge from 'deepmerge';
 
-const defaultSettings: UserSettings = {
+export const defaultSettings: UserSettings = {
     profile: {
         displayName: 'Guest User',
         email: '',
@@ -38,6 +38,8 @@ interface SettingsContextType {
   loading: boolean;
   saveSettings: (dataToSave: Partial<UserSettings>) => Promise<void>;
   applyTheme: (theme: UserSettings['appearance']['theme']) => void;
+  resetSettings: () => Promise<void>;
+  defaultSettings: UserSettings;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -125,7 +127,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
     }
     
-    const value = { settings, loading, saveSettings, applyTheme };
+    const resetSettings = async () => {
+        if (!user) return;
+         const userDefaultSettings = {
+            ...defaultSettings,
+             profile: {
+                displayName: user.displayName || user.email || 'User',
+                email: user.email || '',
+            },
+        }
+        try {
+            const docRef = doc(db, 'users', user.uid);
+            await setDoc(docRef, userDefaultSettings);
+            setSettings(userDefaultSettings);
+            applyTheme(userDefaultSettings.appearance.theme);
+        } catch (error) {
+            console.error("Error resetting settings:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not reset settings."});
+        }
+    };
+    
+    const value = { settings, loading, saveSettings, applyTheme, resetSettings, defaultSettings };
 
     return (
         <SettingsContext.Provider value={value}>
