@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -42,7 +43,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MainLayout } from "@/components/layout/main-layout";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -144,6 +145,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -537,6 +539,23 @@ const handleSaveChanges = async () => {
       setIsEditMode(true);
     }
   };
+  
+  const confirmDeleteColumn = () => {
+    if (!columnToDelete) return;
+    setColumns(prev => {
+        const newCols = { ...prev };
+        delete newCols[columnToDelete];
+        return newCols;
+    });
+    setColumnOrder(prev => prev.filter(key => key !== columnToDelete));
+    setColumnVisibility(prev => {
+        const newVis = { ...prev };
+        delete newVis[columnToDelete];
+        return newVis;
+    });
+    toast({ title: "Column Deleted", description: `Column "${columns[columnToDelete]}" has been deleted.` });
+    setColumnToDelete(null);
+  };
 
 
   return (
@@ -578,6 +597,22 @@ const handleSaveChanges = async () => {
            </DialogFooter>
         </DialogContent>
       </Dialog>
+        <AlertDialog open={!!columnToDelete} onOpenChange={(open) => !open && setColumnToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the 
+                        <strong> &quot;{columnToDelete && columns[columnToDelete]}&quot; </strong> 
+                        column and all its associated settings. The data will remain in your database but will be hidden.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setColumnToDelete(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDeleteColumn}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       <Card>
         <CardHeader>
             <div className="flex items-center justify-between">
@@ -600,19 +635,31 @@ const handleSaveChanges = async () => {
                           <Columns className="mr-2" /> Columns
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {Object.keys(columns).map((key) => (
-                          <DropdownMenuCheckboxItem
-                            key={key}
-                            checked={columnVisibility[key]}
-                            onCheckedChange={(checked) =>
-                              handleColumnVisibilityChange(key, !!checked)
-                            }
-                          >
-                            {columns[key]}
-                          </DropdownMenuCheckboxItem>
+                           <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
+                             <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
+                               <Checkbox
+                                 checked={columnVisibility[key]}
+                                 onCheckedChange={(checked) => handleColumnVisibilityChange(key, !!checked)}
+                                 className="mr-2"
+                               />
+                               <span className="flex-1">{columns[key]}</span>
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setColumnToDelete(key);
+                                 }}
+                               >
+                                 <X className="h-4 w-4" />
+                               </Button>
+                             </label>
+                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
