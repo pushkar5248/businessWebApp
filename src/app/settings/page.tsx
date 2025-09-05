@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Upload } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
@@ -30,9 +30,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 
 const currencies = [
@@ -41,10 +42,10 @@ const currencies = [
   { value: 'JPY', label: '¥ (JPY)' },
   { value: 'GBP', label: '£ (GBP)' },
   { value: 'AUD', label: 'A$ (AUD)' },
-  { value: 'CAD', label: 'C$ (CAD)' },
-  { value: 'CHF', label: 'Fr (CHF)' },
-  { value: 'CNY', label: '¥ (CNY)' },
-  { value: 'INR', label: '₹ (INR)' },
+  { value: 'CAD', 'C$ (CAD)' },
+  { value: 'CHF', 'Fr (CHF)' },
+  { value: 'CNY', '¥ (CNY)' },
+  { value: 'INR', '₹ (INR)' },
 ];
 
 const themes = [
@@ -58,6 +59,9 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
     const [displayName, setDisplayName] = useState(settings.profile.displayName);
     const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
     const [email, setEmail] = useState(settings.profile.email);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         setDisplayName(settings.profile.displayName);
@@ -79,6 +83,29 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
         onSave({ profile: { displayName, email, photoURL } });
     }
 
+    const handleFileSelect = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !user) return;
+
+        setIsUploading(true);
+        try {
+            const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            setPhotoURL(downloadURL);
+            toast({ title: 'Upload successful', description: 'Click "Save Changes" to apply your new picture.' });
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload your profile picture.' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -93,7 +120,14 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                     </Avatar>
                      <div className="space-y-2 flex-1">
                         <Label htmlFor="photo-url">Photo URL</Label>
-                        <Input id="photo-url" value={photoURL} onChange={e => setPhotoURL(e.target.value)} disabled={isGuest} placeholder="https://example.com/photo.jpg" />
+                        <div className="flex gap-2">
+                             <Input id="photo-url" value={photoURL} onChange={e => setPhotoURL(e.target.value)} disabled={isGuest || isUploading} placeholder="https://example.com/photo.jpg" />
+                             <Button onClick={handleFileSelect} disabled={isGuest || isUploading} variant="outline">
+                                {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Upload className="mr-2" />}
+                                 Upload
+                             </Button>
+                             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+                        </div>
                     </div>
                 </div>
                 <div className="space-y-2">

@@ -2,6 +2,8 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
+
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,9 +28,11 @@ console.log('Raw Config Object:', JSON.stringify(firebaseConfig, null, 2));
 const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
+
 
 console.log('Firestore instance created:', db ? 'Success' : 'Failed');
 console.log('======================');
 
 
-export { app, auth, db };
+export { app, auth, db, storage };
