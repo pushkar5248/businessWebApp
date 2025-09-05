@@ -100,6 +100,11 @@ export default function SalesPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
     const dragItem = useRef<string | null>(null);
     const dragOverItem = useRef<string | null>(null);
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const fetchSales = useCallback(async () => {
       setIsLoading(true);
@@ -437,7 +442,7 @@ export default function SalesPage() {
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
-                        draggable={true}
+                        draggable={isClient}
                         onDragStart={(e) => handleDragStart(e, key)}
                         onDragEnter={(e) => handleDragEnter(e, key)}
                         onDragEnd={handleDragEnd}
@@ -559,3 +564,5 @@ export default function SalesPage() {
     </MainLayout>
   );
 }
+
+    

@@ -98,6 +98,11 @@ export default function PurchasesPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
     const dragItem = useRef<string | null>(null);
     const dragOverItem = useRef<string | null>(null);
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const fetchPurchases = useCallback(async () => {
         setIsLoading(true);
@@ -438,7 +443,7 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    draggable={true}
+                    draggable={isClient}
                     onDragStart={(e) => handleDragStart(e, key)}
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
@@ -559,3 +564,5 @@ export default function PurchasesPage() {
     </MainLayout>
   );
 }
+
+    

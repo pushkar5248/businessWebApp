@@ -147,6 +147,11 @@ export default function InventoryPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -762,7 +767,7 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    draggable={true}
+                    draggable={isClient}
                     onDragStart={(e) => handleDragStart(e, key)}
                     onDragEnter={(e) => handleDragEnter(e, key)}
                     onDragEnd={handleDragEnd}
@@ -891,3 +896,5 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
+
+    
