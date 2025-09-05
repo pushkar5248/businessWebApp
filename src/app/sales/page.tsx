@@ -465,7 +465,7 @@ export default function SalesPage() {
                         />
                     </TableCell>
                    {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l" onClick={() => !isEditMode && handleRowClick(sale.id)}>
+                      <TableCell key={key} className="border-l" onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(sale.id); }}>
                            {key === 'status' ? (
                                 <Select
                                     value={sale.status}
@@ -491,14 +491,14 @@ export default function SalesPage() {
                                 value={sale.date}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
                           ) : key === 'customer' ? (
                             <Input 
                                 value={sale.customer}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'customer', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
                           ) : (
                              <span className={cn(!isEditMode && "cursor-pointer hover:underline")} onClick={() => !isEditMode && handleRowClick(sale.id)}>
