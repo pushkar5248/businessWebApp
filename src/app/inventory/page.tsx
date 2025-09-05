@@ -42,7 +42,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MainLayout } from "@/components/layout/main-layout";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -130,6 +130,7 @@ export default function InventoryPage() {
   const { formatCurrency, formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isImportModalOpen, setImportModalOpen] = useState(false);
@@ -141,6 +142,7 @@ export default function InventoryPage() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     id: false,
@@ -156,6 +158,7 @@ export default function InventoryPage() {
     setIsLoading(true);
     if (!user) {
         setItems(inventoryData);
+        setOriginalItems(JSON.parse(JSON.stringify(inventoryData)));
         setIsLoading(false);
         return;
     }
@@ -164,6 +167,7 @@ export default function InventoryPage() {
       const querySnapshot = await getDocs(q);
       const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
       setItems(inventoryList);
+      setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
     } catch (error) {
       console.error("Error fetching inventory:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
@@ -259,7 +263,9 @@ export default function InventoryPage() {
     }
     try {
       const docRef = await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
-      setItems(prev => [{ ...item, userId: user.uid, id: docRef.id }, ...prev]);
+      const newItem = { ...item, userId: user.uid, id: docRef.id };
+      setItems(prev => [newItem, ...prev]);
+      setOriginalItems(prev => [JSON.parse(JSON.stringify(newItem)), ...prev]);
       setAddModalOpen(false);
       toast({ title: "Success", description: "New item added to inventory." });
     } catch (error) {
@@ -282,6 +288,7 @@ export default function InventoryPage() {
       await batch.commit();
 
       setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
+      setOriginalItems(prev => prev.filter(item => !itemIds.includes(item.id)));
       setSelectedRows([]);
       toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
     } catch (error) {
@@ -296,17 +303,37 @@ export default function InventoryPage() {
     ));
 };
 
-const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
-    if (!user) return; // Don't save for guest users
+const handleSaveChanges = async () => {
+    if (!user) return;
+
+    const batch = writeBatch(db);
+    let changesCount = 0;
+    
+    items.forEach(currentItem => {
+      const originalItem = originalItems.find(item => item.id === currentItem.id);
+      if (originalItem && JSON.stringify(currentItem) !== JSON.stringify(originalItem)) {
+        const { id, userId, ...itemData } = currentItem;
+        const itemRef = doc(db, "inventory", id);
+        batch.update(itemRef, itemData);
+        changesCount++;
+      }
+    });
+
+    if (changesCount === 0) {
+      toast({ title: "No Changes", description: "No items were modified." });
+      setIsEditMode(false);
+      return;
+    }
 
     try {
-        const itemRef = doc(db, "inventory", itemId);
-        await updateDoc(itemRef, { [field]: value });
-        toast({ title: "Success", description: `Item ${field} updated.` });
+      await batch.commit();
+      setOriginalItems(JSON.parse(JSON.stringify(items)));
+      toast({ title: "Success", description: `${changesCount} item(s) updated successfully.` });
     } catch (error) {
-        console.error("Error updating item:", error);
-        toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
-        fetchItems(); // Revert optimistic update on failure
+      console.error("Error updating items:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
+    } finally {
+      setIsEditMode(false);
     }
 };
 
@@ -368,19 +395,19 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
             
             const findHeaderIndex = (headers: string[], possibleNames: string[]) => {
                 for (const name of possibleNames) {
-                    const index = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+                    const index = headers.findIndex(h => h === name);
                     if (index !== -1) return index;
                 }
                 return -1;
             };
 
             const headerMap = {
-                name: findHeaderIndex(headerRow, ['name', 'item name']),
-                category: findHeaderIndex(headerRow, ['category']),
-                subcategory: findHeaderIndex(headerRow, ['subcategory', 'sub category']),
-                stock: findHeaderIndex(headerRow, ['stock', 'quantity']),
-                price: findHeaderIndex(headerRow, ['price', 'rate']),
-                supplier: findHeaderIndex(headerRow, ['supplier', 'vendor']),
+                name: findHeaderIndex(headerRow, ['name', 'Item Name']),
+                category: findHeaderIndex(headerRow, ['category', 'Category']),
+                subcategory: findHeaderIndex(headerRow, ['subcategory', 'Subcategory']),
+                stock: findHeaderIndex(headerRow, ['stock', 'Stock', 'quantity', 'Quantity']),
+                price: findHeaderIndex(headerRow, ['price', 'Price', 'rate', 'Rate']),
+                supplier: findHeaderIndex(headerRow, ['supplier', 'Supplier', 'vendor', 'Vendor']),
             };
 
             dataRows.forEach(row => {
@@ -410,6 +437,7 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
             await batch.commit();
 
             setItems(newItems);
+            setOriginalItems(JSON.parse(JSON.stringify(newItems)));
             setImportModalOpen(false);
             toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
 
@@ -474,6 +502,14 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
       setSelectedRows(prev => prev.filter(id => id !== itemId));
     }
   };
+  
+  const handleEditToggle = () => {
+    if (isEditMode) {
+      handleSaveChanges();
+    } else {
+      setIsEditMode(true);
+    }
+  };
 
 
   return (
@@ -507,7 +543,7 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
              <p className="text-sm text-muted-foreground mt-2">
-                CSV headers should include: name, category, subcategory, stock, price, supplier.
+                Column names in the CSV file will be used as-is.
             </p>
           </div>
            <DialogFooter>
@@ -523,6 +559,10 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
                     <CardDescription>Here is a list of all your items.</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
+                     <Button onClick={handleEditToggle} disabled={!user}>
+                        {isEditMode ? <Save className="mr-2" /> : <Edit className="mr-2" />}
+                        {isEditMode ? 'Save Changes' : 'Edit Items'}
+                    </Button>
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Search items..." className="pl-8 w-64" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
@@ -662,9 +702,8 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
                                 type="number"
                                 value={item.price}
                                 onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
-                                onBlur={(e) => handleItemUpdate(item.id, 'price', Number(e.target.value))}
                                 className="w-24"
-                                disabled={!user}
+                                disabled={!isEditMode || !user}
                             />
                            </div>
                         ) : key === 'stock' ? (
@@ -672,17 +711,15 @@ const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem,
                                 type="number"
                                 value={item.stock}
                                 onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
-                                onBlur={(e) => handleItemUpdate(item.id, 'stock', Number(e.target.value))}
                                 className="w-20"
-                                disabled={!user}
+                                disabled={!isEditMode || !user}
                             />
                         ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
                             <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                onBlur={(e) => handleItemUpdate(item.id, key as keyof ColumnKeys, e.target.value)}
-                                disabled={!user}
+                                disabled={!isEditMode || !user}
                             />
                         ) : (
                             (item as any)[key]

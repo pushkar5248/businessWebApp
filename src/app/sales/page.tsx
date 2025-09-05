@@ -35,14 +35,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MainLayout } from "@/components/layout/main-layout";
 import { type Sale, type SaleStatus } from "@/lib/types";
 import { salesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown } from "lucide-react";
+import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown, Edit, Save } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
-import { db } from '@/lib/firebase';
+import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -83,9 +83,11 @@ export default function SalesPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [sales, setSales] = useState<Sale[]>([]);
+    const [originalSales, setOriginalSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
         id: true,
@@ -101,7 +103,9 @@ export default function SalesPage() {
     const fetchSales = useCallback(async () => {
       setIsLoading(true);
       if (!user) {
-          setSales(salesData.filter(s => !s.deletedAt));
+          const guestData = salesData.filter(s => !s.deletedAt);
+          setSales(guestData);
+          setOriginalSales(JSON.parse(JSON.stringify(guestData)));
           setIsLoading(false);
           return;
       }
@@ -110,6 +114,7 @@ export default function SalesPage() {
         const querySnapshot = await getDocs(q);
         const salesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
         setSales(salesList);
+        setOriginalSales(JSON.parse(JSON.stringify(salesList)));
       } catch (error) {
         console.error("Error fetching sales:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not fetch sales." });
@@ -149,20 +154,42 @@ export default function SalesPage() {
         router.push(`/sales/${invoiceId}`);
     };
 
-    const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
+    const handleSaleUpdate = (saleId: string, field: keyof Sale, value: any) => {
+        setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
+    };
+
+    const handleSaveChanges = async () => {
         if (!user) return;
         
-        // Optimistic UI update
-        setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
+        const batch = writeBatch(db);
+        let changesCount = 0;
+        
+        sales.forEach(currentSale => {
+            const originalSale = originalSales.find(s => s.id === currentSale.id);
+            if (originalSale && JSON.stringify(currentSale) !== JSON.stringify(originalSale)) {
+                const { id, userId, ...saleData } = currentSale;
+                const saleRef = doc(db, "sales", id);
+                batch.update(saleRef, saleData as { [x: string]: any; });
+                changesCount++;
+            }
+        });
+
+        if (changesCount === 0) {
+            toast({ title: "No Changes", description: "No sales were modified." });
+            setIsEditMode(false);
+            return;
+        }
 
         try {
-            const saleRef = doc(db, "sales", saleId);
-            await updateDoc(saleRef, { [field]: value });
-            toast({ title: "Success", description: "Sale updated." });
+            await batch.commit();
+            setOriginalSales(JSON.parse(JSON.stringify(sales)));
+            toast({ title: "Success", description: `${changesCount} sale(s) updated successfully.` });
         } catch (error) {
-            console.error("Error updating sale:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update sale." });
+            console.error("Error updating sales:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
             fetchSales(); // Revert on failure
+        } finally {
+            setIsEditMode(false);
         }
     };
 
@@ -180,6 +207,7 @@ export default function SalesPage() {
             await batch.commit();
 
             setSales(currentSales => currentSales.filter(sale => !saleIds.includes(sale.id)));
+            setOriginalSales(currentSales => currentSales.filter(sale => !saleIds.includes(sale.id)));
             setSelectedRows([]);
             toast({
                 title: "Sale(s) Moved to Bin",
@@ -273,6 +301,14 @@ export default function SalesPage() {
           setSelectedRows(prev => prev.filter(id => id !== itemId));
         }
     };
+    
+    const handleEditToggle = () => {
+        if (isEditMode) {
+            handleSaveChanges();
+        } else {
+            setIsEditMode(true);
+        }
+    };
 
   return (
     <MainLayout>
@@ -299,6 +335,10 @@ export default function SalesPage() {
               <CardDescription>A list of all recorded sales.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+               <Button onClick={handleEditToggle} disabled={!user}>
+                    {isEditMode ? <Save className="mr-2" /> : <Edit className="mr-2" />}
+                    {isEditMode ? 'Save Changes' : 'Edit Sales'}
+                </Button>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -424,14 +464,14 @@ export default function SalesPage() {
                         />
                     </TableCell>
                    {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l" onClick={() => key !== 'status' && handleRowClick(sale.id)}>
+                      <TableCell key={key} className="border-l" onClick={() => !isEditMode && handleRowClick(sale.id)}>
                            {key === 'status' ? (
                                 <Select
                                     value={sale.status}
                                     onValueChange={(newStatus) => handleSaleUpdate(sale.id, 'status', newStatus as SaleStatus)}
-                                    disabled={!user}
+                                    disabled={!isEditMode || !user}
                                 >
-                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent">
+                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent disabled:opacity-100 disabled:cursor-default">
                                         <SelectValue>
                                             <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                                         </SelectValue>
@@ -444,10 +484,23 @@ export default function SalesPage() {
                                 </Select>
                           ) : key === 'amount' ? (
                             formatCurrency(sale.amount)
-                          ) : key === 'date' ? (
-                            new Date(sale.date).toLocaleDateString()
+                           ) : key === 'date' ? (
+                             <Input 
+                                type="date"
+                                value={sale.date}
+                                onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className="disabled:cursor-default disabled:border-none"
+                             />
+                          ) : key === 'customer' ? (
+                            <Input 
+                                value={sale.customer}
+                                onChange={(e) => handleSaleUpdate(sale.id, 'customer', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className="disabled:cursor-default disabled:border-none"
+                             />
                           ) : (
-                             <span className="cursor-pointer hover:underline" onClick={() => handleRowClick(sale.id)}>
+                             <span className="cursor-pointer hover:underline" onClick={() => !isEditMode && handleRowClick(sale.id)}>
                                 {sale[key as keyof Sale] as React.ReactNode}
                             </span>
                           )}

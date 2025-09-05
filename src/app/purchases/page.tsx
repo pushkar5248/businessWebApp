@@ -35,7 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MainLayout } from "@/components/layout/main-layout";
 import { type Purchase, type PurchaseStatus } from "@/lib/types";
 import { purchasesData } from "@/lib/data";
-import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown } from "lucide-react";
+import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown, Edit, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/context/currency-context";
 import Link from "next/link";
@@ -81,10 +81,12 @@ export default function PurchasesPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [originalPurchases, setOriginalPurchases] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
     const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(COLUMN_NAMES));
+    const [isEditMode, setIsEditMode] = useState(false);
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
         id: true,
         vendor: true,
@@ -99,7 +101,9 @@ export default function PurchasesPage() {
     const fetchPurchases = useCallback(async () => {
         setIsLoading(true);
         if (!user) {
-            setPurchases(purchasesData.filter(p => !p.deletedAt));
+            const guestData = purchasesData.filter(p => !p.deletedAt);
+            setPurchases(guestData);
+            setOriginalPurchases(JSON.parse(JSON.stringify(guestData)));
             setIsLoading(false);
             return;
         }
@@ -109,6 +113,7 @@ export default function PurchasesPage() {
             const querySnapshot = await getDocs(q);
             const purchasesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase));
             setPurchases(purchasesList);
+            setOriginalPurchases(JSON.parse(JSON.stringify(purchasesList)));
         } catch (error) {
             console.error("Error fetching purchases:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not fetch purchases." });
@@ -149,21 +154,43 @@ export default function PurchasesPage() {
     };
 
     const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
-        if (!user) return;
-
         setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
-
-        try {
-            const purchaseRef = doc(db, "purchases", purchaseId);
-            await updateDoc(purchaseRef, { [field]: value });
-            toast({ title: "Success", description: "Purchase updated." });
-        } catch (error) {
-            console.error("Error updating purchase:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update purchase." });
-            fetchPurchases();
-        }
     };
 
+    const handleSaveChanges = async () => {
+        if (!user) return;
+        
+        const batch = writeBatch(db);
+        let changesCount = 0;
+        
+        purchases.forEach(currentPurchase => {
+            const originalPurchase = originalPurchases.find(p => p.id === currentPurchase.id);
+            if (originalPurchase && JSON.stringify(currentPurchase) !== JSON.stringify(originalPurchase)) {
+                const { id, userId, ...purchaseData } = currentPurchase;
+                const purchaseRef = doc(db, "purchases", id);
+                batch.update(purchaseRef, purchaseData as { [x: string]: any; });
+                changesCount++;
+            }
+        });
+
+        if (changesCount === 0) {
+            toast({ title: "No Changes", description: "No purchases were modified." });
+            setIsEditMode(false);
+            return;
+        }
+
+        try {
+            await batch.commit();
+            setOriginalPurchases(JSON.parse(JSON.stringify(purchases)));
+            toast({ title: "Success", description: `${changesCount} purchase(s) updated successfully.` });
+        } catch (error) {
+            console.error("Error updating purchases:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
+            fetchPurchases(); // Revert on failure
+        } finally {
+            setIsEditMode(false);
+        }
+    };
 
     const handleDeletePurchases = async (purchaseIds: string[]) => {
         if (!user) {
@@ -179,6 +206,7 @@ export default function PurchasesPage() {
             await batch.commit();
             
             setPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
+            setOriginalPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
             setSelectedRows([]);
             toast({
               title: `Purchase(s) Moved to Bin`,
@@ -273,6 +301,13 @@ export default function PurchasesPage() {
         }
     };
 
+    const handleEditToggle = () => {
+        if (isEditMode) {
+            handleSaveChanges();
+        } else {
+            setIsEditMode(true);
+        }
+    };
 
   return (
     <MainLayout>
@@ -299,6 +334,10 @@ export default function PurchasesPage() {
                 <CardDescription>A list of all recorded purchases.</CardDescription>
             </div>
              <div className="flex items-center gap-2">
+                <Button onClick={handleEditToggle} disabled={!user}>
+                    {isEditMode ? <Save className="mr-2" /> : <Edit className="mr-2" />}
+                    {isEditMode ? 'Save Changes' : 'Edit Purchases'}
+                </Button>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -424,14 +463,14 @@ export default function PurchasesPage() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l" onClick={() => key !== 'status' && handleRowClick(purchase.id)}>
+                      <TableCell key={key} className="border-l" onClick={() => !isEditMode && handleRowClick(purchase.id)}>
                            {key === 'status' ? (
                                 <Select
                                     value={purchase.status}
                                     onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
-                                    disabled={!user}
+                                    disabled={!isEditMode || !user}
                                 >
-                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent">
+                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent disabled:opacity-100 disabled:cursor-default">
                                         <SelectValue>
                                             <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                                         </SelectValue>
@@ -444,9 +483,22 @@ export default function PurchasesPage() {
                           ) : key === 'amount' ? (
                             formatCurrency(purchase.amount)
                           ) : key === 'date' ? (
-                            new Date(purchase.date).toLocaleDateString()
+                             <Input 
+                                type="date"
+                                value={purchase.date}
+                                onChange={(e) => handlePurchaseUpdate(purchase.id, 'date', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className="disabled:cursor-default disabled:border-none"
+                             />
+                          ) : key === 'vendor' ? (
+                             <Input 
+                                value={purchase.vendor}
+                                onChange={(e) => handlePurchaseUpdate(purchase.id, 'vendor', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className="disabled:cursor-default disabled:border-none"
+                             />
                           ) : (
-                             <span className="cursor-pointer hover:underline" onClick={() => handleRowClick(purchase.id)}>
+                             <span className="cursor-pointer hover:underline" onClick={() => !isEditMode && handleRowClick(purchase.id)}>
                                 {purchase[key as keyof Purchase] as React.ReactNode}
                              </span>
                           )}
