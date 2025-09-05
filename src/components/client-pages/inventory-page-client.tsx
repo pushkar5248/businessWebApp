@@ -138,21 +138,23 @@ export default function InventoryPageClient() {
   const [isAddColumnModalOpen, setAddColumnModalOpen] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [columns, setColumns] = useState<Record<string, string>>({...DEFAULT_COLUMN_NAMES});
-  const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
-  const [columnToRename, setColumnToRename] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const unsubscribeRef = useRef<() => void | null>(null);
-
+  
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
   }, [user]);
 
+  const [columns, setColumns] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return DEFAULT_COLUMN_NAMES;
+    const saved = localStorage.getItem(getLocalStorageKey("columnNames"));
+    return saved ? JSON.parse(saved) : DEFAULT_COLUMN_NAMES;
+  });
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    if(typeof window === 'undefined') return Object.keys(DEFAULT_COLUMN_NAMES);
+    const saved = localStorage.getItem(getLocalStorageKey("columnOrder"));
+    return saved ? JSON.parse(saved) : Object.keys(DEFAULT_COLUMN_NAMES);
+  });
+  
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {};
     const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
@@ -160,6 +162,14 @@ export default function InventoryPageClient() {
         id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true
     };
   });
+  
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+  const [columnToRename, setColumnToRename] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const unsubscribeRef = useRef<() => void | null>(null);
 
   const setupRealtimeListener = useCallback(() => {
     if (!user) return null;
@@ -225,24 +235,8 @@ export default function InventoryPageClient() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-        const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
-        if (savedVisibility) setColumnVisibility(JSON.parse(savedVisibility));
-
-        const savedOrder = localStorage.getItem(getLocalStorageKey("columnOrder"));
-        if (savedOrder) setColumnOrder(JSON.parse(savedOrder));
-
         const savedSortConfig = localStorage.getItem(getLocalStorageKey("sortConfig"));
         if (savedSortConfig) setSortConfig(JSON.parse(savedSortConfig));
-
-        const savedColumnNames = localStorage.getItem(getLocalStorageKey("columnNames"));
-        if (savedColumnNames) {
-          try {
-            const parsedNames = JSON.parse(savedColumnNames);
-            setColumns(current => ({...current, ...parsedNames}));
-          } catch(e) {
-            console.error("Failed to parse column names from local storage", e);
-          }
-        }
     }
   }, [getLocalStorageKey]);
   
@@ -423,23 +417,24 @@ const handleSaveChanges = async () => {
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
             // Handle new columns from CSV
-            const newColumnNames: Record<string, string> = {};
-            const newColumnOrder: string[] = [];
-            const newColumnVisibility: Record<string, boolean> = { id: false }; // Keep ID hidden
+            const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
+            const newColumnVisibility: Record<string, boolean> = { id: false }; 
 
-            headerRow.forEach(csvHeader => {
-                const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
-                newColumnNames[customKey] = csvHeader;
-                newColumnOrder.push(customKey);
-                newColumnVisibility[customKey] = true;
+            const uniqueHeaders = new Set(headerRow);
+            const finalHeaders = Array.from(uniqueHeaders);
+
+            const newColumnOrder = finalHeaders.map(header => {
+              const key = header.toLowerCase().replace(/\s+/g, '_');
+              newColumnNames[key] = header;
+              newColumnVisibility[key] = true;
+              return key;
             });
             
-            newColumnOrder.unshift('id'); // Ensure id is always first but hidden
-            
-            setColumns({...DEFAULT_COLUMN_NAMES, ...newColumnNames});
+            newColumnOrder.unshift('id');
+            setColumns(newColumnNames);
             setColumnOrder(newColumnOrder);
-            setColumnVisibility(prev => ({...prev, ...newColumnVisibility}));
-
+            setColumnVisibility(newColumnVisibility);
+            
             const BATCH_SIZE = 499; 
             const batches:any[] = [];
             let currentBatch = writeBatch(db);
@@ -450,33 +445,31 @@ const handleSaveChanges = async () => {
                  const values = row.split(',').map(v => v.trim());
                  const newItemData: { [key: string]: any } = {};
 
-                const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
+                const nameIndex = finalHeaders.findIndex(h => h.toLowerCase() === 'name');
                 if (nameIndex === -1) {
                     toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
-                    return; // Exit if no name column
+                    return; 
                 }
                 
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
 
-                headerRow.forEach((csvHeader, index) => {
-                    const internalKey = Object.keys(DEFAULT_COLUMN_NAMES).find(key => 
-                        DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
-                    );
-                     const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
-
-                    if (values[index] !== undefined) {
-                        const value = values[index];
-                        if (['stock', 'price'].includes(internalKey || customKey)) {
-                            newItemData[internalKey || customKey] = Number(value) || 0;
-                        } else if (internalKey !== 'id') { 
-                           newItemData[internalKey || customKey] = value;
+                finalHeaders.forEach((csvHeader, index) => {
+                    const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
+                    const value = values[index];
+                    
+                    if (value !== undefined) {
+                        const isNumericField = ['stock', 'price'].some(field => field === customKey);
+                        if (isNumericField) {
+                            newItemData[customKey] = Number(value) || 0;
+                        } else {
+                           newItemData[customKey] = value;
                         }
                     }
                 });
 
                 newItemData.userId = user.uid;
-                delete newItemData.id; 
+                delete newItemData.id;
 
                 const existingItemId = existingItemsMap.get(itemName);
                 
@@ -514,8 +507,8 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            await fetchAndSetData(); // Fetch fresh data after import
-            setupRealtimeListener(); // Re-attach listener
+            await fetchAndSetData();
+            setupRealtimeListener();
         }
     };
     reader.readAsText(file);
