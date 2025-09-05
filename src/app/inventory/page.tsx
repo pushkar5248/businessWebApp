@@ -145,14 +145,16 @@ export default function InventoryPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
-    id: false,
-    name: true,
-    category: true,
-    subcategory: true,
-    stock: true,
-    price: true,
-    supplier: true,
+  const getLocalStorageKey = useCallback((key: string) => {
+    return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
+  }, [user]);
+
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
+    return savedVisibility ? JSON.parse(savedVisibility) : {
+        id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true
+    };
   });
   
   const fetchItems = useCallback(async () => {
@@ -183,39 +185,44 @@ export default function InventoryPage() {
   
 
   useEffect(() => {
-    const savedVisibility = localStorage.getItem("inventoryColumnVisibility");
-    if (savedVisibility) {
-      setColumnVisibility(JSON.parse(savedVisibility));
+    if (typeof window !== 'undefined') {
+        const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
+        if (savedVisibility) setColumnVisibility(JSON.parse(savedVisibility));
+
+        const savedOrder = localStorage.getItem(getLocalStorageKey("columnOrder"));
+        if (savedOrder) setColumnOrder(JSON.parse(savedOrder));
+
+        const savedSortConfig = localStorage.getItem(getLocalStorageKey("sortConfig"));
+        if (savedSortConfig) setSortConfig(JSON.parse(savedSortConfig));
+
+        const savedColumnNames = localStorage.getItem(getLocalStorageKey("columnNames"));
+        if (savedColumnNames) setColumns(JSON.parse(savedColumnNames));
     }
-    const savedOrder = localStorage.getItem("inventoryColumnOrder");
-    if (savedOrder) {
-      setColumnOrder(JSON.parse(savedOrder));
-    }
-     const savedSortConfig = localStorage.getItem("inventorySortConfig");
-    if (savedSortConfig) {
-      setSortConfig(JSON.parse(savedSortConfig));
-    }
-    const savedColumnNames = localStorage.getItem("inventoryColumnNames");
-    if (savedColumnNames) {
-        setColumns(JSON.parse(savedColumnNames));
-    }
-  }, []);
+  }, [getLocalStorageKey]);
   
   useEffect(() => {
-    localStorage.setItem("inventoryColumnVisibility", JSON.stringify(columnVisibility));
-  }, [columnVisibility]);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(columnVisibility));
+    }
+  }, [columnVisibility, getLocalStorageKey]);
 
   useEffect(() => {
-    localStorage.setItem("inventoryColumnOrder", JSON.stringify(columnOrder));
-  }, [columnOrder]);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(columnOrder));
+    }
+  }, [columnOrder, getLocalStorageKey]);
 
   useEffect(() => {
-    localStorage.setItem('inventorySortConfig', JSON.stringify(sortConfig));
-  }, [sortConfig]);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(getLocalStorageKey("sortConfig"), JSON.stringify(sortConfig));
+    }
+  }, [sortConfig, getLocalStorageKey]);
   
    useEffect(() => {
-    localStorage.setItem('inventoryColumnNames', JSON.stringify(columns));
-  }, [columns]);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(columns));
+    }
+  }, [columns, getLocalStorageKey]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
@@ -412,7 +419,7 @@ const handleSaveChanges = async () => {
                 }
             });
             
-            const newColumnNames = { ...internalToCsvHeaderMap };
+            const newColumnNames: Record<string, string> = headerRow.reduce((acc, h) => ({...acc, [csvToInternalHeaderMap[h]]: h}), {});
             const newColumnOrder = headerRow.map(h => csvToInternalHeaderMap[h]);
             const newColumnVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
 
@@ -779,5 +786,3 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
-
-    
