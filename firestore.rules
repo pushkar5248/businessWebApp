@@ -3,30 +3,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+    
     // Helper function to check ownership
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Users can only read and write their own settings document
+    // Rules for the 'users' collection
     match /users/{userId} {
+      // Users can read and write their own settings document
       allow read, write: if isOwner(userId);
     }
-
-    // Users can only manage their own inventory items
+    
+    // Rules for the 'inventory' collection
     match /inventory/{itemId} {
-      allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      // Allow full access if the user is the owner
+      allow read, write, delete: if isOwner(resource.data.userId);
+      // Allow creation if the new document's userId matches the user's uid
+      allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Users can only manage their own sales records
+    // Rules for the 'sales' collection
     match /sales/{saleId} {
-       allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      // Allow full access if the user is the owner
+      allow read, write, delete: if isOwner(resource.data.userId);
+      // Allow creation if the new document's userId matches the user's uid
+      allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Users can only manage their own purchase records
+    // Rules for the 'purchases' collection
     match /purchases/{purchaseId} {
-       allow read, create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+       // Allow full access if the user is the owner
+      allow read, write, delete: if isOwner(resource.data.userId);
+      // Allow creation if the new document's userId matches the user's uid
+      allow create: if isOwner(request.resource.data.userId);
     }
   }
 }
