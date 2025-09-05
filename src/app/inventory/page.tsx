@@ -51,6 +51,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/context/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
@@ -702,7 +703,7 @@ const handleSaveChanges = async () => {
                                 type="number"
                                 value={item.price}
                                 onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
-                                className="w-24"
+                                className={cn("w-24", !isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
                            </div>
@@ -711,7 +712,7 @@ const handleSaveChanges = async () => {
                                 type="number"
                                 value={item.stock}
                                 onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
-                                className="w-20"
+                                className={cn("w-20", !isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
                         ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
@@ -719,6 +720,7 @@ const handleSaveChanges = async () => {
                                 type="text"
                                 value={item[key as keyof typeof item]}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
                         ) : (

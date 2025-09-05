@@ -52,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 
 const getBadgeVariant = (status: string) => {
@@ -471,7 +472,7 @@ export default function SalesPage() {
                                     onValueChange={(newStatus) => handleSaleUpdate(sale.id, 'status', newStatus as SaleStatus)}
                                     disabled={!isEditMode || !user}
                                 >
-                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent disabled:opacity-100 disabled:cursor-default">
+                                    <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none bg-transparent", !isEditMode ? "border-0 disabled:opacity-100 disabled:cursor-default" : "")}>
                                         <SelectValue>
                                             <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                                         </SelectValue>
@@ -490,17 +491,17 @@ export default function SalesPage() {
                                 value={sale.date}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className="disabled:cursor-default disabled:border-none"
+                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
                              />
                           ) : key === 'customer' ? (
                             <Input 
                                 value={sale.customer}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'customer', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className="disabled:cursor-default disabled:border-none"
+                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
                              />
                           ) : (
-                             <span className="cursor-pointer hover:underline" onClick={() => !isEditMode && handleRowClick(sale.id)}>
+                             <span className={cn(!isEditMode && "cursor-pointer hover:underline")} onClick={() => !isEditMode && handleRowClick(sale.id)}>
                                 {sale[key as keyof Sale] as React.ReactNode}
                             </span>
                           )}
