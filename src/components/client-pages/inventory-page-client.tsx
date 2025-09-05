@@ -244,7 +244,9 @@ export default function InventoryPageClient() {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
-  const visibleColumns = columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
+  const visibleColumns = useMemo(() => {
+    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
+  }, [columnOrder, columnVisibility]);
   
   const requestSort = (key: keyof ColumnKeys) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -365,6 +367,7 @@ const handleSaveChanges = async () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Temporarily disable the realtime listener to prevent UI flashes
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
@@ -385,6 +388,7 @@ const handleSaveChanges = async () => {
             const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
+            // Fetch existing items to check for updates
             const inventoryCollection = collection(db, "inventory");
             const q = query(inventoryCollection, where("userId", "==", user.uid));
             const querySnapshot = await getDocs(q);
@@ -397,19 +401,6 @@ const handleSaveChanges = async () => {
 
             let importedCount = 0;
             let updatedCount = 0;
-
-            let newColumns = { ...columns };
-            let newColumnOrder = [...columnOrder];
-            let newColumnVisibility = { ...columnVisibility };
-
-            headerRow.forEach(header => {
-                const headerKey = header.toLowerCase().replace(/\s+/g, '_');
-                if (!newColumns[headerKey]) {
-                    newColumns[headerKey] = header;
-                    newColumnOrder.push(headerKey);
-                    newColumnVisibility[headerKey] = true;
-                }
-            });
             
             for (const row of dataRows) {
                  const values = row.split(',').map(v => v.trim());
@@ -425,10 +416,9 @@ const handleSaveChanges = async () => {
                 if (!itemName) continue;
 
                 headerRow.forEach((csvHeader, index) => {
-                    const internalKey = Object.keys(newColumns).find(key => 
-                        newColumns[key].toLowerCase() === csvHeader.toLowerCase()
+                    const internalKey = Object.keys(DEFAULT_COLUMN_NAMES).find(key => 
+                        DEFAULT_COLUMN_NAMES[key as keyof ColumnKeys].toLowerCase() === csvHeader.toLowerCase()
                     );
-
                     if (internalKey && values[index] !== undefined) {
                         const value = values[index];
                         if (internalKey === 'stock' || internalKey === 'price') {
@@ -465,21 +455,11 @@ const handleSaveChanges = async () => {
             }
 
             if (importedCount === 0 && updatedCount === 0) {
-                 toast({ variant: "destructive", title: "No valid items", description: "No items found in CSV to import or update." });
+                 toast({ title: "No new items", description: "No new items found in CSV to import." });
                  return;
             }
             
-            setColumns(newColumns);
-            setColumnOrder(newColumnOrder);
-            setColumnVisibility(newColumnVisibility);
-            
             await Promise.all(batches.map(batch => batch.commit()));
-
-            const freshSnapshot = await getDocs(q);
-            const freshItems = freshSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
-            setItems(freshItems);
-            setOriginalItems(JSON.parse(JSON.stringify(freshItems)));
-
 
             toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
@@ -490,7 +470,7 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            setIsLoading(false);
+            // Re-enable listener to get fresh data and resume real-time updates
             setupRealtimeListener();
         }
     };
