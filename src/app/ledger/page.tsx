@@ -19,12 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import type { Sale, Purchase } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/context/settings-context";
+import { generateLedgerPdf } from "@/ai/flows/generate-ledger-pdf";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type LedgerEntry = {
   date: string;
@@ -37,8 +43,11 @@ type LedgerEntry = {
 
 export default function CustomerLedgerPage() {
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const { toast } = useToast();
   const { formatCurrency } = useCurrency();
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [people, setPeople] = useState<string[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
@@ -110,7 +119,7 @@ export default function CustomerLedgerPage() {
         const sale = doc.data() as Sale;
         return {
           date: sale.date,
-          particulars: "Sales",
+          particulars: `Sales to ${sale.customer}`,
           voucherType: "Sale",
           voucherNumber: sale.id,
           debit: sale.amount,
@@ -122,7 +131,7 @@ export default function CustomerLedgerPage() {
         const purchase = doc.data() as Purchase;
         return {
           date: purchase.date,
-          particulars: "Purchases",
+          particulars: `Purchase from ${purchase.vendor}`,
           voucherType: "Purchase",
           voucherNumber: purchase.id,
           debit: 0,
@@ -164,6 +173,68 @@ export default function CustomerLedgerPage() {
     
     return { totalDebit, totalCredit, closingBalance, processedLedger };
   }, [ledgerData, openingBalance]);
+  
+  const handleGeneratePdf = async () => {
+    if (!selectedPerson || !settings) {
+         toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Please select a person and ensure settings are loaded.",
+        });
+        return;
+    };
+    setIsGeneratingPdf(true);
+    try {
+        const result = await generateLedgerPdf({
+            businessName: settings.general.businessName,
+            businessAddress: settings.general.businessAddress,
+            reportDate: new Date().toLocaleDateString(),
+            personName: selectedPerson,
+            entries: processedLedger.map(e => ({
+                ...e,
+                date: new Date(e.date).toLocaleDateString(),
+                debit: e.debit > 0 ? formatCurrency(e.debit) : '-',
+                credit: e.credit > 0 ? formatCurrency(e.credit) : '-',
+                balance: formatCurrency(e.balance) + (e.balance >= 0 ? ' Dr' : ' Cr')
+            })),
+            openingBalance: formatCurrency(openingBalance) + (openingBalance >= 0 ? ' Dr' : ' Cr'),
+            totalDebit: formatCurrency(totalDebit),
+            totalCredit: formatCurrency(totalCredit),
+            closingBalance: formatCurrency(closingBalance) + (closingBalance >= 0 ? ' Dr' : ' Cr'),
+        });
+
+        if (result && result.html) {
+            const container = document.createElement('div');
+            container.innerHTML = result.html;
+            document.body.appendChild(container);
+
+            const canvas = await html2canvas(container.querySelector('.ledger-container')!, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            document.body.removeChild(container);
+            
+            pdf.save(`ledger-${selectedPerson.replace(/\s/g, '_')}.pdf`);
+             toast({
+              title: "Success",
+              description: "Ledger PDF has been generated successfully.",
+            });
+
+        } else {
+             throw new Error("PDF generation failed, no HTML returned.");
+        }
+    } catch (error) {
+        console.error("Error generating ledger PDF:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not generate ledger PDF." });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
+
 
   return (
     <MainLayout>
@@ -174,6 +245,10 @@ export default function CustomerLedgerPage() {
             View the detailed financial ledger for any customer or vendor.
           </p>
         </div>
+         <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf || !selectedPerson}>
+            {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <FileDown className="mr-2" />}
+            Generate PDF
+        </Button>
       </div>
       <Card>
         <CardHeader>
@@ -220,15 +295,16 @@ export default function CustomerLedgerPage() {
                     <TableHead>Vch No.</TableHead>
                     <TableHead className="text-right">Debit</TableHead>
                     <TableHead className="text-right">Credit</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledgerData.length === 0 && (
+                  {processedLedger.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24">No transactions found for this person.</TableCell>
+                        <TableCell colSpan={7} className="text-center h-24">No transactions found for this person.</TableCell>
                     </TableRow>
                   )}
-                  {ledgerData.map((entry, index) => (
+                  {processedLedger.map((entry, index) => (
                     <TableRow key={index}>
                       <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                       <TableCell>{entry.particulars}</TableCell>
@@ -236,6 +312,7 @@ export default function CustomerLedgerPage() {
                       <TableCell>{entry.voucherNumber}</TableCell>
                       <TableCell className="text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : "-"}</TableCell>
                       <TableCell className="text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : "-"}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(entry.balance)} {entry.balance >= 0 ? 'Dr' : 'Cr'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
