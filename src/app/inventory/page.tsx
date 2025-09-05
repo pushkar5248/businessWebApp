@@ -351,7 +351,7 @@ const handleSaveChanges = async () => {
       }).join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-t;' });
     const link = document.createElement('a');
     if (link.href) {
       URL.revokeObjectURL(link.href);
@@ -389,53 +389,32 @@ const handleSaveChanges = async () => {
             const batch = writeBatch(db);
             const newItems: InventoryItem[] = [];
 
-            // 1. Delete existing items
             const existingItemsQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
             const existingItemsSnapshot = await getDocs(existingItemsQuery);
             existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
             
-            const findHeaderIndex = (headers: string[], possibleNames: string[]) => {
-                for (const name of possibleNames) {
-                    const index = headers.findIndex(h => h.toLowerCase().replace(/_/g, ' ') === name.toLowerCase().replace(/_/g, ' '));
-                    if (index !== -1) return index;
-                }
-                return -1;
-            };
+            const internalToCsvHeaderMap: Record<string, string> = {};
+            const csvToInternalHeaderMap: Record<string, string> = {};
+            
+            const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
 
-            const internalKeys: (keyof ColumnKeys)[] = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
-            const headerMap: Record<string, number> = {};
-
-            const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
-            const newColumnOrder: string[] = [];
-            const newColumnVisibility: Record<string, boolean> = {};
-
-            headerRow.forEach((csvHeader, index) => {
-                const internalKey = `custom_${index}`; // Use a unique key for mapping
+            headerRow.forEach(csvHeader => {
                 const normalizedCsvHeader = csvHeader.toLowerCase().replace(/ /g, '').replace(/_/g, '');
-
-                const matchedKey = internalKeys.find(key => 
+                const matchedKey = defaultKeys.find(key => 
                     key.toLowerCase() === normalizedCsvHeader
                 );
-
                 if (matchedKey) {
-                    headerMap[matchedKey] = index;
-                    newColumnNames[matchedKey] = csvHeader;
-                    newColumnOrder.push(matchedKey);
-                    newColumnVisibility[matchedKey] = true;
+                    internalToCsvHeaderMap[matchedKey] = csvHeader;
+                    csvToInternalHeaderMap[csvHeader] = matchedKey;
                 } else {
-                    // For now, custom columns are not deeply integrated. 
-                    // This can be expanded if custom columns need special handling.
+                     internalToCsvHeaderMap[csvHeader] = csvHeader;
+                     csvToInternalHeaderMap[csvHeader] = csvHeader;
                 }
             });
-
-            // Ensure all default columns are present if not in CSV
-            Object.keys(DEFAULT_COLUMN_NAMES).forEach(key => {
-                if(!newColumnOrder.includes(key)) {
-                    newColumnOrder.push(key);
-                    newColumnVisibility[key] = false; // Hide by default if not in CSV
-                }
-            });
-
+            
+            const newColumnNames = { ...internalToCsvHeaderMap };
+            const newColumnOrder = headerRow.map(h => csvToInternalHeaderMap[h]);
+            const newColumnVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
 
             dataRows.forEach(row => {
                 const values = row.split(',');
@@ -448,30 +427,22 @@ const handleSaveChanges = async () => {
                     supplier: '',
                 };
 
-                (Object.keys(headerMap) as (keyof typeof headerMap)[]).forEach(key => {
-                    const index = headerMap[key as keyof typeof headerMap];
-                    if (index !== -1 && values[index] !== undefined) {
+                headerRow.forEach((csvHeader, index) => {
+                    const internalKey = csvToInternalHeaderMap[csvHeader];
+                    if (internalKey && values[index] !== undefined) {
                         const value = values[index].trim();
-                        if (key === 'stock' || key === 'price') {
-                            newItemData[key] = Number(value) || 0;
+                        if (internalKey === 'stock' || internalKey === 'price') {
+                            newItemData[internalKey] = Number(value) || 0;
                         } else {
-                            newItemData[key] = value;
+                            newItemData[internalKey] = value;
                         }
                     }
                 });
                 
-                if(!newItemData.name) return; // Skip rows without a name
+                if(!newItemData.name) return;
 
                 const docRef = doc(collection(db, "inventory"));
-                batch.set(docRef, {
-                    name: newItemData.name,
-                    category: newItemData.category,
-                    subcategory: newItemData.subcategory,
-                    stock: newItemData.stock,
-                    price: newItemData.price,
-                    supplier: newItemData.supplier,
-                    userId: user.uid,
-                });
+                batch.set(docRef, { ...newItemData, userId: user.uid });
                 newItems.push({ ...newItemData, id: docRef.id, userId: user.uid });
             });
 
@@ -628,13 +599,12 @@ const handleSaveChanges = async () => {
                         {Object.keys(columns).map((key) => (
                           <DropdownMenuCheckboxItem
                             key={key}
-                            className="capitalize"
-                            checked={columnVisibility[key as keyof ColumnKeys]}
+                            checked={columnVisibility[key]}
                             onCheckedChange={(checked) =>
                               handleColumnVisibilityChange(key, !!checked)
                             }
                           >
-                            {columns[key as keyof ColumnKeys]}
+                            {columns[key]}
                           </DropdownMenuCheckboxItem>
                         ))}
                       </DropdownMenuContent>
@@ -809,3 +779,5 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
+
+    
