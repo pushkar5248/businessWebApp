@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { type Sale } from "@/lib/types";
+import { type Sale, type SaleStatus } from "@/lib/types";
 import { salesData } from "@/lib/data";
 import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
@@ -45,6 +45,13 @@ import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 const getBadgeVariant = (status: string) => {
@@ -140,6 +147,23 @@ export default function SalesPage() {
 
     const handleRowClick = (invoiceId: string) => {
         router.push(`/sales/${invoiceId}`);
+    };
+
+    const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
+        if (!user) return;
+        
+        // Optimistic UI update
+        setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
+
+        try {
+            const saleRef = doc(db, "sales", saleId);
+            await updateDoc(saleRef, { [field]: value });
+            toast({ title: "Success", description: "Sale updated." });
+        } catch (error) {
+            console.error("Error updating sale:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update sale." });
+            fetchSales(); // Revert on failure
+        }
     };
 
     const handleDeleteSales = async (saleIds: string[]) => {
@@ -390,7 +414,7 @@ export default function SalesPage() {
                   </TableCell>
                 </TableRow>
               ) : (sortedSales.map((sale) => (
-                <TableRow key={sale.id} onClick={() => handleRowClick(sale.id)} className="cursor-pointer" data-state={selectedRows.includes(sale.id) && "selected"}>
+                <TableRow key={sale.id} data-state={selectedRows.includes(sale.id) && "selected"}>
                    <TableCell className="border-l" onClick={(e) => e.stopPropagation()}>
                        <Checkbox
                           checked={selectedRows.includes(sale.id)}
@@ -400,15 +424,32 @@ export default function SalesPage() {
                         />
                     </TableCell>
                    {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l">
-                          {key === 'status' ? (
-                            <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
+                      <TableCell key={key} className="border-l" onClick={() => key !== 'status' && handleRowClick(sale.id)}>
+                           {key === 'status' ? (
+                                <Select
+                                    value={sale.status}
+                                    onValueChange={(newStatus) => handleSaleUpdate(sale.id, 'status', newStatus as SaleStatus)}
+                                    disabled={!user}
+                                >
+                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent">
+                                        <SelectValue>
+                                            <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="Paid">Paid</SelectItem>
+                                        <SelectItem value="Overdue">Overdue</SelectItem>
+                                    </SelectContent>
+                                </Select>
                           ) : key === 'amount' ? (
                             formatCurrency(sale.amount)
                           ) : key === 'date' ? (
                             new Date(sale.date).toLocaleDateString()
                           ) : (
-                            sale[key as keyof Sale] as React.ReactNode
+                             <span className="cursor-pointer hover:underline" onClick={() => handleRowClick(sale.id)}>
+                                {sale[key as keyof Sale] as React.ReactNode}
+                            </span>
                           )}
                       </TableCell>
                   ))}

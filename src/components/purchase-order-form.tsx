@@ -49,6 +49,7 @@ const formSchema = z.object({
   poNumber: z.string().min(1, "PO number is required."),
   poDate: z.string().min(1, "PO date is required."),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
+  igstRate: z.coerce.number().min(0).optional(),
 });
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
@@ -60,6 +61,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   const [total, setTotal] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [totalTaxes, setTotalTaxes] = useState(0);
 
   const methods = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +69,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
+      igstRate: 0,
     },
   });
   
@@ -95,15 +98,20 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   });
 
   const watchedItems = watch("items");
+  const igstRate = watch("igstRate");
+
 
   useEffect(() => {
     const newSubtotal = watchedItems.reduce(
       (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
       0
     );
+    const igst = newSubtotal * ((igstRate || 0) / 100);
+
     setSubtotal(newSubtotal);
-    setTotal(newSubtotal); // Assuming no taxes for purchases for now
-  }, [watchedItems]);
+    setTotalTaxes(igst);
+    setTotal(newSubtotal + igst);
+  }, [watchedItems, igstRate]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
@@ -239,11 +247,21 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                 <p className="text-sm text-destructive mt-2">{errors.items.message}</p>
               )}
           </CardContent>
-          <CardFooter className="flex justify-end">
+          <CardFooter className="flex flex-col items-end space-y-4">
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-sm ml-auto">
+                <div className="space-y-2">
+                    <Label htmlFor="igstRate">IGST (%)</Label>
+                    <Input id="igstRate" type="number" {...methods.register("igstRate")} />
+                </div>
+            </div>
             <div className="w-full max-w-sm space-y-2">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>{formatCurrencyValue(subtotal)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span>Taxes (IGST)</span>
+                    <span>{formatCurrencyValue(totalTaxes)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>

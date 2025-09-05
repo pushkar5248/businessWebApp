@@ -15,11 +15,11 @@ const defaultSettings: UserSettings = {
         email: '',
     },
     general: {
-        businessName: 'Adhunik Marbles (Sample)',
+        businessName: 'Adhunik Minerals (Sample)',
         businessGstin: '27ABCDE1234F1Z5',
         businessAddress: '123 Marble Street, Stoneville, ST 45678',
         businessPhone: '+91 98765 43210',
-        businessEmail: 'contact@adhunikmarbles.com'
+        businessEmail: 'contact@adhunikminerals.com'
     },
     appearance: {
         theme: 'light',

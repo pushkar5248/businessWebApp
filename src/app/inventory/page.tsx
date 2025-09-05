@@ -127,7 +127,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
 
 export default function InventoryPage() {
   const { user } = useAuth();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,23 +290,25 @@ export default function InventoryPage() {
     }
   };
 
-  const handleItemChange = async (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
-    setItems(prev => prev.map(item => 
-      item.id === itemId ? { ...item, [field]: value } : item
+ const handleItemChange = (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
+    setItems(prev => prev.map(item =>
+        item.id === itemId ? { ...item, [field]: value } : item
     ));
-    
-    if (!user) return; // Don't save changes for guest users
+};
+
+const handleItemUpdate = async (itemId: string, field: keyof Omit<InventoryItem, 'id' | 'userId'>, value: string | number) => {
+    if (!user) return; // Don't save for guest users
 
     try {
         const itemRef = doc(db, "inventory", itemId);
         await updateDoc(itemRef, { [field]: value });
+        toast({ title: "Success", description: `Item ${field} updated.` });
     } catch (error) {
         console.error("Error updating item:", error);
-        toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.`});
-        // Optionally revert UI change
-        fetchItems();
+        toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
+        fetchItems(); // Revert optimistic update on failure
     }
-  };
+};
 
   const handleExport = () => {
     const headers = visibleColumns;
@@ -353,7 +355,7 @@ export default function InventoryPage() {
                 return;
             }
 
-            const headerRow = allRows[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+            const headerRow = allRows[0].split(',').map(h => h.trim());
             const dataRows = allRows.slice(1);
             
             const batch = writeBatch(db);
@@ -363,23 +365,33 @@ export default function InventoryPage() {
             const existingItemsQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
             const existingItemsSnapshot = await getDocs(existingItemsQuery);
             existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
+            
+            const findHeaderIndex = (headers: string[], possibleNames: string[]) => {
+                for (const name of possibleNames) {
+                    const index = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+                    if (index !== -1) return index;
+                }
+                return -1;
+            };
 
-            // 2. Add new items from CSV
-            const expectedHeaders = ['name', 'category', 'subcategory', 'stock', 'price', 'supplier'];
-            const headerMap = expectedHeaders.reduce((acc, curr) => {
-                acc[curr] = headerRow.indexOf(curr);
-                return acc;
-            }, {} as Record<string, number>);
+            const headerMap = {
+                name: findHeaderIndex(headerRow, ['name', 'item name']),
+                category: findHeaderIndex(headerRow, ['category']),
+                subcategory: findHeaderIndex(headerRow, ['subcategory', 'sub category']),
+                stock: findHeaderIndex(headerRow, ['stock', 'quantity']),
+                price: findHeaderIndex(headerRow, ['price', 'rate']),
+                supplier: findHeaderIndex(headerRow, ['supplier', 'vendor']),
+            };
 
             dataRows.forEach(row => {
                 const values = row.split(',');
                 const newItemData: Omit<InventoryItem, 'id'> = {
-                    name: values[headerMap['name']]?.trim() || '',
-                    category: values[headerMap['category']]?.trim() || '',
-                    subcategory: values[headerMap['subcategory']]?.trim() || '',
-                    stock: Number(values[headerMap['stock']]) || 0,
-                    price: Number(values[headerMap['price']]) || 0,
-                    supplier: values[headerMap['supplier']]?.trim() || '',
+                    name: headerMap.name !== -1 ? values[headerMap.name]?.trim() || '' : '',
+                    category: headerMap.category !== -1 ? values[headerMap.category]?.trim() || '' : '',
+                    subcategory: headerMap.subcategory !== -1 ? values[headerMap.subcategory]?.trim() || '' : '',
+                    stock: headerMap.stock !== -1 ? Number(values[headerMap.stock]) || 0 : 0,
+                    price: headerMap.price !== -1 ? Number(values[headerMap.price]) || 0 : 0,
+                    supplier: headerMap.supplier !== -1 ? values[headerMap.supplier]?.trim() || '' : '',
                     userId: user.uid,
                 };
                 
@@ -395,7 +407,6 @@ export default function InventoryPage() {
                  return;
             }
             
-            // 3. Commit batch
             await batch.commit();
 
             setItems(newItems);
@@ -495,8 +506,8 @@ export default function InventoryPage() {
           </DialogHeader>
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
-            <p className="text-sm text-muted-foreground mt-2">
-                CSV headers must include: name, category, subcategory, stock, price, supplier
+             <p className="text-sm text-muted-foreground mt-2">
+                CSV headers should include: name, category, subcategory, stock, price, supplier.
             </p>
           </div>
            <DialogFooter>
@@ -643,8 +654,39 @@ export default function InventoryPage() {
                         />
                     </TableCell>
                     {visibleColumns.map((key) => (
-                      <TableCell key={key} className={`border-l ${key === 'name' ? 'font-medium' : ''}`}>
-                         {key === 'price' ? formatCurrency((item as any)[key]) : (item as any)[key]}
+                      <TableCell key={key} className="border-l">
+                         {key === 'price' ? (
+                           <div className="flex items-center gap-2">
+                            <span>{formatCurrencyValue(0).charAt(0)}</span>
+                            <Input
+                                type="number"
+                                value={item.price}
+                                onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
+                                onBlur={(e) => handleItemUpdate(item.id, 'price', Number(e.target.value))}
+                                className="w-24"
+                                disabled={!user}
+                            />
+                           </div>
+                        ) : key === 'stock' ? (
+                            <Input
+                                type="number"
+                                value={item.stock}
+                                onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
+                                onBlur={(e) => handleItemUpdate(item.id, 'stock', Number(e.target.value))}
+                                className="w-20"
+                                disabled={!user}
+                            />
+                        ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
+                            <Input
+                                type="text"
+                                value={item[key as keyof typeof item]}
+                                onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                onBlur={(e) => handleItemUpdate(item.id, key as keyof ColumnKeys, e.target.value)}
+                                disabled={!user}
+                            />
+                        ) : (
+                            (item as any)[key]
+                        )}
                       </TableCell>
                     ))}
                       <TableCell className="border-l">
@@ -680,5 +722,3 @@ export default function InventoryPage() {
     </MainLayout>
   );
 }
-
-    

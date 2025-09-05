@@ -116,7 +116,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           <SidebarHeader className="p-4">
             <Link href="/" className="flex items-center gap-2">
               <Logo className="size-8 text-primary" />
-              <span className="text-lg font-bold font-headline">Adhunik Invoicer</span>
+              <span className="text-lg font-bold font-headline">Adhunik Minerals</span>
             </Link>
           </SidebarHeader>
           <SidebarContent>

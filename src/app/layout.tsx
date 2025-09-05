@@ -8,8 +8,8 @@ import "./globals.css";
 
 // This is a server component, so it can export metadata.
 export const metadata: Metadata = {
-  title: "Adhunik Invoicer",
-  description: "Inventory Management & Billing System for Adhunik Marbles",
+  title: "Adhunik Minerals",
+  description: "Inventory Management & Billing System for Adhunik Minerals",
 };
 
 // This is the root layout, a server component that sets up providers.

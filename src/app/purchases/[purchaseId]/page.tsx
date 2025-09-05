@@ -145,6 +145,9 @@ export default function PurchaseDetailsPage() {
     };
     
     const subtotal = purchase.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+    const igstAmount = subtotal * ((purchase.igstRate || 0) / 100);
+    const total = subtotal + igstAmount;
+
 
     return (
         <MainLayout>
@@ -229,6 +232,16 @@ export default function PurchaseDetailsPage() {
                 </CardContent>
                  <CardFooter className="flex justify-end">
                     <div className="w-full max-w-sm space-y-2">
+                         <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>{formatCurrencyValue(subtotal)}</span>
+                        </div>
+                         {purchase.igstRate && (
+                            <div className="flex justify-between">
+                                <span>IGST ({purchase.igstRate}%)</span>
+                                <span>{formatCurrencyValue(igstAmount)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
                             <span>{formatCurrencyValue(purchase.amount)}</span>
@@ -240,5 +253,3 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
-
-    

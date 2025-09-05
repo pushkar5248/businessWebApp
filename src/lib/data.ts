@@ -10,13 +10,13 @@ export const chartData = [
 ];
 
 export const inventoryData: InventoryItem[] = [
-  { id: 'ITM001', name: 'Italian Marble Slab', category: 'Marble', subcategory: 'Slabs', stock: 50, price: 150.00, supplier: 'Verona Stones' },
-  { id: 'ITM002', name: 'Black Granite Countertop', category: 'Granite', subcategory: 'Countertops', stock: 30, price: 250.00, supplier: 'Stone Solutions' },
-  { id: 'ITM003', name: 'White Quartz Tile', category: 'Quartz', subcategory: 'Tiles', stock: 200, price: 25.50, supplier: 'Quartz Co.' },
-  { id: 'ITM004', name: 'Sandstone Paver', category: 'Sandstone', subcategory: 'Pavers', stock: 500, price: 15.75, supplier: 'Rock Garden' },
-  { id: 'ITM005', name: 'Slate Roofing Tile', category: 'Slate', subcategory: 'Tiles', stock: 1000, price: 8.20, supplier: 'Mountain Slate' },
-  { id: 'ITM006', name: 'Travertine Floor Tile', category: 'Travertine', subcategory: 'Tiles', stock: 150, price: 35.00, supplier: 'Ancient Floors' },
-  { id: 'ITM007', name: 'Onyx Decorative Piece', category: 'Onyx', subcategory: 'Decorative', stock: 15, price: 500.00, supplier: 'Gem Stones Inc' },
+  { id: 'ITM001', name: 'Italian Marble Slab', category: 'Marble', subcategory: 'Slabs', stock: 50, price: 150.00, supplier: 'Verona Stones', userId: 'guest' },
+  { id: 'ITM002', name: 'Black Granite Countertop', category: 'Granite', subcategory: 'Countertops', stock: 30, price: 250.00, supplier: 'Stone Solutions', userId: 'guest' },
+  { id: 'ITM003', name: 'White Quartz Tile', category: 'Quartz', subcategory: 'Tiles', stock: 200, price: 25.50, supplier: 'Quartz Co.', userId: 'guest' },
+  { id: 'ITM004', name: 'Sandstone Paver', category: 'Sandstone', subcategory: 'Pavers', stock: 500, price: 15.75, supplier: 'Rock Garden', userId: 'guest' },
+  { id: 'ITM005', name: 'Slate Roofing Tile', category: 'Slate', subcategory: 'Tiles', stock: 1000, price: 8.20, supplier: 'Mountain Slate', userId: 'guest' },
+  { id: 'ITM006', name: 'Travertine Floor Tile', category: 'Travertine', subcategory: 'Tiles', stock: 150, price: 35.00, supplier: 'Ancient Floors', userId: 'guest' },
+  { id: 'ITM007', name: 'Onyx Decorative Piece', category: 'Onyx', subcategory: 'Decorative', stock: 15, price: 500.00, supplier: 'Gem Stones Inc', userId: 'guest' },
 ];
 
 export const salesData: Sale[] = [
@@ -31,6 +31,7 @@ export const salesData: Sale[] = [
     customerPhone: '555-111-2222',
     cgstRate: 9,
     sgstRate: 9,
+    userId: 'guest',
   },
   { 
     id: 'INV-2024-002', 
@@ -43,6 +44,7 @@ export const salesData: Sale[] = [
     customerPhone: '555-333-4444',
     cgstRate: 9,
     sgstRate: 9,
+    userId: 'guest',
   },
   { 
     id: 'INV-2024-003', 
@@ -58,6 +60,7 @@ export const salesData: Sale[] = [
     customerPhone: '555-555-5555',
     cgstRate: 9,
     sgstRate: 9,
+    userId: 'guest',
   },
   { 
     id: 'INV-2024-004', 
@@ -76,6 +79,7 @@ export const salesData: Sale[] = [
     transportDate: '2024-06-21',
     cgstRate: 9,
     sgstRate: 9,
+    userId: 'guest',
   },
   { 
     id: 'INV-2024-005', 
@@ -89,13 +93,14 @@ export const salesData: Sale[] = [
     cgstRate: 9,
     sgstRate: 9,
     deletedAt: new Date().toISOString(),
+    userId: 'guest',
   },
 ];
 
 export const purchasesData: Purchase[] = [
-    { id: 'PO-2024-001', vendor: 'Verona Stones', vendorAddress: "Verona, Italy", date: '2024-05-15', amount: 7500.00, status: 'Received', items: [{name: 'Italian Marble Slab', quantity: 50, price: 150}] },
-    { id: 'PO-2024-002', vendor: 'Stone Solutions', vendorAddress: "Jaipur, India", date: '2024-05-20', amount: 7500.00, status: 'Received', items: [{name: 'Black Granite Countertop', quantity: 30, price: 250}] },
-    { id: 'PO-2024-003', vendor: 'Quartz Co.', vendorAddress: "USA", date: '2024-05-25', amount: 5100.00, status: 'Received', items: [{name: 'White Quartz Tile', quantity: 200, price: 25.50}] },
-    { id: 'PO-2024-004', vendor: 'Mountain Slate', vendorAddress: "Brazil", date: '2024-06-02', amount: 8200.00, status: 'Pending', items: [{name: 'Slate Roofing Tile', quantity: 1000, price: 8.20}] },
-    { id: 'PO-2024-005', vendor: 'Rock Garden', vendorAddress: "Australia", date: '2024-06-10', amount: 7875.00, status: 'Received', items: [{name: 'Sandstone Paver', quantity: 500, price: 15.75}], deletedAt: new Date().toISOString() },
+    { id: 'PO-2024-001', vendor: 'Verona Stones', vendorAddress: "Verona, Italy", date: '2024-05-15', amount: 7500.00, status: 'Received', items: [{name: 'Italian Marble Slab', quantity: 50, price: 150}], userId: 'guest' },
+    { id: 'PO-2024-002', vendor: 'Stone Solutions', vendorAddress: "Jaipur, India", date: '2024-05-20', amount: 7500.00, status: 'Received', items: [{name: 'Black Granite Countertop', quantity: 30, price: 250}], userId: 'guest' },
+    { id: 'PO-2024-003', vendor: 'Quartz Co.', vendorAddress: "USA", date: '2024-05-25', amount: 5100.00, status: 'Received', items: [{name: 'White Quartz Tile', quantity: 200, price: 25.50}], userId: 'guest' },
+    { id: 'PO-2024-004', vendor: 'Mountain Slate', vendorAddress: "Brazil", date: '2024-06-02', amount: 8200.00, status: 'Pending', items: [{name: 'Slate Roofing Tile', quantity: 1000, price: 8.20}], userId: 'guest' },
+    { id: 'PO-2024-005', vendor: 'Rock Garden', vendorAddress: "Australia", date: '2024-06-10', amount: 7875.00, status: 'Received', items: [{name: 'Sandstone Paver', quantity: 500, price: 15.75}], deletedAt: new Date().toISOString(), userId: 'guest' },
 ];

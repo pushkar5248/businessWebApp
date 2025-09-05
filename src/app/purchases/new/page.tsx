@@ -26,15 +26,19 @@ export default function NewPurchasePage() {
       return;
     }
 
+    const subtotal = data.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+    const total = subtotal + (subtotal * (data.igstRate || 0) / 100);
+
     const newPurchase = {
         id: data.poNumber,
         vendor: data.vendorName,
         vendorAddress: data.vendorAddress,
         shippingAddress: data.shippingAddress,
         date: data.poDate,
-        amount: data.items.reduce((acc, item) => acc + item.quantity * item.price, 0),
+        amount: total,
         status: 'Pending',
         items: data.items,
+        igstRate: data.igstRate,
         userId: user.uid,
         deletedAt: null,
     };
@@ -71,5 +75,3 @@ export default function NewPurchasePage() {
     </MainLayout>
   );
 }
-
-    

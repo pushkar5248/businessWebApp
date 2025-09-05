@@ -57,6 +57,7 @@ export type Purchase = {
         quantity: number;
         price: number;
     }[];
+    igstRate?: number;
     deletedAt?: string | null;
     userId: string;
 };

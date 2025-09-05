@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MainLayout } from "@/components/layout/main-layout";
-import { type Purchase } from "@/lib/types";
+import { type Purchase, type PurchaseStatus } from "@/lib/types";
 import { purchasesData } from "@/lib/data";
 import { PlusCircle, Search, Trash2, Archive, Loader2, Columns, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -41,10 +41,17 @@ import { useCurrency } from "@/context/currency-context";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 const getBadgeVariant = (status: string) => {
@@ -58,7 +65,7 @@ const getBadgeVariant = (status: string) => {
   }
 };
 
-type ColumnKeys = Omit<Purchase, 'userId' | 'items' | 'vendorAddress' | 'shippingAddress' | 'deletedAt'>;
+type ColumnKeys = Omit<Purchase, 'userId' | 'items' | 'vendorAddress' | 'shippingAddress' | 'deletedAt' | 'igstRate'>;
 
 const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
     id: "PO #",
@@ -140,6 +147,23 @@ export default function PurchasesPage() {
     const handleRowClick = (purchaseId: string) => {
         router.push(`/purchases/${purchaseId}`);
     };
+
+    const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
+        if (!user) return;
+
+        setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
+
+        try {
+            const purchaseRef = doc(db, "purchases", purchaseId);
+            await updateDoc(purchaseRef, { [field]: value });
+            toast({ title: "Success", description: "Purchase updated." });
+        } catch (error) {
+            console.error("Error updating purchase:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update purchase." });
+            fetchPurchases();
+        }
+    };
+
 
     const handleDeletePurchases = async (purchaseIds: string[]) => {
         if (!user) {
@@ -390,7 +414,7 @@ export default function PurchasesPage() {
                     </TableCell>
                 </TableRow>
               ) : (sortedPurchases.map((purchase) => (
-                <TableRow key={purchase.id} onClick={() => handleRowClick(purchase.id)} className="cursor-pointer" data-state={selectedRows.includes(purchase.id) && "selected"}>
+                <TableRow key={purchase.id} data-state={selectedRows.includes(purchase.id) && "selected"}>
                    <TableCell className="border-l" onClick={(e) => e.stopPropagation()}>
                        <Checkbox
                           checked={selectedRows.includes(purchase.id)}
@@ -400,15 +424,31 @@ export default function PurchasesPage() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l">
-                          {key === 'status' ? (
-                            <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
+                      <TableCell key={key} className="border-l" onClick={() => key !== 'status' && handleRowClick(purchase.id)}>
+                           {key === 'status' ? (
+                                <Select
+                                    value={purchase.status}
+                                    onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
+                                    disabled={!user}
+                                >
+                                    <SelectTrigger className="w-[120px] focus:ring-0 border-0 shadow-none bg-transparent">
+                                        <SelectValue>
+                                            <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="Received">Received</SelectItem>
+                                    </SelectContent>
+                                </Select>
                           ) : key === 'amount' ? (
                             formatCurrency(purchase.amount)
                           ) : key === 'date' ? (
                             new Date(purchase.date).toLocaleDateString()
                           ) : (
-                            purchase[key as keyof Purchase] as React.ReactNode
+                             <span className="cursor-pointer hover:underline" onClick={() => handleRowClick(purchase.id)}>
+                                {purchase[key as keyof Purchase] as React.ReactNode}
+                             </span>
                           )}
                       </TableCell>
                   ))}
