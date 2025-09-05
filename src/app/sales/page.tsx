@@ -245,12 +245,12 @@ export default function SalesPage() {
     
     const visibleColumns = columnOrder.filter(key => columnVisibility[key]);
 
-    const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, key: string) => {
         dragItem.current = key;
         e.dataTransfer.effectAllowed = 'move';
     };
 
-    const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, key: string) => {
         dragOverItem.current = key;
         const dragItemIndex = columnOrder.findIndex(item => item === dragItem.current);
         const dragOverItemIndex = columnOrder.findIndex(item => item === dragOverItem.current);
@@ -429,7 +429,7 @@ export default function SalesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead className="px-4" style={{ width: '40px' }}>
+                 <TableHead className="px-4 h-12" style={{ width: '40px' }}>
                   <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && sortedSales.length > 0 && selectedRows.length === sortedSales.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
@@ -442,26 +442,31 @@ export default function SalesPage() {
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
-                        draggable={isClient}
-                        onDragStart={(e) => handleDragStart(e, key)}
-                        onDragEnter={(e) => handleDragEnter(e, key)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => e.preventDefault()}
-                        className="cursor-move p-0 transition-all duration-300 ease-in-out"
+                        className="p-0"
                       >
-                    <div className="flex items-center justify-between p-4" onClick={() => requestSort(key as keyof ColumnKeys)}>
-                        <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 ml-2"
+                      {isClient && (
+                        <div
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, key)}
+                            onDragEnter={(e) => handleDragEnter(e, key)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => e.preventDefault()}
+                            onClick={() => requestSort(key as keyof ColumnKeys)}
+                            className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
                         >
-                            <ArrowUpDown className="h-4 w-4" />
-                        </Button>
-                    </div>
+                            <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 ml-2"
+                            >
+                                <ArrowUpDown className="h-4 w-4" />
+                            </Button>
+                        </div>
+                      )}
                   </TableHead>
                 ))}
-                <TableHead className="text-right border-l px-4">Actions</TableHead>
+                <TableHead className="text-right border-l px-4 h-12">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -564,5 +569,7 @@ export default function SalesPage() {
     </MainLayout>
   );
 }
+
+    
 
     

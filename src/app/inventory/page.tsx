@@ -238,12 +238,12 @@ export default function InventoryPage() {
   
   const visibleColumns = columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
   
-  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, key: string) => {
     dragItem.current = key;
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, key: string) => {
     dragOverItem.current = key;
     const dragItemIndex = columnOrder.findIndex(item => item === dragItem.current);
     const dragOverItemIndex = columnOrder.findIndex(item => item === dragOverItem.current);
@@ -754,7 +754,7 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="px-4" style={{ width: '40px' }}>
+                <TableHead className="px-4 h-12" style={{ width: '40px' }}>
                   <div className="flex items-center justify-center">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
@@ -765,38 +765,39 @@ const handleSaveChanges = async () => {
                   </div>
                 </TableHead>
                 {visibleColumns.map((key) => (
-                  <TableHead 
-                    key={key}
-                    draggable={isClient}
-                    onDragStart={(e) => handleDragStart(e, key)}
-                    onDragEnter={(e) => handleDragEnter(e, key)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="cursor-move px-4 transition-all duration-300 ease-in-out"
-                  >
-                    <div className="flex items-center justify-between">
-                       <Input
-                            type="text"
-                            value={columns[key]}
-                            onChange={(e) => handleColumnNameChange(key, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
-                        />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            requestSort(key as keyof ColumnKeys);
-                        }}
-                        className="h-6 w-6 ml-2"
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <TableHead key={key} className="p-0">
+                    {isClient && (
+                       <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, key)}
+                          onDragEnter={(e) => handleDragEnter(e, key)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => e.preventDefault()}
+                          className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
+                       >
+                         <Input
+                              type="text"
+                              value={columns[key]}
+                              onChange={(e) => handleColumnNameChange(key, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
+                          />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              requestSort(key as keyof ColumnKeys);
+                          }}
+                          className="h-6 w-6 ml-2"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </TableHead>
                 ))}
-                <TableHead className="border-l"/>
+                <TableHead className="border-l h-12"/>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -896,5 +897,7 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
+
+    
 
     
