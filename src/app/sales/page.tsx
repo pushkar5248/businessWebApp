@@ -444,15 +444,16 @@ export default function SalesPage() {
                         key={key}
                         className="p-0"
                       >
-                      {isClient && (
                         <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, key)}
-                            onDragEnter={(e) => handleDragEnter(e, key)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => e.preventDefault()}
-                            onClick={() => requestSort(key as keyof ColumnKeys)}
-                            className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
+                          {...(isClient ? {
+                            draggable: true,
+                            onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
+                            onDragEnter: (e: React.DragEvent<HTMLDivElement>) => handleDragEnter(e, key),
+                            onDragEnd: handleDragEnd,
+                            onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
+                          } : {})}
+                          onClick={() => requestSort(key as keyof ColumnKeys)}
+                          className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
                         >
                             <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>
                             <Button
@@ -463,7 +464,6 @@ export default function SalesPage() {
                                 <ArrowUpDown className="h-4 w-4" />
                             </Button>
                         </div>
-                      )}
                   </TableHead>
                 ))}
                 <TableHead className="text-right border-l px-4 h-12">Actions</TableHead>
@@ -569,7 +569,3 @@ export default function SalesPage() {
     </MainLayout>
   );
 }
-
-    
-
-    

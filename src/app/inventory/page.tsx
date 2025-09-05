@@ -767,35 +767,35 @@ const handleSaveChanges = async () => {
                 </TableHead>
                 {visibleColumns.map((key) => (
                   <TableHead key={key} className="p-0">
-                    {isClient && (
-                       <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, key)}
-                          onDragEnter={(e) => handleDragEnter(e, key)}
-                          onDragEnd={handleDragEnd}
-                          onDragOver={(e) => e.preventDefault()}
-                          className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
-                       >
-                         <Input
-                              type="text"
-                              value={columns[key]}
-                              onChange={(e) => handleColumnNameChange(key, e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
-                          />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                              e.stopPropagation();
-                              requestSort(key as keyof ColumnKeys);
-                          }}
-                          className="h-6 w-6 ml-2"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                    <div
+                      {...(isClient ? {
+                        draggable: true,
+                        onDragStart: (e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, key),
+                        onDragEnter: (e: React.DragEvent<HTMLDivElement>) => handleDragEnter(e, key),
+                        onDragEnd: handleDragEnd,
+                        onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
+                      } : {})}
+                      className="flex items-center justify-between p-4 cursor-move transition-all duration-300 ease-in-out"
+                    >
+                      <Input
+                          type="text"
+                          value={columns[key]}
+                          onChange={(e) => handleColumnNameChange(key, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-0 border-none bg-transparent h-auto focus:ring-0 focus:outline-none w-full font-medium"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            requestSort(key as keyof ColumnKeys);
+                        }}
+                        className="h-6 w-6 ml-2"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableHead>
                 ))}
                 <TableHead className="border-l h-12"/>
@@ -898,7 +898,3 @@ const handleSaveChanges = async () => {
     </MainLayout>
   );
 }
-
-    
-
-    
