@@ -19,7 +19,7 @@ import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,8 +44,8 @@ const currencies = [
   { value: 'AUD', label: 'A$ (AUD)' },
   { value: 'CAD', label: 'C$ (CAD)' },
   { value: 'CHF', label: 'Fr (CHF)' },
-  { value: 'CNY', '¥ (CNY)' },
-  { value: 'INR', '₹ (INR)' },
+  { value: 'CNY', 'label': '¥ (CNY)' },
+  { value: 'INR', 'label': '₹ (INR)' },
 ];
 
 const themes = [
