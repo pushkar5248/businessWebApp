@@ -155,7 +155,25 @@ export default function PurchasesPage() {
     };
 
     const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
+         if (!user) return;
+        
+        // Optimistic UI update
         setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
+        
+        try {
+            const purchaseRef = doc(db, "purchases", purchaseId);
+            await updateDoc(purchaseRef, { [field]: value });
+            // The originalPurchases state will be updated on successful save to prevent reverts on other edits
+            setOriginalPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
+            if(field === 'status') {
+                 toast({ title: "Status Updated", description: "Purchase status has been updated." });
+            }
+        } catch (error) {
+             console.error(`Error updating purchase ${field}:`, error);
+            toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
+            // Revert on failure
+            setPurchases(originalPurchases);
+        }
     };
 
     const handleSaveChanges = async () => {
@@ -464,23 +482,25 @@ export default function PurchasesPage() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} className="border-l" onClick={() => !isEditMode && handleRowClick(purchase.id)}>
+                      <TableCell key={key} className="border-l" onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(purchase.id); }}>
                            {key === 'status' ? (
-                                <Select
-                                    value={purchase.status}
-                                    onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
-                                    disabled={!isEditMode || !user}
-                                >
-                                    <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none bg-transparent", !isEditMode ? "border-0 disabled:opacity-100 disabled:cursor-default" : "")}>
-                                        <SelectValue>
-                                            <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Received">Received</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <Select
+                                        value={purchase.status}
+                                        onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
+                                        disabled={!user}
+                                    >
+                                        <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none", !isEditMode ? "bg-transparent border-0" : "")}>
+                                            <SelectValue>
+                                                <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Pending">Pending</SelectItem>
+                                            <SelectItem value="Received">Received</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                           ) : key === 'amount' ? (
                             formatCurrency(purchase.amount)
                           ) : key === 'date' ? (
@@ -489,14 +509,14 @@ export default function PurchasesPage() {
                                 value={purchase.date}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
                           ) : key === 'vendor' ? (
                              <Input 
                                 value={purchase.vendor}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'vendor', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "disabled:cursor-text disabled:border-none")}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
                           ) : (
                              <span className={cn(!isEditMode && "cursor-pointer hover:underline")} onClick={() => !isEditMode && handleRowClick(purchase.id)}>

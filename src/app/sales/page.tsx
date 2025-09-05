@@ -155,8 +155,26 @@ export default function SalesPage() {
         router.push(`/sales/${invoiceId}`);
     };
 
-    const handleSaleUpdate = (saleId: string, field: keyof Sale, value: any) => {
+    const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
+        if (!user) return;
+
+        // Optimistic UI update
         setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
+
+        try {
+            const saleRef = doc(db, "sales", saleId);
+            await updateDoc(saleRef, { [field]: value });
+            // The originalSales state will be updated on successful save to prevent reverts on other edits
+            setOriginalSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
+            if(field === 'status') {
+                 toast({ title: "Status Updated", description: "Sale status has been updated." });
+            }
+        } catch (error) {
+            console.error(`Error updating sale ${field}:`, error);
+            toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
+            // Revert on failure
+            setSales(originalSales);
+        }
     };
 
     const handleSaveChanges = async () => {
@@ -467,12 +485,13 @@ export default function SalesPage() {
                    {visibleColumns.map(key => (
                       <TableCell key={key} className="border-l" onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(sale.id); }}>
                            {key === 'status' ? (
+                               <div onClick={(e) => e.stopPropagation()}>
                                 <Select
                                     value={sale.status}
                                     onValueChange={(newStatus) => handleSaleUpdate(sale.id, 'status', newStatus as SaleStatus)}
-                                    disabled={!isEditMode || !user}
+                                    disabled={!user}
                                 >
-                                    <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none bg-transparent", !isEditMode ? "border-0 disabled:opacity-100 disabled:cursor-default" : "")}>
+                                    <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none", !isEditMode ? "bg-transparent border-0" : "")}>
                                         <SelectValue>
                                             <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                                         </SelectValue>
@@ -483,6 +502,7 @@ export default function SalesPage() {
                                         <SelectItem value="Overdue">Overdue</SelectItem>
                                     </SelectContent>
                                 </Select>
+                               </div>
                           ) : key === 'amount' ? (
                             formatCurrency(sale.amount)
                            ) : key === 'date' ? (
