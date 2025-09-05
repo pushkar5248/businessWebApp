@@ -398,8 +398,8 @@ export default function PurchasesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                 <TableHead>
-                  <div className="flex items-center justify-center px-4 h-12">
+                 <TableHead className="p-0 h-12">
+                  <div className="flex items-center justify-center h-full px-4">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedPurchases.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -411,9 +411,10 @@ export default function PurchasesPage() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
+                    className="p-0 h-12"
                   >
                     <div
-                      className="flex items-center justify-between px-4 h-12 cursor-pointer"
+                      className="flex items-center justify-between h-full px-4 cursor-pointer"
                       onClick={() => requestSort(key as keyof ColumnKeys)}
                     >
                       <span className="font-medium">{COLUMN_NAMES[key as keyof ColumnKeys]}</span>

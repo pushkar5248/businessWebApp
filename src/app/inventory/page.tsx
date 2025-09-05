@@ -723,8 +723,8 @@ const handleSaveChanges = async () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>
-                  <div className="flex items-center justify-center px-4 h-12">
+                <TableHead className="p-0 h-12">
+                  <div className="flex items-center justify-center h-full px-4">
                      <Checkbox
                         checked={selectedRows.length > 0 && selectedRows.length === sortedItems.length ? true : selectedRows.length > 0 ? 'indeterminate' : false}
                         onCheckedChange={handleSelectAll}
@@ -734,8 +734,8 @@ const handleSaveChanges = async () => {
                   </div>
                 </TableHead>
                 {visibleColumns.map((key) => (
-                  <TableHead key={key}>
-                    <div className="flex items-center justify-between px-4 h-12">
+                  <TableHead key={key} className="p-0 h-12">
+                    <div className="flex items-center justify-between h-full px-4">
                       <Input
                           type="text"
                           value={columns[key]}
