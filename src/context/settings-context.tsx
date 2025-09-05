@@ -13,6 +13,7 @@ export const defaultSettings: UserSettings = {
     profile: {
         displayName: 'Guest User',
         email: '',
+        photoURL: '',
     },
     general: {
         businessName: 'Adhunik Minerals',
@@ -73,6 +74,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 mergedSettings.profile = {
                     displayName: user.displayName || data.profile?.displayName || defaultSettings.profile.displayName,
                     email: user.email || data.profile?.email || '',
+                    photoURL: user.photoURL || data.profile?.photoURL || '',
                 };
 
                 setSettings(mergedSettings);
@@ -83,6 +85,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                      profile: {
                         displayName: user.displayName || user.email || 'User',
                         email: user.email || '',
+                        photoURL: user.photoURL || '',
                     },
                 }
                 await setDoc(docRef, userDefaultSettings);
@@ -110,7 +113,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         
         try {
             const docRef = doc(db, 'users', user.uid);
-            await updateDoc(docRef, dataToSave);
+            // This needs to be a proper deep merge on the Firestore document
+            const currentDoc = await getDoc(docRef);
+            const currentData = currentDoc.exists() ? currentDoc.data() : {};
+            const mergedData = deepmerge(currentData, dataToSave);
+
+            await setDoc(docRef, mergedData, { merge: true });
             
             const updatedSettings = deepmerge(settings, dataToSave as Partial<UserSettings>);
             setSettings(updatedSettings);
@@ -133,6 +141,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
              profile: {
                 displayName: user.displayName || user.email || 'User',
                 email: user.email || '',
+                photoURL: user.photoURL || '',
             },
         }
         try {

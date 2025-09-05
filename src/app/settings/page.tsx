@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 const currencies = [
@@ -55,19 +56,27 @@ const themes = [
 function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => Promise<void>, isGuest: boolean }) {
     const { user } = useAuth();
     const [displayName, setDisplayName] = useState(settings.profile.displayName);
+    const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
     const [email, setEmail] = useState(settings.profile.email);
 
     useEffect(() => {
         setDisplayName(settings.profile.displayName);
         setEmail(settings.profile.email);
-    }, [settings]);
+        setPhotoURL(user?.photoURL || '');
+    }, [settings, user]);
 
 
     const handleSave = async () => {
-        if (user && user.displayName !== displayName) {
-            await updateProfile(user, { displayName });
+        if (user) {
+            const updates: { displayName?: string, photoURL?: string } = {};
+            if(user.displayName !== displayName) updates.displayName = displayName;
+            if(user.photoURL !== photoURL) updates.photoURL = photoURL;
+
+            if(Object.keys(updates).length > 0) {
+              await updateProfile(user, updates);
+            }
         }
-        onSave({ profile: { displayName, email } });
+        onSave({ profile: { displayName, email, photoURL } });
     }
 
     return (
@@ -77,6 +86,16 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                 <CardDescription>Update your personal information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                 <div className="flex items-center gap-4">
+                    <Avatar className="h-20 w-20">
+                        <AvatarImage src={photoURL || undefined} alt="User avatar" />
+                        <AvatarFallback>{displayName?.[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                     <div className="space-y-2 flex-1">
+                        <Label htmlFor="photo-url">Photo URL</Label>
+                        <Input id="photo-url" value={photoURL} onChange={e => setPhotoURL(e.target.value)} disabled={isGuest} placeholder="https://example.com/photo.jpg" />
+                    </div>
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="display-name">Display Name</Label>
                     <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} disabled={isGuest} />

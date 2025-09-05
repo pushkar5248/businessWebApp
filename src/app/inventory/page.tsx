@@ -136,6 +136,8 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isImportModalOpen, setImportModalOpen] = useState(false);
+  const [isAddColumnModalOpen, setAddColumnModalOpen] = useState(false);
+  const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [columns, setColumns] = useState<Record<string, string>>(DEFAULT_COLUMN_NAMES);
   const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
@@ -556,6 +558,29 @@ const handleSaveChanges = async () => {
     toast({ title: "Column Deleted", description: `Column "${columns[columnToDelete]}" has been deleted.` });
     setColumnToDelete(null);
   };
+  
+  const handleAddColumn = () => {
+    if (!newColumnName.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Column name cannot be empty.'})
+        return;
+    }
+    const newColumnKey = newColumnName.toLowerCase().replace(/\s+/g, '_');
+    if (columns[newColumnKey]) {
+        toast({ variant: 'destructive', title: 'Error', description: 'A column with this name already exists.'})
+        return;
+    }
+    
+    setColumns(prev => ({...prev, [newColumnKey]: newColumnName}));
+    setColumnOrder(prev => [...prev, newColumnKey]);
+    setColumnVisibility(prev => ({...prev, [newColumnKey]: true}));
+    
+    setItems(prev => prev.map(item => ({...item, [newColumnKey]: ''})));
+    setOriginalItems(prev => prev.map(item => ({...item, [newColumnKey]: ''})));
+
+    setNewColumnName('');
+    setAddColumnModalOpen(false);
+    toast({ title: 'Column Added', description: `Column "${newColumnName}" has been added.`});
+  };
 
 
   return (
@@ -594,6 +619,29 @@ const handleSaveChanges = async () => {
           </div>
            <DialogFooter>
              <Button variant="outline" onClick={() => setImportModalOpen(false)}>Cancel</Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isAddColumnModalOpen} onOpenChange={setAddColumnModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Custom Column</DialogTitle>
+            <DialogDescription>Enter a name for your new custom column.</DialogDescription>
+          </DialogHeader>
+           <div className="grid gap-4 py-4">
+               <div className="grid grid-cols-4 items-center gap-4">
+                   <Label htmlFor="new-column-name" className="text-right">Name</Label>
+                   <Input 
+                        id="new-column-name" 
+                        value={newColumnName}
+                        onChange={(e) => setNewColumnName(e.target.value)}
+                        className="col-span-3"
+                    />
+               </div>
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => { setAddColumnModalOpen(false); setNewColumnName(''); }}>Cancel</Button>
+             <Button onClick={handleAddColumn}>Add Column</Button>
            </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -661,6 +709,11 @@ const handleSaveChanges = async () => {
                              </label>
                            </DropdownMenuItem>
                         ))}
+                         <DropdownMenuSeparator />
+                         <DropdownMenuItem onSelect={() => setAddColumnModalOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Custom Column
+                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -796,7 +849,13 @@ const handleSaveChanges = async () => {
                                 disabled={!isEditMode || !user}
                             />
                         ) : (
-                            (item as any)[key]
+                            <Input
+                                type="text"
+                                value={(item as any)[key] ?? ''}
+                                onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                disabled={!isEditMode || !user}
+                            />
                         )}
                       </TableCell>
                     ))}

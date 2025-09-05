@@ -1,7 +1,5 @@
 
 
-
-
 export type InventoryItem = {
   id: string;
   name: string;
@@ -11,6 +9,7 @@ export type InventoryItem = {
   price: number;
   supplier: string;
   userId: string;
+  [key: string]: any; // For custom columns
 };
 
 export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';
@@ -68,6 +67,7 @@ export type UserSettings = {
   profile: {
     displayName: string;
     email: string;
+    photoURL?: string;
   },
   general: {
     businessName: string;
