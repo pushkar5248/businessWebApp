@@ -254,7 +254,7 @@ export default function InventoryPageClient() {
   };
   
   const handleDeleteItems = async (itemIds: string[]) => {
-    if (!user) {
+    if (!user || itemIds.length === 0) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to delete items.'})
         return;
     }
@@ -536,6 +536,10 @@ const handleSaveChanges = async () => {
     toast({ title: 'Column Added', description: `Column "${newColumnName}" has been added.`});
   };
 
+  const handleConfirmDelete = (itemIds: string[]) => {
+    handleDeleteItems(itemIds);
+  };
+
 
   return (
     <>
@@ -693,7 +697,7 @@ const handleSaveChanges = async () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDeleteItems(selectedRows)}>
+                      <AlertDialogAction onClick={() => handleConfirmDelete(selectedRows)}>
                         Delete
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -815,7 +819,7 @@ const handleSaveChanges = async () => {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteItems([item.id])}>
+                                <AlertDialogAction onClick={() => handleConfirmDelete([item.id])}>
                                   Delete
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -832,3 +836,5 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
+    
