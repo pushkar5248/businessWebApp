@@ -42,7 +42,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -52,7 +52,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useDataSync } from '@/context/data-sync-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -81,7 +80,6 @@ export default function PurchasesPageClient() {
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
-    const { syncKey, triggerSync } = useDataSync();
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [originalPurchases, setOriginalPurchases] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -98,7 +96,7 @@ export default function PurchasesPageClient() {
     });
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
 
-    const fetchPurchases = useCallback(async () => {
+    useEffect(() => {
         setIsLoading(true);
         if (!user) {
             const guestData = purchasesData.filter(p => !p.deletedAt);
@@ -108,23 +106,20 @@ export default function PurchasesPageClient() {
             return;
         }
 
-        try {
-            const q = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "==", null));
-            const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "purchases"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const purchasesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase));
             setPurchases(purchasesList);
             setOriginalPurchases(JSON.parse(JSON.stringify(purchasesList)));
-        } catch (error) {
+            setIsLoading(false);
+        }, (error) => {
             console.error("Error fetching purchases:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not fetch purchases." });
-        } finally {
             setIsLoading(false);
-        }
-    }, [user, toast]);
+        });
 
-    useEffect(() => {
-        fetchPurchases();
-    }, [fetchPurchases, syncKey]);
+        return () => unsubscribe();
+    }, [user, toast]);
 
     useEffect(() => {
         const savedOrder = localStorage.getItem("purchasesColumnOrder");
@@ -156,25 +151,16 @@ export default function PurchasesPageClient() {
     const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
          if (!user) return;
         
-        // Optimistic UI update
-        const tempPurchases = purchases.map(p => p.id === purchaseId ? { ...p, [field]: value } : p);
-        setPurchases(tempPurchases);
-        
         try {
             const purchaseRef = doc(db, "purchases", purchaseId);
             await updateDoc(purchaseRef, { [field]: value });
             
-            // On successful save, update the original state
-            setOriginalPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Purchase status has been updated." });
             }
-            triggerSync();
         } catch (error) {
              console.error(`Error updating purchase ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
-            // Revert on failure
-            setPurchases(originalPurchases);
         }
     };
 
@@ -202,13 +188,10 @@ export default function PurchasesPageClient() {
 
         try {
             await batch.commit();
-            setOriginalPurchases(JSON.parse(JSON.stringify(purchases)));
             toast({ title: "Success", description: `${changesCount} purchase(s) updated successfully.` });
-            triggerSync();
         } catch (error) {
             console.error("Error updating purchases:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
-            fetchPurchases(); // Re-fetch to revert changes
         } finally {
             setIsEditMode(false);
         }
@@ -227,14 +210,11 @@ export default function PurchasesPageClient() {
             });
             await batch.commit();
             
-            setPurchases(prev => prev.filter(p => !purchaseIds.includes(p.id)));
-            setOriginalPurchases(prev => prev.filter(p => !purchaseIds.includes(p.id)));
             setSelectedRows([]);
             toast({
               title: `Purchase(s) Moved to Bin`,
               description: `${purchaseIds.length} purchase order(s) have been moved to the bin.`,
             });
-            triggerSync();
         } catch (error) {
             console.error("Error moving purchases to bin:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not move purchases to bin." });

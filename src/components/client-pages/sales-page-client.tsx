@@ -42,7 +42,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -52,7 +52,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useDataSync } from '@/context/data-sync-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -83,7 +82,6 @@ export default function SalesPageClient() {
     const { formatCurrency } = useCurrency();
     const router = useRouter();
     const { toast } = useToast();
-    const { syncKey, triggerSync } = useDataSync();
     const [sales, setSales] = useState<Sale[]>([]);
     const [originalSales, setOriginalSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +98,7 @@ export default function SalesPageClient() {
     });
     const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
 
-    const fetchSales = useCallback(async () => {
+    useEffect(() => {
       setIsLoading(true);
       if (!user) {
           const guestData = salesData.filter(s => !s.deletedAt);
@@ -109,23 +107,20 @@ export default function SalesPageClient() {
           setIsLoading(false);
           return;
       }
-      try {
-        const q = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
-        const querySnapshot = await getDocs(q);
-        const salesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
-        setSales(salesList);
-        setOriginalSales(JSON.parse(JSON.stringify(salesList)));
-      } catch (error) {
-        console.error("Error fetching sales:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not fetch sales." });
-      } finally {
-        setIsLoading(false);
-      }
+      const q = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const salesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+          setSales(salesList);
+          setOriginalSales(JSON.parse(JSON.stringify(salesList)));
+          setIsLoading(false);
+      }, (error) => {
+          console.error("Error fetching sales:", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not fetch sales." });
+          setIsLoading(false);
+      });
+      
+      return () => unsubscribe();
     }, [user, toast]);
-
-    useEffect(() => {
-      fetchSales();
-    }, [fetchSales, syncKey]);
 
     useEffect(() => {
         const savedOrder = localStorage.getItem("salesColumnOrder");
@@ -156,24 +151,16 @@ export default function SalesPageClient() {
 
     const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
         if (!user) return;
-
-        const tempSales = sales.map(s => s.id === saleId ? { ...s, [field]: value } : s);
-        setSales(tempSales);
-
         try {
             const saleRef = doc(db, "sales", saleId);
             await updateDoc(saleRef, { [field]: value });
             
-            setOriginalSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Sale status has been updated." });
             }
-            triggerSync();
         } catch (error) {
             console.error(`Error updating sale ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
-            
-            setSales(originalSales);
         }
     };
 
@@ -201,13 +188,10 @@ export default function SalesPageClient() {
 
         try {
             await batch.commit();
-            setOriginalSales(JSON.parse(JSON.stringify(sales)));
             toast({ title: "Success", description: `${changesCount} sale(s) updated successfully.` });
-            triggerSync();
         } catch (error) {
             console.error("Error updating sales:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
-            fetchSales(); // Re-fetch to revert changes
         } finally {
             setIsEditMode(false);
         }
@@ -226,14 +210,11 @@ export default function SalesPageClient() {
             });
             await batch.commit();
 
-            setSales(prev => prev.filter(s => !saleIds.includes(s.id)));
-            setOriginalSales(prev => prev.filter(s => !saleIds.includes(s.id)));
             setSelectedRows([]);
             toast({
                 title: "Sale(s) Moved to Bin",
                 description: `${saleIds.length} sale(s) have been successfully moved to the bin.`,
             });
-            triggerSync();
         } catch (error) {
           console.error("Error moving sales to bin:", error);
           toast({ variant: "destructive", title: "Error", description: "Could not move sales to bin." });

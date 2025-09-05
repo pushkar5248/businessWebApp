@@ -29,9 +29,8 @@ import { DollarSign, Boxes, ShoppingCart, Users, Loader2 } from "lucide-react";
 import { useCurrency } from '@/context/currency-context';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { Sale } from '@/lib/types';
-import { useDataSync } from '@/context/data-sync-context';
 
 
 const chartConfig = {
@@ -42,8 +41,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function Dashboard() {
-  const { user, loading } = useAuth();
-  const { syncKey } = useDataSync();
+  const { user, loading: authLoading } = useAuth();
   const { formatCurrency, formatCurrencyValue } = useCurrency();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSalesCount, setTotalSalesCount] = useState(0);
@@ -52,68 +50,61 @@ export default function Dashboard() {
   const [salesChartData, setSalesChartData] = useState<{ month: string; sales: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-      setIsLoading(true);
-      if (!user) {
-          // Guest mode: use sample data
-          const paidSales = salesData.filter(s => !s.deletedAt && s.status === 'Paid');
-          const allSales = salesData.filter(s => !s.deletedAt);
-          const revenue = paidSales.reduce((acc, sale) => acc + sale.amount, 0);
-          setTotalRevenue(revenue);
-          setTotalSalesCount(paidSales.length);
-          setRecentSales(allSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-          setStockItemsCount(inventoryData.length);
-          
-          const months = Array(6).fill(0).map((_, i) => {
-            const d = new Date();
-            d.setMonth(d.getMonth() - i);
-            return {
-                label: d.toLocaleString('default', { month: 'short' }),
-                year: d.getFullYear(),
-                month: d.getMonth(),
-                sales: 0
-            };
-           }).reverse();
+  const setupGuestData = () => {
+    const paidSales = salesData.filter(s => !s.deletedAt && s.status === 'Paid');
+    const allSales = salesData.filter(s => !s.deletedAt);
+    const revenue = paidSales.reduce((acc, sale) => acc + sale.amount, 0);
+    setTotalRevenue(revenue);
+    setTotalSalesCount(paidSales.length);
+    setRecentSales(allSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setStockItemsCount(inventoryData.length);
+    
+    const months = Array(6).fill(0).map((_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      return {
+          label: d.toLocaleString('default', { month: 'short' }),
+          year: d.getFullYear(),
+          month: d.getMonth(),
+          sales: 0
+      };
+     }).reverse();
 
-            paidSales.forEach(sale => {
-                const saleDate = new Date(sale.date);
-                const saleYear = saleDate.getFullYear();
-                const saleMonth = saleDate.getMonth();
+      paidSales.forEach(sale => {
+          const saleDate = new Date(sale.date);
+          const saleYear = saleDate.getFullYear();
+          const saleMonth = saleDate.getMonth();
 
-                const monthData = months.find(m => m.year === saleYear && m.month === saleMonth);
-                if (monthData) {
-                    monthData.sales += sale.amount;
-                }
-            });
-            setSalesChartData(months.map(m => ({ month: m.label, sales: m.sales })));
-          
-          setIsLoading(false);
-          return;
-      }
+          const monthData = months.find(m => m.year === saleYear && m.month === saleMonth);
+          if (monthData) {
+              monthData.sales += sale.amount;
+          }
+      });
+      setSalesChartData(months.map(m => ({ month: m.label, sales: m.sales })));
+    setIsLoading(false);
+  }
 
-      // Authenticated user: fetch from Firestore
-      try {
-        const paidSalesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null), where("status", "==", "Paid"));
-        const allSalesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+  useEffect(() => {
+    if (authLoading) return;
+    
+    setIsLoading(true);
 
-        const [paidSalesSnapshot, allSalesSnapshot] = await Promise.all([
-            getDocs(paidSalesQuery),
-            getDocs(allSalesQuery)
-        ]);
+    if (!user) {
+        setupGuestData();
+        return;
+    }
 
-        const paidSalesList = paidSalesSnapshot.docs.map(doc => doc.data() as Sale);
-        const allSalesList = allSalesSnapshot.docs.map(doc => doc.data() as Sale);
+    // Real-time listener for sales data
+    const salesQuery = query(collection(db, "sales"), where("userId", "==", user.uid), where("deletedAt", "==", null));
+    const unsubscribeSales = onSnapshot(salesQuery, (querySnapshot) => {
+        const allSalesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+        const paidSalesList = allSalesList.filter(s => s.status === 'Paid');
 
         const revenue = paidSalesList.reduce((acc, sale) => acc + sale.amount, 0);
         setTotalRevenue(revenue);
         setTotalSalesCount(paidSalesList.length);
         setRecentSales(allSalesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        
-        const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
-        const inventorySnapshot = await getDocs(inventoryQuery);
-        setStockItemsCount(inventorySnapshot.size);
-        
-        // Process data for chart using only paid sales
+
         const months = Array(6).fill(0).map((_, i) => {
             const d = new Date();
             d.setMonth(d.getMonth() - i);
@@ -129,30 +120,35 @@ export default function Dashboard() {
             const saleDate = new Date(sale.date);
             const saleYear = saleDate.getFullYear();
             const saleMonth = saleDate.getMonth();
-
             const monthData = months.find(m => m.year === saleYear && m.month === saleMonth);
             if (monthData) {
                 monthData.sales += sale.amount;
             }
         });
-
         setSalesChartData(months.map(m => ({ month: m.label, sales: m.sales })));
-
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
         setIsLoading(false);
-      }
-  }, [user]);
+    }, (error) => {
+        console.error("Error fetching sales data:", error);
+        setIsLoading(false);
+    });
 
-  useEffect(() => {
-    // We wait for the auth loading to finish before fetching data
-    if (!loading) {
-      fetchData();
-    }
-  }, [user, loading, fetchData, syncKey]);
+    // Real-time listener for inventory data
+    const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    const unsubscribeInventory = onSnapshot(inventoryQuery, (querySnapshot) => {
+        setStockItemsCount(querySnapshot.size);
+    }, (error) => {
+        console.error("Error fetching inventory count:", error);
+    });
 
-  if (isLoading || loading) {
+
+    // Cleanup function
+    return () => {
+      unsubscribeSales();
+      unsubscribeInventory();
+    };
+  }, [user, authLoading]);
+
+  if (isLoading || authLoading) {
     return (
         <MainLayout>
             <div className="flex h-[80vh] items-center justify-center">

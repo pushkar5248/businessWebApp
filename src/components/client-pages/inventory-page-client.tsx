@@ -48,11 +48,10 @@ import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, writeBatch } from "firebase/firestore";
+import { collection, addDoc, doc, deleteDoc, updateDoc, query, where, writeBatch, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/context/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { useDataSync } from "@/context/data-sync-context";
 
 
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
@@ -129,9 +128,8 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
 
 export default function InventoryPageClient() {
   const { user } = useAuth();
-  const { formatCurrency, formatCurrencyValue } = useCurrency();
+  const { formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
-  const { syncKey, triggerSync } = useDataSync();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [originalItems, setOriginalItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,7 +158,7 @@ export default function InventoryPageClient() {
     };
   });
   
-  const fetchItems = useCallback(async () => {
+  useEffect(() => {
     setIsLoading(true);
     if (!user) {
         setItems(inventoryData);
@@ -168,23 +166,21 @@ export default function InventoryPageClient() {
         setIsLoading(false);
         return;
     }
-    try {
-      const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
-      const querySnapshot = await getDocs(q);
-      const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
-      setItems(inventoryList);
-      setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
-    } catch (error) {
-      console.error("Error fetching inventory:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
-    } finally {
-      setIsLoading(false);
-    }
+    
+    const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const inventoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+        setItems(inventoryList);
+        setOriginalItems(JSON.parse(JSON.stringify(inventoryList)));
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching inventory:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch inventory items." });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user, toast]);
-  
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems, syncKey]);
   
 
   useEffect(() => {
@@ -251,7 +247,6 @@ export default function InventoryPageClient() {
       await addDoc(collection(db, "inventory"), { ...item, userId: user.uid });
       setAddModalOpen(false);
       toast({ title: "Success", description: "New item added to inventory." });
-      triggerSync();
     } catch (error) {
       console.error("Error adding item:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not add item." });
@@ -271,11 +266,8 @@ export default function InventoryPageClient() {
       });
       await batch.commit();
 
-      setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
-      setOriginalItems(prev => prev.filter(item => !itemIds.includes(item.id)));
       setSelectedRows([]);
       toast({ title: "Success", description: `${itemIds.length} item(s) removed from inventory.` });
-      triggerSync();
     } catch (error) {
       console.error("Error deleting items:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not delete items." });
@@ -312,9 +304,7 @@ const handleSaveChanges = async () => {
 
     try {
       await batch.commit();
-      setOriginalItems(JSON.parse(JSON.stringify(items)));
       toast({ title: "Success", description: `${changesCount} item(s) updated successfully.` });
-      triggerSync();
     } catch (error) {
       console.error("Error updating items:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to save changes." });
@@ -373,10 +363,6 @@ const handleSaveChanges = async () => {
             
             const batch = writeBatch(db);
             const newItems: InventoryItem[] = [];
-
-            const existingItemsQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
-            const existingItemsSnapshot = await getDocs(existingItemsQuery);
-            existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
             
             const internalToCsvHeaderMap: Record<string, string> = {};
             const csvToInternalHeaderMap: Record<string, string> = {};
@@ -438,14 +424,11 @@ const handleSaveChanges = async () => {
             
             await batch.commit();
 
-            setItems(newItems);
-            setOriginalItems(JSON.parse(JSON.stringify(newItems)));
             setColumns(newColumnNames);
             setColumnOrder(newColumnOrder);
             setColumnVisibility(newColumnVisibility);
             setImportModalOpen(false);
             toast({ title: "Success", description: `Inventory replaced with ${newItems.length} items.` });
-            triggerSync();
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
