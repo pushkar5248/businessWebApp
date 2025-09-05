@@ -48,7 +48,7 @@ import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, doc, deleteDoc, updateDoc, query, where, writeBatch, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, doc, deleteDoc, updateDoc, query, where, writeBatch, onSnapshot, getDocs } from "firebase/firestore";
 import { useAuth } from "@/context/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -363,10 +363,13 @@ const handleSaveChanges = async () => {
             
             const batch = writeBatch(db);
             let importedCount = 0;
+            let updatedCount = 0;
+            
+            const inventoryCollection = collection(db, "inventory");
 
-            dataRows.forEach(row => {
-                const values = row.split(',');
-                const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
+            for (const row of dataRows) {
+                 const values = row.split(',');
+                 const newItemData: Omit<InventoryItem, 'id' | 'userId'> & { [key: string]: any } = {
                     name: '',
                     category: '',
                     subcategory: '',
@@ -374,6 +377,15 @@ const handleSaveChanges = async () => {
                     price: 0,
                     supplier: '',
                 };
+
+                const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
+                if (nameIndex === -1) {
+                    toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
+                    return;
+                }
+                
+                const itemName = values[nameIndex]?.trim();
+                if (!itemName) continue;
 
                 const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
                 const csvToInternalHeaderMap: Record<string, string> = {};
@@ -400,23 +412,32 @@ const handleSaveChanges = async () => {
                         }
                     }
                 });
-                
-                if(!newItemData.name) return;
 
-                const docRef = doc(collection(db, "inventory"));
-                batch.set(docRef, { ...newItemData, userId: user.uid });
-                importedCount++;
-            });
+                const q = query(inventoryCollection, where("userId", "==", user.uid), where("name", "==", itemName));
+                const existingItemsSnapshot = await getDocs(q);
 
-            if (importedCount === 0) {
-                 toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import." });
+                if (!existingItemsSnapshot.empty) {
+                    // Update existing item
+                    const docToUpdate = existingItemsSnapshot.docs[0];
+                    batch.update(docToUpdate.ref, { ...newItemData, userId: user.uid });
+                    updatedCount++;
+                } else {
+                    // Add new item
+                    const docRef = doc(inventoryCollection);
+                    batch.set(docRef, { ...newItemData, userId: user.uid });
+                    importedCount++;
+                }
+            }
+
+            if (importedCount === 0 && updatedCount === 0) {
+                 toast({ variant: "destructive", title: "Error", description: "No valid items found in CSV to import or update." });
                  return;
             }
             
             await batch.commit();
 
             setImportModalOpen(false);
-            toast({ title: "Success", description: `Successfully imported ${importedCount} items.` });
+            toast({ title: "Success", description: `Successfully imported ${importedCount} and updated ${updatedCount} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -555,12 +576,12 @@ const handleSaveChanges = async () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Inventory</DialogTitle>
-            <DialogDescription>Upload a CSV file to replace your current inventory.</DialogDescription>
+            <DialogDescription>Upload a CSV file. Existing items with the same name will be updated. New items will be added.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
              <p className="text-sm text-muted-foreground mt-2">
-                Column names in the CSV file will be used as-is.
+                Make sure your CSV file has a 'name' column to identify items.
             </p>
           </div>
            <DialogFooter>
@@ -824,5 +845,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
-    
