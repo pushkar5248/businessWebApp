@@ -420,11 +420,24 @@ const handleSaveChanges = async () => {
             const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
             const newColumnVisibility: Record<string, boolean> = { id: false }; 
             const newColumnOrderSet = new Set<string>(['id']);
+            
+            const nameAlternatives = ['name', 'item name', 'particulars'];
+            const nameIndex = headerRow.findIndex(h => nameAlternatives.includes(h.toLowerCase()));
+            
+            if (nameIndex === -1) {
+                 toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'Name' or 'Particulars' column." });
+                 setIsLoading(false);
+                 setupRealtimeListener();
+                 return;
+            }
+            const nameHeader = headerRow[nameIndex];
+            headerRow[nameIndex] = 'name';
 
-            headerRow.forEach(header => {
-              const key = header.toLowerCase().replace(/\s+/g, '_');
+
+            headerRow.forEach((header, index) => {
+              const key = index === nameIndex ? 'name' : header.toLowerCase().replace(/\s+/g, '_');
               if (key) {
-                  newColumnNames[key] = header;
+                  newColumnNames[key] = index === nameIndex ? nameHeader : header;
                   newColumnVisibility[key] = true;
                   newColumnOrderSet.add(key);
               }
@@ -450,12 +463,6 @@ const handleSaveChanges = async () => {
                  const values = row.split(',').map(v => v.trim());
                  const newItemData: { [key: string]: any } = {};
 
-                const nameIndex = headerRow.findIndex(h => h.toLowerCase() === 'name');
-                if (nameIndex === -1) {
-                    toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'name' column." });
-                    return; 
-                }
-                
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
 
@@ -660,7 +667,7 @@ const handleSaveChanges = async () => {
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
              <p className="text-sm text-muted-foreground mt-2">
-                Make sure your CSV file has a 'name' column to identify items.
+                Make sure your CSV file has a 'name' or 'particulars' column to identify items.
             </p>
           </div>
            <DialogFooter>
@@ -937,3 +944,4 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
