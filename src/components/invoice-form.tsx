@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useForm, useFieldArray, FormProvider } from "react-hook-form";
+import { useForm, useFieldArray, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ import { useAuth } from "@/context/auth-context";
 import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { Combobox } from "@/components/ui/combobox";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -85,6 +86,8 @@ export function InvoiceForm() {
   const [totalTaxes, setTotalTaxes] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
+
 
   const methods = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
@@ -103,6 +106,7 @@ export function InvoiceForm() {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = methods;
   
@@ -113,6 +117,7 @@ export function InvoiceForm() {
         const inventorySnapshot = await getDocs(inventoryQuery);
         const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
         setInventoryItems(items);
+        setInventoryOptions(items.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
 
     } catch (error) {
         console.error("Error fetching inventory", error);
@@ -486,14 +491,23 @@ export function InvoiceForm() {
                 {fields.map((field, index) => (
                   <TableRow key={field.id}>
                     <TableCell>
-                      <Input
-                        {...methods.register(`items.${index}.name`)}
-                        placeholder="e.g. Italian Marble Slab"
-                        list="inventory-items"
-                      />
-                       <datalist id="inventory-items">
-                        {inventoryItems.map(item => <option key={item.id} value={item.name} />)}
-                       </datalist>
+                      <Controller
+                          control={control}
+                          name={`items.${index}.name`}
+                          render={({ field }) => (
+                            <Combobox
+                                options={inventoryOptions}
+                                value={field.value}
+                                onChange={(value) => {
+                                    const selectedItem = inventoryItems.find(item => item.name.toLowerCase() === value);
+                                    setValue(`items.${index}.name`, selectedItem?.name || '');
+                                    setValue(`items.${index}.price`, selectedItem?.price || 0);
+                                }}
+                                placeholder="Select item..."
+                                emptyText="No items found in inventory."
+                            />
+                          )}
+                        />
                       {errors.items?.[index]?.name && (
                         <p className="text-sm text-destructive">{errors.items[index].name.message}</p>
                       )}
