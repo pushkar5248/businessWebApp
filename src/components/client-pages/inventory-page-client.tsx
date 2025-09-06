@@ -419,122 +419,99 @@ const handleSaveChanges = async () => {
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
-            const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
+            const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
-            const nameAlternatives = {
-              name: ['name', 'item name', 'particulars'],
-              price: ['price', 'rate'],
-              stock: ['stock', 'quantity', 'qty'],
-              category: ['category', 'group'],
-              supplier: ['supplier', 'vendor'],
+            // Standardized mapping for essential fields
+            const headerMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+                'name': { key: 'name', type: 'string' },
+                'item name': { key: 'name', type: 'string' },
+                'particulars': { key: 'name', type: 'string' },
+                'price': { key: 'price', type: 'number' },
+                'rate': { key: 'price', type: 'number' },
+                'stock': { key: 'stock', type: 'number' },
+                'quantity': { key: 'stock', type: 'number' },
+                'qty': { key: 'stock', type: 'number' },
+                'category': { key: 'category', type: 'string' },
+                'group': { key: 'category', type: 'string' },
+                'supplier': { key: 'supplier', type: 'string' },
+                'vendor': { key: 'supplier', type: 'string' }
             };
 
-            const findHeaderIndex = (headers: string[], alternatives: string[]) => {
-              for (const alt of alternatives) {
-                const index = headers.findIndex(h => h.toLowerCase() === alt);
-                if (index !== -1) return index;
-              }
-              return -1;
-            };
-
-            const nameIndex = findHeaderIndex(headerRow, nameAlternatives.name);
-            
-            if (nameIndex === -1) {
-                 toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'Name' or 'Particulars' column." });
-                 setIsLoading(false);
-                 setupRealtimeListener();
-                 return;
-            }
-
-            const newColumns: { [key: string]: string } = {};
+            const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
+            const finalColumns: { [key: string]: string } = {};
             const finalColumnOrder: string[] = [];
-            const headerToKeyMap: { [key: string]: string } = {};
-            const keySet = new Set<string>();
 
-            headerRow.forEach((header) => {
-                const baseKey = header.toLowerCase().replace(/\s+/g, '_');
-                let key = baseKey;
-                let counter = 1;
-                while (keySet.has(key) || (columns[key] && key !== 'id')) {
-                    key = `${baseKey}_${counter++}`;
+            headerRow.forEach(header => {
+                const lowerHeader = header.toLowerCase();
+                const internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
+                
+                if (headerMapping[lowerHeader]) {
+                    csvToInternalKeyMap[header] = headerMapping[lowerHeader];
+                } else {
+                    csvToInternalKeyMap[header] = { key: internalKey, type: 'string' };
                 }
-                keySet.add(key);
 
-                newColumns[key] = header;
-                finalColumnOrder.push(key);
-                headerToKeyMap[header] = key;
+                finalColumns[csvToInternalKeyMap[header].key] = header;
+                finalColumnOrder.push(csvToInternalKeyMap[header].key);
             });
-            
-            const newColumnVisibility = finalColumnOrder.reduce((acc, key) => {
-                acc[key] = true;
-                return acc;
-            }, {} as Record<string, boolean>);
-            newColumnVisibility['id'] = false;
-            
-            setColumns({ ...DEFAULT_COLUMN_NAMES, ...newColumns });
-            setColumnOrder(['id', ...finalColumnOrder]);
-            setColumnVisibility({ ...columnVisibility, ...newColumnVisibility });
-            
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify({ ...DEFAULT_COLUMN_NAMES, ...newColumns }));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(['id', ...finalColumnOrder]));
-            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify({ ...columnVisibility, ...newColumnVisibility }));
 
-            const BATCH_SIZE = 499; 
-            const batches:any[] = [];
-            let currentBatch = writeBatch(db);
-            let operationsInCurrentBatch = 0;
+            // Ensure essential columns are present
+            for (const key of ['id', 'name', 'stock', 'price']) {
+                if (!finalColumnOrder.includes(key)) {
+                    finalColumnOrder.unshift(key);
+                    finalColumns[key] = DEFAULT_COLUMN_NAMES[key];
+                }
+            }
             
-            for (let i = 0; i < dataRows.length; i++) {
-                const row = dataRows[i];
+            setColumns(finalColumns);
+            setColumnOrder(finalColumnOrder);
+            const newVisibility = finalColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), { id: false });
+            setColumnVisibility(newVisibility);
+            
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(finalColumns));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(finalColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newVisibility));
+
+
+            const batch = writeBatch(db);
+            
+            for (const row of dataRows) {
                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
                 const newItemData: { [key: string]: any } = {};
-
-                const itemName = values[nameIndex] || `Unnamed Item ${Date.now()}`;
-                if (!itemName) continue;
-
+                let itemName: string | null = null;
+                
                 headerRow.forEach((csvHeader, index) => {
-                    const customKey = headerToKeyMap[csvHeader];
+                    const mapping = csvToInternalKeyMap[csvHeader];
                     const value = values[index];
-                    
-                    if (value !== undefined) {
-                         const isNumericField = ['stock', 'price'].includes(customKey);
-                         if (isNumericField) {
-                            newItemData[customKey] = Number(value) || 0;
-                         } else {
-                            newItemData[customKey] = value || '';
-                         }
+
+                    if (mapping && value !== undefined) {
+                        if (mapping.type === 'number') {
+                            newItemData[mapping.key] = Number(value) || 0;
+                        } else {
+                            newItemData[mapping.key] = value || '';
+                        }
+                        if (mapping.key === 'name') {
+                            itemName = value;
+                        }
                     }
                 });
-                newItemData.name = itemName; // Ensure name is set
-                newItemData.userId = user.uid;
-                const existingItemId = existingItemsMap.get(itemName);
                 
-                if (operationsInCurrentBatch >= BATCH_SIZE) {
-                    batches.push(currentBatch);
-                    currentBatch = writeBatch(db);
-                    operationsInCurrentBatch = 0;
-                }
+                if (!itemName) continue; // Skip rows without a name
+
+                const existingItem = existingItemsMap.get(itemName.toLowerCase());
                 
-                if (existingItemId) {
-                    const itemRef = doc(db, "inventory", existingItemId);
-                    currentBatch.update(itemRef, newItemData);
+                if (existingItem) {
+                    const itemRef = doc(db, "inventory", existingItem.id);
+                    batch.update(itemRef, newItemData);
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
-                    currentBatch.set(newDocRef, newItemData);
+                    newItemData.userId = user.uid;
+                    batch.set(newDocRef, newItemData);
                 }
-                operationsInCurrentBatch++;
             }
             
-            if (operationsInCurrentBatch > 0) {
-              batches.push(currentBatch);
-            }
-
-            if (batches.length > 0) {
-              await Promise.all(batches.map(batch => batch.commit()));
-              toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
-            } else {
-              toast({ title: "No items to import", description: "The CSV file was empty or contained no valid data." });
-            }
+            await batch.commit();
+            toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -543,7 +520,7 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            await fetchAndSetData();
+            await fetchAndSetData(); // Refresh data from Firestore
             setupRealtimeListener();
         }
     };
