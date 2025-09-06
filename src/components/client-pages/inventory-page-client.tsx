@@ -438,7 +438,7 @@ const handleSaveChanges = async () => {
                 const baseKey = header.toLowerCase().replace(/\s+/g, '_');
                 let key = baseKey;
                 let counter = 1;
-                while (keySet.has(key)) {
+                while (keySet.has(key) || columns[key]) {
                     key = `${baseKey}_${counter++}`;
                 }
                 keySet.add(key);
@@ -480,11 +480,12 @@ const handleSaveChanges = async () => {
                     const value = values[index];
                     
                     if (value !== undefined) {
-                        const isNumericField = ['stock', 'price'].some(field => field === customKey);
+                        const numericKeys = ['stock', 'price'];
+                        const isNumericField = numericKeys.some(field => field === customKey);
                         if (isNumericField) {
                             newItemData[customKey] = Number(value) || 0;
                         } else {
-                           newItemData[customKey] = value;
+                           newItemData[customKey] = value || '';
                         }
                     }
                 });
