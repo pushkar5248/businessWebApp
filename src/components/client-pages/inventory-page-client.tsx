@@ -429,7 +429,7 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
-            const headerMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+            const internalKeyMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
                 'name': { key: 'name', type: 'string' },
                 'item name': { key: 'name', type: 'string' },
                 'particulars': { key: 'name', type: 'string' },
@@ -445,40 +445,46 @@ const handleSaveChanges = async () => {
                 'vendor': { key: 'supplier', type: 'string' }
             };
 
+            const newColumns: { [key: string]: string } = {};
+            const newColumnOrder: string[] = [];
             const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
-            const finalColumns: { [key: string]: string } = {};
-            const finalColumnOrder: string[] = [];
 
             headerRow.forEach(header => {
                 const lowerHeader = header.toLowerCase();
+                const internalMapping = internalKeyMapping[lowerHeader];
                 
-                if (headerMapping[lowerHeader]) {
-                    const internalMapping = headerMapping[lowerHeader];
-                    csvToInternalKeyMap[header] = internalMapping;
-                    finalColumns[internalMapping.key] = header; // Use original header for display
-                    finalColumnOrder.push(internalMapping.key);
+                let internalKey: string;
+                let type: 'string' | 'number' = 'string';
+
+                if (internalMapping) {
+                    internalKey = internalMapping.key;
+                    type = internalMapping.type;
                 } else {
-                    const internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
-                    csvToInternalKeyMap[header] = { key: internalKey, type: 'string' };
-                    finalColumns[internalKey] = header; // Use original header for display
-                    finalColumnOrder.push(internalKey);
+                    internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
+                }
+                
+                csvToInternalKeyMap[header] = { key: internalKey, type: type };
+                newColumns[internalKey] = header; // Use original header for display
+                if (!newColumnOrder.includes(internalKey)) {
+                  newColumnOrder.push(internalKey);
                 }
             });
 
+            // Ensure essential columns are always present
             for (const key of ['id', 'name', 'stock', 'price']) {
-                if (!finalColumnOrder.includes(key)) {
-                    finalColumnOrder.unshift(key);
-                    finalColumns[key] = DEFAULT_COLUMN_NAMES[key];
+                if (!newColumnOrder.includes(key)) {
+                    newColumnOrder.unshift(key);
+                    newColumns[key] = DEFAULT_COLUMN_NAMES[key];
                 }
             }
             
-            setColumns(finalColumns);
-            setColumnOrder(finalColumnOrder);
-            const newVisibility = finalColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), { id: false });
+            setColumns(newColumns);
+            setColumnOrder(newColumnOrder);
+            const newVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), { id: false });
             setColumnVisibility(newVisibility);
             
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(finalColumns));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(finalColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumns));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(newColumnOrder));
             localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newVisibility));
 
 
@@ -494,11 +500,7 @@ const handleSaveChanges = async () => {
                     const value = values[index];
 
                     if (mapping && value !== undefined) {
-                        if (mapping.type === 'number') {
-                            newItemData[mapping.key] = Number(value) || 0;
-                        } else {
-                            newItemData[mapping.key] = value || '';
-                        }
+                        newItemData[mapping.key] = mapping.type === 'number' ? Number(value) || 0 : value || '';
                         if (mapping.key === 'name') {
                             itemName = value;
                         }
@@ -506,14 +508,15 @@ const handleSaveChanges = async () => {
                 });
                 
                 if (!itemName) {
-                    newItemData.name = "Unnamed Item";
+                    continue; // Skip rows without a name
                 };
 
-                const existingItem = existingItemsMap.get((itemName || '').toLowerCase());
+                const existingItem = existingItemsMap.get(itemName.toLowerCase());
                 
                 if (existingItem) {
                     const itemRef = doc(db, "inventory", existingItem.id);
-                    batch.update(itemRef, newItemData);
+                    // Non-destructive update: only merge new fields
+                    batch.set(itemRef, newItemData, { merge: true });
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
                     newItemData.userId = user.uid;
@@ -982,4 +985,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
