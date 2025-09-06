@@ -421,7 +421,6 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
-            // Standardized mapping for essential fields
             const headerMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
                 'name': { key: 'name', type: 'string' },
                 'item name': { key: 'name', type: 'string' },
@@ -431,6 +430,7 @@ const handleSaveChanges = async () => {
                 'stock': { key: 'stock', type: 'number' },
                 'quantity': { key: 'stock', type: 'number' },
                 'qty': { key: 'stock', type: 'number' },
+                'inventory': { key: 'stock', type: 'number' },
                 'category': { key: 'category', type: 'string' },
                 'group': { key: 'category', type: 'string' },
                 'supplier': { key: 'supplier', type: 'string' },
@@ -455,7 +455,6 @@ const handleSaveChanges = async () => {
                 finalColumnOrder.push(csvToInternalKeyMap[header].key);
             });
 
-            // Ensure essential columns are present
             for (const key of ['id', 'name', 'stock', 'price']) {
                 if (!finalColumnOrder.includes(key)) {
                     finalColumnOrder.unshift(key);
@@ -496,7 +495,7 @@ const handleSaveChanges = async () => {
                     }
                 });
                 
-                if (!itemName) continue; // Skip rows without a name
+                if (!itemName) continue;
 
                 const existingItem = existingItemsMap.get(itemName.toLowerCase());
                 
@@ -520,7 +519,7 @@ const handleSaveChanges = async () => {
                 fileInputRef.current.value = '';
             }
             setImportModalOpen(false);
-            await fetchAndSetData(); // Refresh data from Firestore
+            await fetchAndSetData();
             setupRealtimeListener();
         }
     };
@@ -971,3 +970,5 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
+    
