@@ -421,8 +421,23 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            const nameAlternatives = ['name', 'item name', 'particulars'];
-            const nameIndex = headerRow.findIndex(h => nameAlternatives.includes(h.toLowerCase()));
+            const nameAlternatives = {
+              name: ['name', 'item name', 'particulars'],
+              price: ['price', 'rate'],
+              stock: ['stock', 'quantity', 'qty'],
+              category: ['category', 'group'],
+              supplier: ['supplier', 'vendor'],
+            };
+
+            const findHeaderIndex = (headers: string[], alternatives: string[]) => {
+              for (const alt of alternatives) {
+                const index = headers.findIndex(h => h.toLowerCase() === alt);
+                if (index !== -1) return index;
+              }
+              return -1;
+            };
+
+            const nameIndex = findHeaderIndex(headerRow, nameAlternatives.name);
             
             if (nameIndex === -1) {
                  toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'Name' or 'Particulars' column." });
@@ -474,7 +489,7 @@ const handleSaveChanges = async () => {
                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
                 const newItemData: { [key: string]: any } = {};
 
-                const itemName = values[nameIndex];
+                const itemName = values[nameIndex] || `Unnamed Item ${Date.now()}`;
                 if (!itemName) continue;
 
                 headerRow.forEach((csvHeader, index) => {
@@ -490,7 +505,7 @@ const handleSaveChanges = async () => {
                          }
                     }
                 });
-
+                newItemData.name = itemName; // Ensure name is set
                 newItemData.userId = user.uid;
                 const existingItemId = existingItemsMap.get(itemName);
                 
