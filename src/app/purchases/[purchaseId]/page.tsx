@@ -71,6 +71,35 @@ export default function PurchaseDetailsPage() {
         fetchPurchase();
     }, [fetchPurchase]);
 
+    const handleStatusChange = async (newStatus: PurchaseStatus) => {
+        if (!purchase || !user) return;
+        
+        try {
+            const purchaseRef = doc(db, "purchases", purchase.id);
+            await updateDoc(purchaseRef, { status: newStatus });
+
+            // If status is 'Received', update inventory using the centralized service
+            if (newStatus === 'Received' && purchase.status !== 'Received') {
+                await updateStockOnPurchase(purchase.items, user.uid);
+                 toast({
+                    title: "Status Updated & Inventory Stocked",
+                    description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
+                });
+            } else {
+                toast({
+                    title: "Status Updated",
+                    description: `Purchase order status changed to ${newStatus}.`
+                });
+            }
+            
+            setPurchase({ ...purchase, status: newStatus });
+
+        } catch (error) {
+             console.error("Error updating status:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
+        }
+    };
+
     if (isLoading) {
         return (
             <MainLayout>
@@ -84,29 +113,6 @@ export default function PurchaseDetailsPage() {
     if (!purchase) {
         notFound();
     }
-
-    const handleStatusChange = async (newStatus: PurchaseStatus) => {
-        if (!purchase || !user) return;
-        
-        try {
-            const purchaseRef = doc(db, "purchases", purchase.id);
-            await updateDoc(purchaseRef, { status: newStatus });
-
-            // If status is 'Received', update inventory using the centralized service
-            if (newStatus === 'Received' && purchase.status !== 'Received') {
-                await updateStockOnPurchase(purchase.items, user.uid);
-            }
-            
-            setPurchase({ ...purchase, status: newStatus });
-            toast({
-                title: "Status Updated",
-                description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
-            });
-        } catch (error) {
-             console.error("Error updating status:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
-        }
-    };
     
     const subtotal = purchase.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
     const igstAmount = subtotal * ((purchase.igstRate || 0) / 100);
