@@ -40,8 +40,10 @@ import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where, writeBatch, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
+import { updateStockOnSale } from "@/services/inventory-service";
+
 
 const lineItemSchema = z.object({
   inventoryId: z.string().optional(),
@@ -116,6 +118,7 @@ export function InvoiceForm() {
     try {
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const inventorySnapshot = await getDocs(inventoryQuery);
+        // Defensive check: only include items that have a valid name.
         const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem)).filter(item => item && item.name);
         setInventoryItems(items);
         setInventoryOptions(items.map(item => ({ value: item.id, label: item.name })));
@@ -178,7 +181,7 @@ export function InvoiceForm() {
       date: data.invoiceDate,
       amount: total,
       status: "Pending", // Default status
-      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId })),
       customerAddress: data.customerAddress,
       customerPhone: data.customerPhone,
       customerState: data.customerState,
@@ -199,24 +202,11 @@ export function InvoiceForm() {
     };
 
     try {
-        const batch = writeBatch(db);
-
         const saleDocRef = doc(db, "sales", newSale.id);
-        batch.set(saleDocRef, newSale);
-
-        for (const item of data.items) {
-            if (item.inventoryId) {
-                const inventoryRef = doc(db, "inventory", item.inventoryId);
-                const inventoryDoc = await getDoc(inventoryRef);
-                if (inventoryDoc.exists()) {
-                    const currentStock = inventoryDoc.data().stock || 0;
-                    const newStock = currentStock - item.quantity;
-                    batch.update(inventoryRef, { stock: newStock });
-                }
-            }
-        }
+        await setDoc(saleDocRef, newSale);
         
-        await batch.commit();
+        // Use centralized service to update stock
+        await updateStockOnSale(data.items);
 
         toast({
           title: "Sale Created",

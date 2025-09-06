@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-context';
+import { updateStockOnPurchase } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -88,51 +89,14 @@ export default function PurchaseDetailsPage() {
         if (!purchase || !user) return;
         
         try {
-            const batch = writeBatch(db);
             const purchaseRef = doc(db, "purchases", purchase.id);
-            
-            // Update purchase status
-            batch.update(purchaseRef, { status: newStatus });
+            await updateDoc(purchaseRef, { status: newStatus });
 
-            // If status is 'Received', update inventory
+            // If status is 'Received', update inventory using the centralized service
             if (newStatus === 'Received' && purchase.status !== 'Received') {
-                const itemNames = purchase.items.map(item => item.name);
-                if(itemNames.length > 0) {
-                    const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid), where("name", "in", itemNames));
-                    const inventorySnapshot = await getDocs(inventoryQuery);
-                    
-                    const inventoryMap = new Map<string, {docId: string, stock: number}>();
-                    inventorySnapshot.forEach(doc => {
-                        const item = doc.data() as InventoryItem;
-                        inventoryMap.set(item.name, { docId: doc.id, stock: item.stock });
-                    });
-
-                    for (const purchasedItem of purchase.items) {
-                        const existingItem = inventoryMap.get(purchasedItem.name);
-                        if (existingItem) {
-                            const newStock = existingItem.stock + purchasedItem.quantity;
-                            const itemRef = doc(db, "inventory", existingItem.docId);
-                            batch.update(itemRef, { stock: newStock });
-                        } else {
-                            // If item doesn't exist, create it in inventory
-                             const newItemRef = doc(collection(db, "inventory"));
-                             batch.set(newItemRef, {
-                                 name: purchasedItem.name,
-                                 quantity: purchasedItem.quantity,
-                                 price: purchasedItem.price,
-                                 category: 'Uncategorized',
-                                 subcategory: '',
-                                 supplier: purchase.vendor,
-                                 userId: user.uid,
-                                 stock: purchasedItem.quantity
-                             });
-                        }
-                    }
-                }
+                await updateStockOnPurchase(purchase.items, user.uid);
             }
             
-            await batch.commit();
-
             setPurchase({ ...purchase, status: newStatus });
             toast({
                 title: "Status Updated",

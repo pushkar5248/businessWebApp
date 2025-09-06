@@ -15,17 +15,20 @@ export type InventoryItem = {
 export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';
 export type PurchaseStatus = 'Received' | 'Pending';
 
+export type LineItem = {
+  inventoryId?: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
 export type Sale = {
   id: string;
   customer: string;
   date: string;
   amount: number;
   status: SaleStatus;
-  items: {
-    name: string;
-    quantity: number;
-    price: number;
-  }[];
+  items: LineItem[];
   customerAddress: string;
   customerPhone: string;
   customerState?: string;
@@ -53,11 +56,7 @@ export type Purchase = {
     date: string;
     amount: number;
     status: PurchaseStatus;
-    items: {
-        name: string;
-        quantity: number;
-        price: number;
-    }[];
+    items: LineItem[];
     igstRate?: number;
     deletedAt?: string | null;
     userId: string;
