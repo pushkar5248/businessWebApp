@@ -31,34 +31,39 @@ export async function updateStockOnSale(items: LineItem[]): Promise<void> {
  */
 export async function updateStockOnPurchase(items: LineItem[], userId: string): Promise<void> {
     const batch = writeBatch(db);
-    const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", userId));
-    const inventorySnapshot = await getDocs(inventoryQuery);
     
-    const inventoryMap = new Map<string, {docId: string, stock: number}>();
-    inventorySnapshot.forEach(doc => {
-        const item = doc.data();
-        inventoryMap.set(item.name.toLowerCase(), { docId: doc.id, stock: item.stock });
-    });
-
     for (const purchasedItem of items) {
-        const existingItem = inventoryMap.get(purchasedItem.name.toLowerCase());
-        
-        if (existingItem) {
-            // If item exists, atomically increment the stock.
-            const itemRef = doc(db, "inventory", existingItem.docId);
+        // Prioritize updating by ID if it exists, as it's more reliable.
+        if (purchasedItem.inventoryId) {
+            const itemRef = doc(db, "inventory", purchasedItem.inventoryId);
             batch.update(itemRef, { stock: increment(purchasedItem.quantity) });
         } else {
-            // If item doesn't exist, create it in inventory.
-             const newItemRef = doc(collection(db, "inventory"));
-             batch.set(newItemRef, {
-                 name: purchasedItem.name,
-                 price: purchasedItem.price,
-                 stock: purchasedItem.quantity,
-                 category: 'Uncategorized',
-                 subcategory: '',
-                 supplier: '', // Supplier info is on the purchase order, not line item.
-                 userId: userId,
-             });
+            // Fallback to finding by name if no ID is present.
+            const inventoryQuery = query(
+                collection(db, "inventory"), 
+                where("userId", "==", userId),
+                where("name", "==", purchasedItem.name)
+            );
+            const querySnapshot = await getDocs(inventoryQuery);
+
+            if (!querySnapshot.empty) {
+                // Item exists, increment the stock.
+                const existingDoc = querySnapshot.docs[0];
+                const itemRef = doc(db, "inventory", existingDoc.id);
+                batch.update(itemRef, { stock: increment(purchasedItem.quantity) });
+            } else {
+                // If item doesn't exist, create it in inventory.
+                 const newItemRef = doc(collection(db, "inventory"));
+                 batch.set(newItemRef, {
+                     name: purchasedItem.name,
+                     price: purchasedItem.price,
+                     stock: purchasedItem.quantity,
+                     category: 'Uncategorized',
+                     subcategory: '',
+                     supplier: '', // Supplier info is on the purchase order, not line item.
+                     userId: userId,
+                 });
+            }
         }
     }
     
