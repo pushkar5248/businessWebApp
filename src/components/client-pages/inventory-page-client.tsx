@@ -438,7 +438,7 @@ const handleSaveChanges = async () => {
                 const baseKey = header.toLowerCase().replace(/\s+/g, '_');
                 let key = baseKey;
                 let counter = 1;
-                while (keySet.has(key) || columns[key]) {
+                while (keySet.has(key) || (columns[key] && key !== 'id')) {
                     key = `${baseKey}_${counter++}`;
                 }
                 keySet.add(key);
@@ -454,23 +454,24 @@ const handleSaveChanges = async () => {
             }, {} as Record<string, boolean>);
             newColumnVisibility['id'] = false;
             
-            setColumns({ ...newColumns, id: "Item ID" });
+            setColumns({ ...DEFAULT_COLUMN_NAMES, ...newColumns });
             setColumnOrder(['id', ...finalColumnOrder]);
-            setColumnVisibility(newColumnVisibility);
+            setColumnVisibility({ ...columnVisibility, ...newColumnVisibility });
             
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify({ ...newColumns, id: "Item ID" }));
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify({ ...DEFAULT_COLUMN_NAMES, ...newColumns }));
             localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(['id', ...finalColumnOrder]));
-            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newColumnVisibility));
+            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify({ ...columnVisibility, ...newColumnVisibility }));
 
             const BATCH_SIZE = 499; 
             const batches:any[] = [];
             let currentBatch = writeBatch(db);
             let operationsInCurrentBatch = 0;
+            const updatedLocalItems = [...originalItems];
             
             for (let i = 0; i < dataRows.length; i++) {
-                 const row = dataRows[i];
-                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
-                 const newItemData: { [key: string]: any } = {};
+                const row = dataRows[i];
+                const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+                const newItemData: { [key: string]: any } = {};
 
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
@@ -480,19 +481,16 @@ const handleSaveChanges = async () => {
                     const value = values[index];
                     
                     if (value !== undefined) {
-                        const numericKeys = ['stock', 'price'];
-                        const isNumericField = numericKeys.some(field => field === customKey);
-                        if (isNumericField) {
+                         const isNumericField = ['stock', 'price'].includes(customKey);
+                         if (isNumericField) {
                             newItemData[customKey] = Number(value) || 0;
-                        } else {
-                           newItemData[customKey] = value || '';
-                        }
+                         } else {
+                            newItemData[customKey] = value || '';
+                         }
                     }
                 });
 
                 newItemData.userId = user.uid;
-                delete newItemData.id;
-
                 const existingItemId = existingItemsMap.get(itemName);
                 
                 if (operationsInCurrentBatch >= BATCH_SIZE) {
@@ -504,9 +502,13 @@ const handleSaveChanges = async () => {
                 if (existingItemId) {
                     const itemRef = doc(db, "inventory", existingItemId);
                     currentBatch.update(itemRef, newItemData);
+                    const indexToUpdate = updatedLocalItems.findIndex(item => item.id === existingItemId);
+                    if(indexToUpdate > -1) {
+                        updatedLocalItems[indexToUpdate] = { ...updatedLocalItems[indexToUpdate], ...newItemData };
+                    }
                 } else {
-                    const newDocRef = doc(collection(db, "inventory"));
-                    currentBatch.set(newDocRef, newItemData);
+                    const newDocRef = await addDoc(collection(db, "inventory"), newItemData);
+                    updatedLocalItems.push({ id: newDocRef.id, ...newItemData });
                 }
                 operationsInCurrentBatch++;
             }
@@ -515,7 +517,7 @@ const handleSaveChanges = async () => {
               batches.push(currentBatch);
             }
 
-            if (batches.length > 0) {
+            if (batches.length > 0 || operationsInCurrentBatch > 0) {
               await Promise.all(batches.map(batch => batch.commit()));
               toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
             } else {
