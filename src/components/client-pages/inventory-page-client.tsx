@@ -300,8 +300,10 @@ export default function InventoryPageClient() {
   };
   
   const handleDeleteItems = async (itemIds: string[]) => {
-    if (!user || itemIds.length === 0) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to delete items.'})
+    if (!user) {
+        setItems(prev => prev.filter(item => !itemIds.includes(item.id)));
+        setSelectedRows([]);
+        toast({ title: "Success", description: `${itemIds.length} item(s) removed.` });
         return;
     }
     try {
@@ -809,7 +811,7 @@ const handleSaveChanges = async () => {
                 <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={!user}>
+                    <Button variant="destructive" size="sm">
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete Selected
                     </Button>
@@ -840,7 +842,6 @@ const handleSaveChanges = async () => {
                         checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
                         onCheckedChange={handleSelectAll}
                         aria-label="Select all"
-                        disabled={!user}
                       />
                   </div>
                 </TableHead>
@@ -903,7 +904,6 @@ const handleSaveChanges = async () => {
                           checked={selectedRows.includes(item.id)}
                           onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
                           aria-label={`Select item ${item.name}`}
-                          disabled={!user}
                         />
                     </TableCell>
                     {visibleColumns.map((key) => (
@@ -949,7 +949,7 @@ const handleSaveChanges = async () => {
                       <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={!user}>
+                              <Button variant="ghost" size="icon">
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </AlertDialogTrigger>
