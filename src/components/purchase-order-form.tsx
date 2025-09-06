@@ -81,8 +81,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     const querySnapshot = await getDocs(q);
     const items = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
     setInventoryItems(items);
-    const validItems = items.filter(item => item && item.name);
-    setInventoryOptions(validItems.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
+    setInventoryOptions(items.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
   }, [user]);
 
   useEffect(() => {
@@ -310,5 +309,3 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     </FormProvider>
   );
 }
-
-    

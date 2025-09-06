@@ -117,8 +117,7 @@ export function InvoiceForm() {
         const inventorySnapshot = await getDocs(inventoryQuery);
         const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
         setInventoryItems(items);
-        const validItems = items.filter(item => item && item.name);
-        setInventoryOptions(validItems.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
+        setInventoryOptions(items.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
 
     } catch (error) {
         console.error("Error fetching inventory", error);
@@ -629,5 +628,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
-    
