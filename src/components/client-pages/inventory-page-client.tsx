@@ -139,6 +139,8 @@ export default function InventoryPageClient() {
   const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+
   
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
@@ -411,16 +413,12 @@ const handleSaveChanges = async () => {
                 return;
             }
             
-            const headerRow = allRows[0].split(',').map(h => h.trim());
+            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, ''));
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
 
-            const newColumnNames: Record<string, string> = { ...DEFAULT_COLUMN_NAMES };
-            const newColumnVisibility: Record<string, boolean> = { id: false }; 
-            const newColumnOrderSet = new Set<string>(['id']);
-            
             const nameAlternatives = ['name', 'item name', 'particulars'];
             const nameIndex = headerRow.findIndex(h => nameAlternatives.includes(h.toLowerCase()));
             
@@ -430,27 +428,38 @@ const handleSaveChanges = async () => {
                  setupRealtimeListener();
                  return;
             }
-            const nameHeader = headerRow[nameIndex];
-            headerRow[nameIndex] = 'name';
 
+            const newColumns: { [key: string]: string } = {};
+            const finalColumnOrder: string[] = [];
+            const headerToKeyMap: { [key: string]: string } = {};
+            const keySet = new Set<string>();
 
-            headerRow.forEach((header, index) => {
-              const key = index === nameIndex ? 'name' : header.toLowerCase().replace(/\s+/g, '_');
-              if (key) {
-                  newColumnNames[key] = index === nameIndex ? nameHeader : header;
-                  newColumnVisibility[key] = true;
-                  newColumnOrderSet.add(key);
-              }
+            headerRow.forEach((header) => {
+                const baseKey = header.toLowerCase().replace(/\s+/g, '_');
+                let key = baseKey;
+                let counter = 1;
+                while (keySet.has(key)) {
+                    key = `${baseKey}_${counter++}`;
+                }
+                keySet.add(key);
+
+                newColumns[key] = header;
+                finalColumnOrder.push(key);
+                headerToKeyMap[header] = key;
             });
-
-            const newColumnOrder = Array.from(newColumnOrderSet);
-
-            setColumns(newColumnNames);
-            setColumnOrder(newColumnOrder);
+            
+            const newColumnVisibility = finalColumnOrder.reduce((acc, key) => {
+                acc[key] = true;
+                return acc;
+            }, {} as Record<string, boolean>);
+            newColumnVisibility['id'] = false;
+            
+            setColumns({ ...newColumns, id: "Item ID" });
+            setColumnOrder(['id', ...finalColumnOrder]);
             setColumnVisibility(newColumnVisibility);
             
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumnNames));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(newColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify({ ...newColumns, id: "Item ID" }));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(['id', ...finalColumnOrder]));
             localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newColumnVisibility));
 
             const BATCH_SIZE = 499; 
@@ -460,14 +469,14 @@ const handleSaveChanges = async () => {
             
             for (let i = 0; i < dataRows.length; i++) {
                  const row = dataRows[i];
-                 const values = row.split(',').map(v => v.trim());
+                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
                  const newItemData: { [key: string]: any } = {};
 
                 const itemName = values[nameIndex];
                 if (!itemName) continue;
 
                 headerRow.forEach((csvHeader, index) => {
-                    const customKey = csvHeader.toLowerCase().replace(/\s+/g, '_');
+                    const customKey = headerToKeyMap[csvHeader];
                     const value = values[index];
                     
                     if (value !== undefined) {
@@ -633,6 +642,30 @@ const handleSaveChanges = async () => {
     setColumns(prev => ({ ...prev, [key]: renameValue }));
     setColumnToRename(null);
     setRenameValue("");
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    setDraggedColumn(key);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
+    e.preventDefault();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLTableCellElement>, dropKey: string) => {
+    e.preventDefault();
+    if (draggedColumn) {
+      const newColumnOrder = [...columnOrder];
+      const dragIndex = newColumnOrder.indexOf(draggedColumn);
+      const dropIndex = newColumnOrder.indexOf(dropKey);
+      
+      const [removed] = newColumnOrder.splice(dragIndex, 1);
+      newColumnOrder.splice(dropIndex, 0, removed);
+      
+      setColumnOrder(newColumnOrder);
+      setDraggedColumn(null);
+    }
   };
 
 
@@ -816,7 +849,11 @@ const handleSaveChanges = async () => {
                 {visibleColumns.map((key) => (
                   <TableHead
                     key={key}
-                    className="h-12 px-4"
+                    className="h-12 px-4 cursor-move"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, key)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, key)}
                   >
                     <div className="flex items-center justify-between" suppressHydrationWarning>
                      {columnToRename === key ? (
@@ -944,4 +981,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
