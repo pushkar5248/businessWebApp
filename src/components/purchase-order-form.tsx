@@ -38,6 +38,7 @@ import { Combobox } from "@/components/ui/combobox";
 
 
 const lineItemSchema = z.object({
+  inventoryId: z.string().optional(),
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
@@ -79,10 +80,9 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     if (!user) return;
     const q = query(collection(db, "inventory"), where("userId", "==", user.uid));
     const querySnapshot = await getDocs(q);
-    const items = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
+    const items = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem)).filter(item => item && item.name);
     setInventoryItems(items);
-    const validItems = items.filter(item => item && item.name);
-    setInventoryOptions(validItems.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
+    setInventoryOptions(items.map(item => ({ value: item.id, label: item.name })));
   }, [user]);
 
   useEffect(() => {
@@ -198,11 +198,14 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={field.value}
+                                value={watchedFormValues.items?.[index]?.inventoryId || ''}
                                 onChange={(value) => {
-                                    const selectedItem = inventoryItems.find(item => item.name.toLowerCase() === value);
-                                    setValue(`items.${index}.name`, selectedItem?.name || '');
-                                    setValue(`items.${index}.price`, selectedItem?.price || 0);
+                                    const selectedItem = inventoryItems.find(item => item.id === value);
+                                    if(selectedItem) {
+                                        setValue(`items.${index}.inventoryId`, selectedItem.id);
+                                        setValue(`items.${index}.name`, selectedItem.name);
+                                        setValue(`items.${index}.price`, selectedItem.price);
+                                    }
                                 }}
                                 placeholder="Select item..."
                                 emptyText="No items found in inventory."

@@ -40,10 +40,11 @@ import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where, writeBatch, getDoc } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
 
 const lineItemSchema = z.object({
+  inventoryId: z.string().optional(),
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
@@ -115,10 +116,9 @@ export function InvoiceForm() {
     try {
         const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid));
         const inventorySnapshot = await getDocs(inventoryQuery);
-        const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem));
+        const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem)).filter(item => item && item.name);
         setInventoryItems(items);
-        const validItems = items.filter(item => item && item.name);
-        setInventoryOptions(validItems.map(item => ({ value: item.name.toLowerCase(), label: item.name })));
+        setInventoryOptions(items.map(item => ({ value: item.id, label: item.name })));
 
     } catch (error) {
         console.error("Error fetching inventory", error);
@@ -178,7 +178,7 @@ export function InvoiceForm() {
       date: data.invoiceDate,
       amount: total,
       status: "Pending", // Default status
-      items: data.items,
+      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
       customerAddress: data.customerAddress,
       customerPhone: data.customerPhone,
       customerState: data.customerState,
@@ -201,35 +201,21 @@ export function InvoiceForm() {
     try {
         const batch = writeBatch(db);
 
-        // 1. Add the new sale to the batch
         const saleDocRef = doc(db, "sales", newSale.id);
         batch.set(saleDocRef, newSale);
 
-        // 2. Update inventory stock
-        const itemNames = data.items.map(item => item.name);
-        if (itemNames.length > 0) {
-            const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid), where("name", "in", itemNames));
-            const inventorySnapshot = await getDocs(inventoryQuery);
-
-            const inventoryUpdates = new Map<string, number>();
-            inventorySnapshot.forEach(doc => {
-                const item = doc.data() as InventoryItem;
-                inventoryUpdates.set(item.name, item.stock);
-            });
-            
-            for (const saleItem of data.items) {
-                const currentStock = inventoryUpdates.get(saleItem.name);
-                if (currentStock !== undefined) {
-                    const inventoryDoc = inventorySnapshot.docs.find(d => d.data().name === saleItem.name);
-                    if (inventoryDoc) {
-                        const newStock = currentStock - saleItem.quantity;
-                        batch.update(inventoryDoc.ref, { stock: newStock });
-                    }
+        for (const item of data.items) {
+            if (item.inventoryId) {
+                const inventoryRef = doc(db, "inventory", item.inventoryId);
+                const inventoryDoc = await getDoc(inventoryRef);
+                if (inventoryDoc.exists()) {
+                    const currentStock = inventoryDoc.data().stock || 0;
+                    const newStock = currentStock - item.quantity;
+                    batch.update(inventoryRef, { stock: newStock });
                 }
             }
         }
-
-        // 3. Commit the batch
+        
         await batch.commit();
 
         toast({
@@ -239,7 +225,7 @@ export function InvoiceForm() {
     } catch (error) {
         console.error("Error creating sale and updating inventory:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to create sale or update inventory." });
-        throw error; // re-throw to stop processing in combined action
+        throw error;
     }
   };
 
@@ -294,7 +280,7 @@ export function InvoiceForm() {
         title: "Error",
         description: "Failed to generate invoice. Please try again.",
       });
-      throw error; // re-throw to stop processing in combined action
+      throw error;
     }
   };
 
@@ -498,11 +484,14 @@ export function InvoiceForm() {
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={field.value}
+                                value={watchedFormValues.items?.[index]?.inventoryId || ''}
                                 onChange={(value) => {
-                                    const selectedItem = inventoryItems.find(item => item.name.toLowerCase() === value);
-                                    setValue(`items.${index}.name`, selectedItem?.name || '');
-                                    setValue(`items.${index}.price`, selectedItem?.price || 0);
+                                    const selectedItem = inventoryItems.find(item => item.id === value);
+                                    if (selectedItem) {
+                                        setValue(`items.${index}.inventoryId`, selectedItem.id);
+                                        setValue(`items.${index}.name`, selectedItem.name);
+                                        setValue(`items.${index}.price`, selectedItem.price);
+                                    }
                                 }}
                                 placeholder="Select item..."
                                 emptyText="No items found in inventory."
