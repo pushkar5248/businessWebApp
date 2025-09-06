@@ -495,9 +495,11 @@ const handleSaveChanges = async () => {
                     }
                 });
                 
-                if (!itemName) continue;
+                if (!itemName) {
+                    newItemData.name = "Unnamed Item";
+                };
 
-                const existingItem = existingItemsMap.get(itemName.toLowerCase());
+                const existingItem = existingItemsMap.get((itemName || '').toLowerCase());
                 
                 if (existingItem) {
                     const itemRef = doc(db, "inventory", existingItem.id);
@@ -970,5 +972,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
-    
