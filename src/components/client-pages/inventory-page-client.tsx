@@ -266,14 +266,22 @@ export default function InventoryPageClient() {
         localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(columns));
     }
   }, [columns, getLocalStorageKey]);
+  
+  const allAvailableColumns = useMemo(() => {
+    const columnKeys = new Set<string>();
+    items.forEach(item => {
+      Object.keys(item).forEach(key => columnKeys.add(key));
+    });
+    return Array.from(columnKeys);
+  }, [items]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
-  }, [columnOrder, columnVisibility]);
+    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys] && allAvailableColumns.includes(key));
+  }, [columnOrder, columnVisibility, allAvailableColumns]);
   
   const requestSort = (key: keyof ColumnKeys) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -765,7 +773,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columns).filter(key => key !== 'id').map((key) => (
+                        {allAvailableColumns.filter(key => key !== 'id' && key !== 'userId').map((key) => (
                            <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
                              <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
                                <Checkbox
@@ -773,7 +781,7 @@ const handleSaveChanges = async () => {
                                  onCheckedChange={(checked) => handleColumnVisibilityChange(key, !!checked)}
                                  className="mr-2"
                                />
-                               <span className="flex-1">{columns[key]}</span>
+                               <span className="flex-1">{columns[key] || key}</span>
                                <Button
                                  variant="ghost"
                                  size="icon"
@@ -860,7 +868,7 @@ const handleSaveChanges = async () => {
                           />
                         </div>
                       ) : (
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key]}</span>
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key] || key}</span>
                       )}
                       <Button
                         variant="ghost"
@@ -972,3 +980,4 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
