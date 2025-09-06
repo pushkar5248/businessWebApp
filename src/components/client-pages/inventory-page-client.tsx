@@ -466,7 +466,6 @@ const handleSaveChanges = async () => {
             const batches:any[] = [];
             let currentBatch = writeBatch(db);
             let operationsInCurrentBatch = 0;
-            const updatedLocalItems = [...originalItems];
             
             for (let i = 0; i < dataRows.length; i++) {
                 const row = dataRows[i];
@@ -502,13 +501,9 @@ const handleSaveChanges = async () => {
                 if (existingItemId) {
                     const itemRef = doc(db, "inventory", existingItemId);
                     currentBatch.update(itemRef, newItemData);
-                    const indexToUpdate = updatedLocalItems.findIndex(item => item.id === existingItemId);
-                    if(indexToUpdate > -1) {
-                        updatedLocalItems[indexToUpdate] = { ...updatedLocalItems[indexToUpdate], ...newItemData };
-                    }
                 } else {
-                    const newDocRef = await addDoc(collection(db, "inventory"), newItemData);
-                    updatedLocalItems.push({ id: newDocRef.id, ...newItemData });
+                    const newDocRef = doc(collection(db, "inventory"));
+                    currentBatch.set(newDocRef, newItemData);
                 }
                 operationsInCurrentBatch++;
             }
@@ -517,7 +512,7 @@ const handleSaveChanges = async () => {
               batches.push(currentBatch);
             }
 
-            if (batches.length > 0 || operationsInCurrentBatch > 0) {
+            if (batches.length > 0) {
               await Promise.all(batches.map(batch => batch.commit()));
               toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
             } else {
