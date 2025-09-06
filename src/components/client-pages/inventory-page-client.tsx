@@ -451,16 +451,18 @@ const handleSaveChanges = async () => {
 
             headerRow.forEach(header => {
                 const lowerHeader = header.toLowerCase();
-                const internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
                 
                 if (headerMapping[lowerHeader]) {
-                    csvToInternalKeyMap[header] = headerMapping[lowerHeader];
+                    const internalMapping = headerMapping[lowerHeader];
+                    csvToInternalKeyMap[header] = internalMapping;
+                    finalColumns[internalMapping.key] = header; // Use original header for display
+                    finalColumnOrder.push(internalMapping.key);
                 } else {
+                    const internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
                     csvToInternalKeyMap[header] = { key: internalKey, type: 'string' };
+                    finalColumns[internalKey] = header; // Use original header for display
+                    finalColumnOrder.push(internalKey);
                 }
-
-                finalColumns[csvToInternalKeyMap[header].key] = header;
-                finalColumnOrder.push(csvToInternalKeyMap[header].key);
             });
 
             for (const key of ['id', 'name', 'stock', 'price']) {
