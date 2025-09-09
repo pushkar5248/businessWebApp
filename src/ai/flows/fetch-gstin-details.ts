@@ -30,6 +30,12 @@ const gstinDatabase: Record<string, GstinOutput> = {
   }
 };
 
+// Arrays for generating plausible random business data
+const businessNouns = ["Enterprises", "Solutions", "Innovations", "Trading", "Group", "Industries", "Exports", "Minerals", "Stones"];
+const businessAdjectives = ["Global", "National", "Sunrise", "Pioneer", "Apex", "Dynamic", "United", "Prime", "Heritage"];
+const streetTypes = ["Road", "Street", "Avenue", "Lane", "Drive", "Plaza"];
+const cityNames = ["Jaipur", "Mumbai", "Delhi", "Bangalore", "Kolkata", "Chennai", "Pune", "Ahmedabad", "Hyderabad"];
+
 
 export async function fetchGstinDetails(input: GstinInput): Promise<GstinOutput | null> {
   return fetchGstinDetailsFlow(input);
@@ -43,13 +49,30 @@ const fetchGstinDetailsFlow = ai.defineFlow(
   },
   async ({ gstin }) => {
     console.log(`Looking up GSTIN: ${gstin}`);
+    const upperGstin = gstin.toUpperCase();
     
-    // Simulate an API call to a GSTIN verification service.
-    const details = gstinDatabase[gstin.toUpperCase()];
+    // Check our mock database first for specific examples
+    const details = gstinDatabase[upperGstin];
 
     if (details) {
-      console.log('Found details:', details);
+      console.log('Found details in mock database:', details);
       return details;
+    }
+    
+    // If not in the mock database, generate plausible random data for any other 15-digit string
+    if (upperGstin.length === 15) {
+        console.log('GSTIN not in mock DB, generating random data.');
+        const randomAdjective = businessAdjectives[Math.floor(Math.random() * businessAdjectives.length)];
+        const randomNoun = businessNouns[Math.floor(Math.random() * businessNouns.length)];
+        const randomCity = cityNames[Math.floor(Math.random() * cityNames.length)];
+        const randomStreetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
+        
+        const generatedDetails: GstinOutput = {
+            businessName: `${randomAdjective} ${randomNoun}`,
+            businessAddress: `${Math.floor(Math.random() * 900) + 100} ${randomStreetType}, ${randomCity}`,
+        };
+        console.log('Generated details:', generatedDetails);
+        return generatedDetails;
     }
 
     console.log('No details found for GSTIN.');
