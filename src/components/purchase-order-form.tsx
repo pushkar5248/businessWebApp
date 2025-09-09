@@ -288,13 +288,14 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                     <TableCell>
                       <Input
                         type="number"
+                        step="any"
                         {...methods.register(`items.${index}.quantity`)}
                       />
                     </TableCell>
                     <TableCell>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="any"
                         {...methods.register(`items.${index}.price`)}
                       />
                     </TableCell>
@@ -336,19 +337,19 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl ml-auto">
                 <div className="space-y-2">
                     <Label htmlFor="cgstRate">CGST (%)</Label>
-                    <Input id="cgstRate" type="number" {...methods.register("cgstRate")} />
+                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="sgstRate">SGST (%)</Label>
-                    <Input id="sgstRate" type="number" {...methods.register("sgstRate")} />
+                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="igstRate">IGST (%)</Label>
-                    <Input id="igstRate" type="number" {...methods.register("igstRate")} />
+                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="insuranceAndOthersRate">Insurance & Others (%)</Label>
-                    <Input id="insuranceAndOthersRate" type="number" {...methods.register("insuranceAndOthersRate")} />
+                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} />
                 </div>
             </div>
             <div className="w-full max-w-sm space-y-2">
