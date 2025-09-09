@@ -36,6 +36,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { InventoryItem } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
+import { useSettings } from "@/context/settings-context";
 
 
 const lineItemSchema = z.object({
@@ -52,6 +53,7 @@ const formSchema = z.object({
   shippingAddress: z.string().optional(),
   poNumber: z.string().min(1, "PO number is required."),
   poDate: z.string().min(1, "PO date is required."),
+  eWayBillNumber: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
   cgstRate: z.coerce.number().min(0).optional(),
   sgstRate: z.coerce.number().min(0).optional(),
@@ -65,6 +67,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingGstin, setIsFetchingGstin] = useState(false);
   const { user } = useAuth();
+  const { settings } = useSettings();
   const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
@@ -79,8 +82,8 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
-      cgstRate: 0,
-      sgstRate: 0,
+      cgstRate: settings?.billing.defaultCgstRate ?? 0,
+      sgstRate: settings?.billing.defaultSgstRate ?? 0,
       igstRate: 0,
       insuranceAndOthersRate: 0,
     },
@@ -105,8 +108,24 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     watch,
     setValue,
     getValues,
+    reset,
     formState: { errors },
   } = methods;
+
+  useEffect(() => {
+    if (settings) {
+        reset({
+            ...getValues(),
+            poDate: new Date().toISOString().split("T")[0],
+            poNumber: `PO-${Date.now().toString().slice(-6)}`,
+            items: [{ name: "", quantity: 1, price: 0 }],
+            cgstRate: settings.billing.defaultCgstRate,
+            sgstRate: settings.billing.defaultSgstRate,
+            igstRate: 0,
+            insuranceAndOthersRate: 0,
+        });
+    }
+  }, [settings, reset, getValues]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -238,6 +257,14 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                 placeholder="Leave blank if same as business address"
               />
             </div>
+             <div className="space-y-2">
+                <Label htmlFor="eWayBillNumber">E-Way Bill Number (optional)</Label>
+                <Input
+                    id="eWayBillNumber"
+                    {...methods.register("eWayBillNumber")}
+                    placeholder="e.g. 123456789012"
+                />
+             </div>
           </CardContent>
         </Card>
 
