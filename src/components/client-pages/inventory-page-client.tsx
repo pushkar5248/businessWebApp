@@ -84,7 +84,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
           <Input id="name" name="name" value={newItem.name} onChange={handleChange} className="col-span-3" />
         </div>
          <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="hsnCode" className="text-right">HSN Code</Label>
+          <Label htmlFor="hsnCode" className="text-right">HSN</Label>
           <Input id="hsnCode" name="hsnCode" value={newItem.hsnCode} onChange={handleChange} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
@@ -113,7 +113,7 @@ const DEFAULT_COLUMN_NAMES: Record<string, string> = {
   stock: 'Stock',
   price: 'Price',
   value: 'Value',
-  hsnCode: 'HSN Code',
+  hsnCode: 'HSN',
   unit: 'Unit'
 };
 
@@ -422,7 +422,7 @@ const handleSaveChanges = async () => {
                 'name': { key: 'name', type: 'string' }, 'item name': { key: 'name', type: 'string' }, 'product name': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
                 'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'in stock': { key: 'stock', type: 'number' }, 'on hand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'bal qty': { key: 'stock', type: 'number' },
                 'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unit price': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'sale price': { key: 'price', type: 'number' }, 'purchase price': { key: 'price', type: 'number' },
-                'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'},
+                'hsn': { key: 'hsnCode', type: 'string'}, 'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'},
                 'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
@@ -732,22 +732,24 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="p-0 h-12 relative select-none border-x"
+                      className="p-0 h-12 relative select-none"
                       onDragEnter={(e) => handleDragEnter(e, key)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
                       style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : 'auto' }}
                       data-column-key={key}
                     >
-                      <div className="flex items-center justify-center gap-2 px-4 h-full" suppressHydrationWarning>
-                         <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, key)}
-                            className="cursor-grab"
-                          >
-                           <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center justify-between px-4 h-full" suppressHydrationWarning>
+                         <div className="flex items-center gap-2">
+                             <div
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, key)}
+                                className="cursor-grab"
+                              >
+                               <GripVertical className="h-4 w-4 text-muted-foreground" />
+                             </div>
+                             <span className="font-medium">{DEFAULT_COLUMN_NAMES[key] || key}</span>
                          </div>
-                        <span className="font-medium">{DEFAULT_COLUMN_NAMES[key] || key}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -759,7 +761,7 @@ const handleSaveChanges = async () => {
                       </div>
                        <div
                             onMouseDown={handleMouseDown}
-                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize"
+                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize border-r border-transparent hover:border-border"
                         />
                     </TableHead>
                   ))}
@@ -790,7 +792,7 @@ const handleSaveChanges = async () => {
                           />
                       </TableCell>
                       {visibleColumns.map((key) => (
-                        <TableCell key={key}>
+                        <TableCell key={key} className="px-4">
                            {key === 'price' ? (
                              <div className="flex items-center gap-2">
                               <span>{formatCurrencyValue(0).charAt(0)}</span>
@@ -856,7 +858,7 @@ const handleSaveChanges = async () => {
                           Grand Total
                       </TableCell>
                       {visibleColumns.includes('value') && (
-                          <TableCell className="text-left font-bold text-lg">
+                          <TableCell className="text-left font-bold text-lg px-4">
                               {formatCurrency(totalInventoryValue)}
                           </TableCell>
                       )}
