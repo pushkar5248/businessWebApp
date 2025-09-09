@@ -37,12 +37,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save, GripVertical } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save, GripVertical, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -130,6 +129,8 @@ export default function InventoryPageClient() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const [allPossibleColumns, setAllPossibleColumns] = useState<Record<string, string>>(DEFAULT_COLUMN_NAMES);
+
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
      name: true,
      stock: true,
@@ -151,21 +152,45 @@ export default function InventoryPageClient() {
   const startX = useRef(0);
   const startWidth = useRef(0);
   const resizingColumn = useRef<string | null>(null);
+  
+  const handleRemoveColumn = (columnKey: string) => {
+    setAllPossibleColumns(prev => {
+      const newCols = {...prev};
+      delete newCols[columnKey];
+      return newCols;
+    });
+     setColumnOrder(prev => prev.filter(key => key !== columnKey));
+     setColumnVisibility(prev => {
+        const newViz = {...prev};
+        delete newViz[columnKey];
+        return newViz;
+     });
+  };
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('inventoryColumnOrder');
     const savedWidths = localStorage.getItem('inventoryColumnWidths');
     const savedVisibility = localStorage.getItem('inventoryColumnVisibility');
-    
-    if (savedOrder) {
+    const savedAllColumns = localStorage.getItem('inventoryAllPossibleColumns');
+
+    if (savedAllColumns) {
       try {
-        const parsedOrder = JSON.parse(savedOrder);
-        const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
-        const allKeys = [...new Set([...parsedOrder, ...defaultKeys])];
-        setColumnOrder(allKeys);
+        const parsedAllColumns = JSON.parse(savedAllColumns);
+        setAllPossibleColumns(parsedAllColumns);
+         if (savedOrder) {
+            try {
+              const parsedOrder = JSON.parse(savedOrder);
+              const defaultKeys = Object.keys(parsedAllColumns);
+              const allKeys = [...new Set([...parsedOrder, ...defaultKeys])].filter(k => defaultKeys.includes(k));
+              setColumnOrder(allKeys);
+            } catch (e) {
+              setColumnOrder(Object.keys(parsedAllColumns));
+            }
+          } else {
+            setColumnOrder(Object.keys(parsedAllColumns));
+          }
       } catch (e) {
-        // Fallback to default if parsing fails
-        setColumnOrder(Object.keys(DEFAULT_COLUMN_NAMES));
+        setAllPossibleColumns(DEFAULT_COLUMN_NAMES);
       }
     }
     
@@ -190,6 +215,10 @@ export default function InventoryPageClient() {
   useEffect(() => {
     localStorage.setItem('inventoryColumnOrder', JSON.stringify(columnOrder));
   }, [columnOrder]);
+
+  useEffect(() => {
+    localStorage.setItem('inventoryAllPossibleColumns', JSON.stringify(allPossibleColumns));
+  }, [allPossibleColumns]);
   
   useEffect(() => {
     localStorage.setItem('inventoryColumnWidths', JSON.stringify(columnWidths));
@@ -265,10 +294,11 @@ export default function InventoryPageClient() {
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof typeof columnVisibility]);
-  }, [columnOrder, columnVisibility]);
+    return columnOrder.filter(key => columnVisibility[key as keyof typeof columnVisibility] && allPossibleColumns[key]);
+  }, [columnOrder, columnVisibility, allPossibleColumns]);
   
   const requestSort = (key: string) => {
+    if (isEditMode) return;
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
@@ -357,7 +387,7 @@ const handleSaveChanges = async () => {
   const handleExport = () => {
     const headers = visibleColumns;
     const csvContent = [
-      headers.map(h => DEFAULT_COLUMN_NAMES[h]).join(','),
+      headers.map(h => allPossibleColumns[h]).join(','),
       ...sortedItems.map(item => headers.map(headerKey => {
         let value;
         if (headerKey === 'value') {
@@ -420,20 +450,27 @@ const handleSaveChanges = async () => {
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
-
-            const synonymMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+            
+            const synonymMapping: { [key: string]: { key: keyof Omit<InventoryItem, 'id'|'userId'>, type: 'string' | 'number' } } = {
+                // Name Synonyms
                 'name': { key: 'name', type: 'string' }, 'item name': { key: 'name', type: 'string' }, 'product name': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
+                // Stock Synonyms
                 'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'in stock': { key: 'stock', type: 'number' }, 'on hand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'bal qty': { key: 'stock', type: 'number' },
+                // Price Synonyms
                 'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unit price': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'sale price': { key: 'price', type: 'number' }, 'purchase price': { key: 'price', type: 'number' },
+                // HSN Code Synonyms
                 'hsn': { key: 'hsnCode', type: 'string'}, 'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'}, 'hsncode': { key: 'hsnCode', type: 'string' },
+                // Unit Synonyms
                 'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
+            const localAllPossibleColumns = {...allPossibleColumns};
+
             headerRow.forEach((header, index) => {
-                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, '').trim();
+                const normalizedHeader = header.toLowerCase().replace(/[\s_-]/g, '').trim();
                 const mapping = synonymMapping[normalizedHeader];
-                if (mapping) {
+                 if (mapping) {
                     headerMap[mapping.key] = index;
                 }
             });
@@ -575,6 +612,8 @@ const handleSaveChanges = async () => {
         const dragItemIndex = newColumnOrder.indexOf(dragItem.current);
         const dragOverItemIndex = newColumnOrder.indexOf(dragOverItem.current);
         
+        if (dragItemIndex === -1 || dragOverItemIndex === -1) return;
+
         const [removed] = newColumnOrder.splice(dragItemIndex, 1);
         newColumnOrder.splice(dragOverItemIndex, 0, removed);
         
@@ -678,15 +717,19 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
-                           <DropdownMenuCheckboxItem
-                            key={key}
-                            className="capitalize"
-                            checked={columnVisibility[key]}
-                            onCheckedChange={(value) => handleColumnVisibilityChange(key, !!value)}
-                          >
-                            {DEFAULT_COLUMN_NAMES[key]}
-                          </DropdownMenuCheckboxItem>
+                        {Object.keys(allPossibleColumns).map((key) => (
+                           <div key={key} className="flex items-center">
+                                <DropdownMenuCheckboxItem
+                                    className="capitalize flex-1"
+                                    checked={columnVisibility[key]}
+                                    onCheckedChange={(value) => handleColumnVisibilityChange(key, !!value)}
+                                >
+                                    {allPossibleColumns[key]}
+                                </DropdownMenuCheckboxItem>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={(e) => { e.stopPropagation(); handleRemoveColumn(key)}}>
+                                    <X className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                           </div>
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -735,7 +778,7 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="p-0 h-12 relative select-none border-r"
+                      className="p-0 h-12 relative select-none"
                       onDragEnter={(e) => handleDragEnter(e, key)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
@@ -747,11 +790,12 @@ const handleSaveChanges = async () => {
                              <div
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, key)}
-                                className="cursor-grab"
+                                className={cn("cursor-grab", isEditMode && "cursor-not-allowed")}
+                                onDragEnd={() => isEditMode && false}
                               >
                                <GripVertical className="h-4 w-4 text-muted-foreground" />
                              </div>
-                             <span className="font-medium">{DEFAULT_COLUMN_NAMES[key] || key}</span>
+                             <span className="font-medium">{allPossibleColumns[key] || key}</span>
                          </div>
                         <Button
                           variant="ghost"
@@ -764,7 +808,7 @@ const handleSaveChanges = async () => {
                       </div>
                        <div
                             onMouseDown={handleMouseDown}
-                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:border-r-2 hover:border-primary"
+                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:border-r-2 hover:border-primary border-r border-border"
                         />
                     </TableHead>
                   ))}
