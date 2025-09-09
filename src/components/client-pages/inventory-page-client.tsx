@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -591,6 +592,10 @@ const handleSaveChanges = async () => {
     return sortableItems;
   }, [items, sortConfig, searchTerm]);
 
+  const totalInventoryValue = useMemo(() => {
+    return sortedItems.reduce((acc, item) => acc + (item.stock * item.price), 0);
+  }, [sortedItems]);
+
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
       setSelectedRows(sortedItems.map(item => item.id));
@@ -1000,6 +1005,18 @@ const handleSaveChanges = async () => {
                 ))
               )}
             </TableBody>
+            <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={visibleColumns.indexOf('value') + 1} className="text-right font-bold text-lg">
+                        Grand Total
+                    </TableCell>
+                    <TableCell className="text-left font-bold text-lg">
+                        {formatCurrency(totalInventoryValue)}
+                    </TableCell>
+                    <TableCell colSpan={visibleColumns.length - visibleColumns.indexOf('value')}>
+                    </TableCell>
+                </TableRow>
+            </TableFooter>
           </Table>
         </CardContent>
       </Card>
