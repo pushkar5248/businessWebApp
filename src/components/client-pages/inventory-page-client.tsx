@@ -262,13 +262,11 @@ export default function InventoryPageClient() {
   }, [columns, getLocalStorageKey]);
   
   const allAvailableColumns = useMemo(() => {
-    const columnKeys = new Set<string>();
+    const columnKeys = new Set<string>(Object.keys(DEFAULT_COLUMN_NAMES));
     items.forEach(item => {
-      Object.keys(item).forEach(key => columnKeys.add(key));
+        Object.keys(item).forEach(key => columnKeys.add(key));
     });
-    // Explicitly filter out 'id' and 'userId' here, but add our calculated 'value' column
-    const baseKeys = Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
-    return ['value', ...baseKeys];
+    return Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
   }, [items]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
@@ -276,8 +274,8 @@ export default function InventoryPageClient() {
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys | 'value'] && allAvailableColumns.includes(key));
-  }, [columnOrder, columnVisibility, allAvailableColumns]);
+    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys | 'value']);
+  }, [columnOrder, columnVisibility]);
   
   const requestSort = (key: keyof ColumnKeys | 'value') => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -451,8 +449,8 @@ const handleSaveChanges = async () => {
                 'units': { key: 'unit', type: 'string' },
             };
 
-            const newColumns: { [key: string]: string } = {};
-            const newColumnOrder: string[] = [];
+            const newColumnsFromCsv: { [key: string]: string } = {};
+            const newColumnOrderFromCsv: string[] = [];
             const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
 
             const ignoredHeaders = ['category', 'subcategory', 'supplier'];
@@ -477,30 +475,29 @@ const handleSaveChanges = async () => {
                 }
                 
                 csvToInternalKeyMap[header] = { key: internalKey, type: type };
-                if (!newColumns[internalKey]) {
-                  newColumns[internalKey] = header; // Use original header for display
+                if (!newColumnsFromCsv[internalKey]) {
+                  newColumnsFromCsv[internalKey] = header; // Use original header for display
                 }
-                if (!newColumnOrder.includes(internalKey)) {
-                  newColumnOrder.push(internalKey);
+                if (!newColumnOrderFromCsv.includes(internalKey)) {
+                  newColumnOrderFromCsv.push(internalKey);
                 }
             });
 
-            // Ensure essential columns are always present
-            for (const key of ['name', 'stock', 'price', 'hsnCode', 'unit']) {
-                if (!newColumnOrder.includes(key)) {
-                    newColumnOrder.unshift(key);
-                    newColumns[key] = DEFAULT_COLUMN_NAMES[key] || key;
-                }
+            // Combine existing columns with new ones, ensuring Value is always there
+            const finalColumns = { ...newColumnsFromCsv, 'value': 'Value' };
+            const finalColumnOrder = [...newColumnOrderFromCsv];
+            if (!finalColumnOrder.includes('value')) {
+                finalColumnOrder.push('value');
             }
+            const finalVisibility = finalColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
+
+            setColumns(finalColumns);
+            setColumnOrder(finalColumnOrder);
+            setColumnVisibility(finalVisibility);
             
-            setColumns(newColumns);
-            setColumnOrder(newColumnOrder);
-            const newVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
-            setColumnVisibility(newVisibility);
-            
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumns));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(newColumnOrder));
-            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newVisibility));
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(finalColumns));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(finalColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(finalVisibility));
 
 
             const batch = writeBatch(db);
