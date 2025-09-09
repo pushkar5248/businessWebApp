@@ -44,9 +44,33 @@ const fetchGstinDetailsFlow = ai.defineFlow(
   },
   async ({ gstin }) => {
     console.log(`Looking up GSTIN: ${gstin}`);
-    const upperGstin = gstin.toUpperCase();
     
-    // Check our mock database for specific examples
+    //
+    // TODO: Integrate a real GSTIN lookup API here.
+    //
+    // To fetch real data, you would replace the mock database logic below
+    // with a call to a third-party GSTIN verification service.
+    //
+    // Example of what a real API call might look like:
+    //
+    // const apiKey = process.env.GSTIN_API_KEY;
+    // const response = await fetch(`https://api.somegstinservice.com/v1/lookup?gstin=${gstin}`, {
+    //   headers: { 'Authorization': `Bearer ${apiKey}` }
+    // });
+    // if (!response.ok) {
+    //   // Handle error, maybe return null or throw an error
+    //   console.error("GSTIN API call failed:", response.statusText);
+    //   return null;
+    // }
+    // const data = await response.json();
+    // return {
+    //   businessName: data.legalNameOfBusiness,
+    //   businessAddress: data.principalPlaceOfBusiness,
+    // };
+    //
+
+    // For now, we will use our mock database.
+    const upperGstin = gstin.toUpperCase();
     const details = gstinDatabase[upperGstin];
 
     if (details) {
