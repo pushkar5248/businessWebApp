@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-context';
+import { updateStockOnPurchase } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -73,20 +74,37 @@ export default function PurchaseDetailsPage() {
     const handleStatusChange = async (newStatus: PurchaseStatus) => {
         if (!purchase || !user || newStatus === purchase.status) return;
 
+        const oldStatus = purchase.status;
+        const purchaseRef = doc(db, "purchases", purchase.id);
+
         try {
-            const purchaseRef = doc(db, "purchases", purchase.id);
+            // Optimistically update UI
+            setPurchase(prev => prev ? { ...prev, status: newStatus } : null);
             await updateDoc(purchaseRef, { status: newStatus });
             
-            setPurchase(prev => prev ? { ...prev, status: newStatus } : null);
-             toast({
+            toast({
                 title: "Status Updated",
-                description: `Purchase order status changed to ${newStatus}. Inventory will be updated separately from the purchases list page.`
+                description: `Purchase order status changed to ${newStatus}.`
             });
 
+            // If status changes from Pending to Received, update inventory
+            if (oldStatus === 'Pending' && newStatus === 'Received') {
+                const updatedPurchaseDoc = await getDoc(purchaseRef);
+                const updatedPurchaseData = updatedPurchaseDoc.data() as Purchase;
+                
+                if (updatedPurchaseData?.items) {
+                    await updateStockOnPurchase(updatedPurchaseData.items, user.uid);
+                    toast({
+                        title: "Inventory Updated",
+                        description: "Stock levels have been successfully updated.",
+                    });
+                }
+            }
         } catch (error) {
              console.error("Error updating status or inventory:", error);
+            // Revert optimistic update on error
+            setPurchase(prev => prev ? { ...prev, status: oldStatus } : null);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
-            setPurchase({ ...purchase, status: purchase.status });
         }
     };
 
@@ -154,6 +172,7 @@ export default function PurchaseDetailsPage() {
                         <h3 className="font-semibold mb-2">Vendor</h3>
                         <p>{purchase.vendor}</p>
                         <p>{purchase.vendorAddress}</p>
+                        {purchase.vendorGstin && <p>GSTIN: {purchase.vendorGstin}</p>}
                     </div>
                      {purchase.shippingAddress && (
                          <div>

@@ -52,6 +52,7 @@ export type Sale = {
 export type Purchase = {
     id: string;
     vendor: string;
+    vendorGstin?: string;
     vendorAddress: string;
     shippingAddress?: string;
     date: string;

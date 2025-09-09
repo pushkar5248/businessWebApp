@@ -34,6 +34,7 @@ export default function NewPurchasePage() {
     const newPurchase = {
         id: data.poNumber,
         vendor: data.vendorName,
+        vendorGstin: data.vendorGstin,
         vendorAddress: data.vendorAddress,
         shippingAddress: data.shippingAddress,
         date: data.poDate,

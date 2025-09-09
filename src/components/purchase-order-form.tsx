@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
 import { useRouter } from "next/navigation";
@@ -35,6 +35,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { InventoryItem } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
+import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
 
 
 const lineItemSchema = z.object({
@@ -46,6 +47,7 @@ const lineItemSchema = z.object({
 
 const formSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
+  vendorGstin: z.string().optional(),
   vendorAddress: z.string().min(1, "Vendor address is required."),
   shippingAddress: z.string().optional(),
   poNumber: z.string().min(1, "PO number is required."),
@@ -58,7 +60,9 @@ export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
 
 export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrderFormValues) => void; }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingGstin, setIsFetchingGstin] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
@@ -94,6 +98,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = methods;
 
@@ -128,6 +133,46 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     }
   };
 
+  const handleGstinFetch = async () => {
+    const gstin = getValues("vendorGstin");
+    if (!gstin || gstin.length !== 15) {
+      toast({
+        variant: "destructive",
+        title: "Invalid GSTIN",
+        description: "Please enter a valid 15-character GSTIN.",
+      });
+      return;
+    }
+
+    setIsFetchingGstin(true);
+    try {
+      const result = await fetchGstinDetails({ gstin });
+      if (result) {
+        setValue("vendorName", result.businessName, { shouldValidate: true });
+        setValue("vendorAddress", result.businessAddress, { shouldValidate: true });
+        toast({
+          title: "Details Fetched",
+          description: `Successfully fetched details for ${result.businessName}.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Not Found",
+          description: "No details found for the provided GSTIN.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching GSTIN details:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not fetch GSTIN details. Please try again.",
+      });
+    } finally {
+      setIsFetchingGstin(false);
+    }
+  };
+
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
@@ -139,7 +184,20 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
             </CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
+              <Label htmlFor="vendorGstin">Vendor GSTIN</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="vendorGstin"
+                  {...methods.register("vendorGstin")}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                />
+                <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isFetchingGstin}>
+                  {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
               <Input
                 id="vendorName"
@@ -313,5 +371,3 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
     </FormProvider>
   );
 }
-
-    
