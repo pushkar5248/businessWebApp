@@ -94,25 +94,23 @@ export default function InvoiceDetailsPage() {
             
             // Logic to update inventory when status changes from Pending to Paid
             if (oldStatus === 'Pending' && newStatus === 'Paid') {
-                console.log('Status change condition met. Checking items for inventoryId...');
-                console.log('Items to update:', invoice.items);
+                console.log('Status changed from Pending to Paid. Checking items for inventory update...');
+                console.log('Invoice items:', invoice.items);
 
                 // Verify all items have an inventoryId before attempting update
                 const allItemsHaveId = invoice.items.every(item => !!item.inventoryId);
 
                 if (allItemsHaveId) {
-                    console.log('All items have inventoryId. Proceeding with stock update.');
                     await updateStockOnSale(invoice.items);
                     toast({
                         title: "Inventory Updated",
                         description: "Stock levels have been adjusted for this sale."
                     });
                 } else {
-                    console.warn('Inventory update skipped: Not all items have an inventoryId. This may be an older sale record.');
                     toast({
-                        variant: 'default',
-                        title: 'Inventory Update Skipped',
-                        description: 'Could not update stock for this sale as it may be an older record. Stock is only updated for sales created with the newer system.'
+                        variant: 'destructive',
+                        title: 'Inventory Update Failed',
+                        description: 'Could not update stock. Some items in this sale are not linked to inventory items. This may be an older sale record.'
                     });
                 }
             }
@@ -125,7 +123,7 @@ export default function InvoiceDetailsPage() {
         } catch (error) {
             console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
-            setInvoice(invoice); // Revert optimistic update on error
+            setInvoice({ ...invoice, status: oldStatus }); // Revert optimistic update on error
         }
     };
 

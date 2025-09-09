@@ -204,7 +204,6 @@ export function InvoiceForm() {
     try {
         const saleDocRef = doc(db, "sales", newSale.id);
         await setDoc(saleDocRef, newSale);
-        await updateStockOnSale(data.items);
 
         toast({
           title: "Sale Created",
