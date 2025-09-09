@@ -153,11 +153,14 @@ export default function InventoryPageClient() {
   });
   
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') return {};
-    const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
-    return savedVisibility ? JSON.parse(savedVisibility) : {
-        name: true, stock: true, price: true, value: true, hsnCode: true, unit: true
+    if (typeof window === 'undefined') {
+        return { name: true, stock: true, price: true, value: true, hsnCode: true, unit: true };
     };
+    const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
+    if (savedVisibility) {
+        return JSON.parse(savedVisibility);
+    }
+    return { name: true, stock: true, price: true, value: true, hsnCode: true, unit: true };
   });
   
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys | 'value', direction: 'ascending' | 'descending' } | null>(null);
@@ -484,11 +487,8 @@ const handleSaveChanges = async () => {
             });
 
             // Combine existing columns with new ones, ensuring Value is always there
-            const finalColumns = { ...newColumnsFromCsv, 'value': 'Value' };
-            const finalColumnOrder = [...newColumnOrderFromCsv];
-            if (!finalColumnOrder.includes('value')) {
-                finalColumnOrder.push('value');
-            }
+            const finalColumns = { ...DEFAULT_COLUMN_NAMES, ...newColumnsFromCsv };
+            const finalColumnOrder = [...Object.keys(DEFAULT_COLUMN_NAMES), ...newColumnOrderFromCsv.filter(key => !DEFAULT_COLUMN_NAMES[key])];
             const finalVisibility = finalColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
 
             setColumns(finalColumns);
