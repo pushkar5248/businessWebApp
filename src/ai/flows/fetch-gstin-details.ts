@@ -1,26 +1,17 @@
+
 'use server';
 
 /**
  * @fileOverview A flow to fetch business details based on a GSTIN.
  *
  * - fetchGstinDetails - A function that fetches business details for a given GSTIN.
- * - GstinInput - The input type for the fetchGstinDetails function.
- * - GstinOutput - The return type for the fetchGstinDetails function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
+import type { GstinInput, GstinOutput } from '@/lib/schemas/gstin';
+import { GstinInputSchema, GstinOutputSchema } from '@/lib/schemas/gstin';
 
-export const GstinInputSchema = z.object({
-  gstin: z.string().length(15, { message: "GSTIN must be 15 characters long." }).describe('The GSTIN of the business to look up.'),
-});
-export type GstinInput = z.infer<typeof GstinInputSchema>;
-
-export const GstinOutputSchema = z.object({
-  businessName: z.string().describe('The legal name of the business.'),
-  businessAddress: z.string().describe('The principal address of the business.'),
-});
-export type GstinOutput = z.infer<typeof GstinOutputSchema>;
 
 // This is a mock database of GSTIN details.
 // In a real application, this would be a call to a third-party API.
