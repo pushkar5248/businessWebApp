@@ -42,7 +42,6 @@ import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
-import { updateStockOnSale } from "@/services/inventory-service";
 
 
 const lineItemSchema = z.object({
@@ -204,17 +203,14 @@ export function InvoiceForm() {
     try {
         const saleDocRef = doc(db, "sales", newSale.id);
         await setDoc(saleDocRef, newSale);
-        
-        // Use centralized service to update stock
-        await updateStockOnSale(data.items);
 
         toast({
           title: "Sale Created",
-          description: `Invoice #${data.invoiceNumber} has been successfully created and inventory updated.`,
+          description: `Invoice #${data.invoiceNumber} has been successfully created.`,
         });
     } catch (error) {
-        console.error("Error creating sale and updating inventory:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to create sale or update inventory." });
+        console.error("Error creating sale:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to create sale." });
         throw error;
     }
   };

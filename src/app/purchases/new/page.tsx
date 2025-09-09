@@ -10,7 +10,6 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { updateStockOnPurchase } from "@/services/inventory-service";
 
 
 export default function NewPurchasePage() {
@@ -49,12 +48,9 @@ export default function NewPurchasePage() {
         const docRef = doc(db, "purchases", newPurchase.id);
         await setDoc(docRef, newPurchase);
         
-        // This was the missing call. Now inventory updates on creation.
-        await updateStockOnPurchase(data.items, user.uid);
-        
         toast({
             title: "Purchase Order Created",
-            description: `PO #${data.poNumber} has been successfully created and inventory updated.`,
+            description: `PO #${data.poNumber} has been successfully created.`,
         });
         router.push('/purchases');
 

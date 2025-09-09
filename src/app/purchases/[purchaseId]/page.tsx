@@ -81,12 +81,9 @@ export default function PurchaseDetailsPage() {
             await updateDoc(purchaseRef, { status: newStatus });
 
             if (oldStatus === 'Pending' && newStatus === 'Received') {
-                console.log(`Condition met: Status changed from ${oldStatus} to ${newStatus}. Triggering inventory update.`);
-
                 const freshPurchaseSnap = await getDoc(purchaseRef);
                 if (freshPurchaseSnap.exists()) {
                     const freshPurchaseData = freshPurchaseSnap.data() as Purchase;
-                    console.log("Fresh purchase data fetched for inventory update:", freshPurchaseData);
                     await updateStockOnPurchase(freshPurchaseData.items, user.uid);
                     toast({
                         title: "Status Updated & Inventory Stocked",
@@ -96,13 +93,13 @@ export default function PurchaseDetailsPage() {
                     throw new Error("Could not re-fetch purchase for inventory update.");
                 }
             } else {
-                toast({
+                 toast({
                     title: "Status Updated",
                     description: `Purchase order status changed to ${newStatus}.`
                 });
             }
             
-            setPurchase({ ...purchase, status: newStatus });
+            setPurchase(prev => prev ? { ...prev, status: newStatus } : null);
 
         } catch (error) {
              console.error("Error updating status or inventory:", error);

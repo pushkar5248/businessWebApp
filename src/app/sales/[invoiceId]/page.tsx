@@ -30,6 +30,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { updateStockOnSale } from '@/services/inventory-service';
+import { useAuth } from '@/context/auth-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -50,6 +51,7 @@ const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
 export default function InvoiceDetailsPage() {
     const params = useParams();
     const { invoiceId } = params;
+    const { user } = useAuth();
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const { settings } = useSettings();
@@ -82,25 +84,19 @@ export default function InvoiceDetailsPage() {
     }, [fetchInvoice]);
 
     const handleStatusChange = async (newStatus: SaleStatus) => {
-        if (!invoice || newStatus === invoice.status) return;
+        if (!invoice || !user || newStatus === invoice.status) return;
 
         const oldStatus = invoice.status;
         
         try {
-            // First, update the status in Firestore.
             const invoiceRef = doc(db, "sales", invoice.id);
             await updateDoc(invoiceRef, { status: newStatus });
 
-            // If status changes from Pending to Paid, update inventory.
             if (oldStatus === 'Pending' && newStatus === 'Paid') {
-                 console.log(`Condition met: Status changed from ${oldStatus} to ${newStatus}. Triggering inventory update.`);
-                
-                 // Re-fetch the document to ensure we have the latest item data
                  const freshInvoiceSnap = await getDoc(invoiceRef);
                  if (freshInvoiceSnap.exists()) {
                     const freshInvoiceData = freshInvoiceSnap.data() as Sale;
-                    console.log("Fresh invoice data fetched for inventory update:", freshInvoiceData);
-                    await updateStockOnSale(freshInvoiceData.items);
+                    await updateStockOnSale(freshInvoiceData.items, user.uid);
                     toast({
                         title: "Inventory Updated",
                         description: "Stock levels have been decreased for the items in this sale."
@@ -110,7 +106,6 @@ export default function InvoiceDetailsPage() {
                  }
             }
 
-            // Update local state to reflect the change in the UI.
             setInvoice({ ...invoice, status: newStatus });
             toast({
                 title: "Status Updated",
@@ -119,7 +114,6 @@ export default function InvoiceDetailsPage() {
         } catch (error) {
             console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status or inventory." });
-            // Optionally revert local state if update fails
             setInvoice({ ...invoice, status: oldStatus });
         }
     };
