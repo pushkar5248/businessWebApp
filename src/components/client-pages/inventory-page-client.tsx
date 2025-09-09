@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -429,12 +430,14 @@ const handleSaveChanges = async () => {
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
-            const internalKeyMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+            const synonymMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
                 'name': { key: 'name', type: 'string' },
                 'item name': { key: 'name', type: 'string' },
+                'product name': { key: 'name', type: 'string' },
                 'particulars': { key: 'name', type: 'string' },
                 'price': { key: 'price', type: 'number' },
                 'rate': { key: 'price', type: 'number' },
+                'cost': { key: 'price', type: 'number' },
                 'stock': { key: 'stock', type: 'number' },
                 'quantity': { key: 'stock', type: 'number' },
                 'qty': { key: 'stock', type: 'number' },
@@ -451,20 +454,22 @@ const handleSaveChanges = async () => {
 
             headerRow.forEach(header => {
                 const lowerHeader = header.toLowerCase();
-                const internalMapping = internalKeyMapping[lowerHeader];
+                const standardMapping = synonymMapping[lowerHeader];
                 
                 let internalKey: string;
                 let type: 'string' | 'number' = 'string';
 
-                if (internalMapping) {
-                    internalKey = internalMapping.key;
-                    type = internalMapping.type;
+                if (standardMapping) {
+                    internalKey = standardMapping.key;
+                    type = standardMapping.type;
                 } else {
                     internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
                 }
                 
                 csvToInternalKeyMap[header] = { key: internalKey, type: type };
-                newColumns[internalKey] = header; // Use original header for display
+                if (!newColumns[internalKey]) {
+                  newColumns[internalKey] = header; // Use original header for display
+                }
                 if (!newColumnOrder.includes(internalKey)) {
                   newColumnOrder.push(internalKey);
                 }
@@ -474,7 +479,7 @@ const handleSaveChanges = async () => {
             for (const key of ['id', 'name', 'stock', 'price']) {
                 if (!newColumnOrder.includes(key)) {
                     newColumnOrder.unshift(key);
-                    newColumns[key] = DEFAULT_COLUMN_NAMES[key];
+                    newColumns[key] = DEFAULT_COLUMN_NAMES[key] || key;
                 }
             }
             
