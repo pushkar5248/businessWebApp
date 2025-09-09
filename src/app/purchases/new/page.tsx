@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { updateStockOnPurchase } from "@/services/inventory-service";
 
 
 export default function NewPurchasePage() {
@@ -47,10 +48,13 @@ export default function NewPurchasePage() {
     try {
         const docRef = doc(db, "purchases", newPurchase.id);
         await setDoc(docRef, newPurchase);
+
+        console.log('[Creation] About to call updateStockOnPurchase with items:', data.items);
+        await updateStockOnPurchase(data.items, user.uid);
         
         toast({
-            title: "Purchase Order Created",
-            description: `PO #${data.poNumber} has been successfully created.`,
+            title: "Purchase Order Created & Stock Updated",
+            description: `PO #${data.poNumber} has been created and inventory levels have been increased.`,
         });
         router.push('/purchases');
 

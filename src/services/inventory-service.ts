@@ -10,16 +10,27 @@ import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs, 
  * @param items - An array of line items from the sale.
  */
 export async function updateStockOnSale(items: LineItem[]): Promise<void> {
+    console.log('updateStockOnSale called with:', items);
+    if (!items || items.length === 0) {
+        console.log('updateStockOnSale: No items to process.');
+        return;
+    }
+
     const batch = writeBatch(db);
 
     for (const item of items) {
+        console.log('Processing sale item:', item);
         if (item.inventoryId) {
             const inventoryRef = doc(db, "inventory", item.inventoryId);
             batch.update(inventoryRef, { stock: increment(-item.quantity) });
+            console.log(`Decremented stock for inventoryId: ${item.inventoryId} by ${item.quantity}`);
+        } else {
+            console.warn(`Skipping stock update for sale item "${item.name}" because it has no inventoryId.`);
         }
     }
     
     await batch.commit();
+    console.log('Stock update from sale committed successfully.');
 }
 
 
@@ -30,15 +41,27 @@ export async function updateStockOnSale(items: LineItem[]): Promise<void> {
  * @param userId - The ID of the user who owns the inventory.
  */
 export async function updateStockOnPurchase(items: LineItem[], userId: string): Promise<void> {
+    console.log('updateStockOnPurchase called with items:', items, 'and userId:', userId);
+    if (!items || items.length === 0) {
+        console.log('updateStockOnPurchase: No items to process.');
+        return;
+    }
+    if (!userId) {
+        console.error('updateStockOnPurchase: userId is missing.');
+        return;
+    }
+    
     const batch = writeBatch(db);
     
     for (const purchasedItem of items) {
+        console.log('Processing purchase item:', purchasedItem);
         // Prioritize updating by ID if it exists, as it's more reliable.
         if (purchasedItem.inventoryId) {
             const itemRef = doc(db, "inventory", purchasedItem.inventoryId);
             batch.update(itemRef, { stock: increment(purchasedItem.quantity) });
+            console.log(`Incrementing stock for existing item by ID: ${purchasedItem.inventoryId}`);
         } else {
-            // Fallback to finding by name if no ID is present.
+            console.log(`Item "${purchasedItem.name}" missing inventoryId, attempting to match by name.`);
             const inventoryQuery = query(
                 collection(db, "inventory"), 
                 where("userId", "==", userId),
@@ -51,6 +74,7 @@ export async function updateStockOnPurchase(items: LineItem[], userId: string): 
                 const existingDoc = querySnapshot.docs[0];
                 const itemRef = doc(db, "inventory", existingDoc.id);
                 batch.update(itemRef, { stock: increment(purchasedItem.quantity) });
+                 console.log(`Found match by name for "${purchasedItem.name}". Incrementing stock for doc ID: ${existingDoc.id}`);
             } else {
                 // If item doesn't exist, create it in inventory.
                  const newItemRef = doc(collection(db, "inventory"));
@@ -60,12 +84,14 @@ export async function updateStockOnPurchase(items: LineItem[], userId: string): 
                      stock: purchasedItem.quantity,
                      category: 'Uncategorized',
                      subcategory: '',
-                     supplier: '', // Supplier info is on the purchase order, not line item.
+                     supplier: '',
                      userId: userId,
                  });
+                 console.log(`No match for "${purchasedItem.name}". Creating new inventory item.`);
             }
         }
     }
     
     await batch.commit();
+    console.log('Stock update from purchase committed successfully.');
 }
