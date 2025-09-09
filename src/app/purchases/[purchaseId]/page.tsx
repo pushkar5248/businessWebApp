@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { type Purchase, type PurchaseStatus, InventoryItem } from '@/lib/types';
+import { type Purchase, type PurchaseStatus, InventoryItem, type LineItem } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -182,6 +182,12 @@ export default function PurchaseDetailsPage() {
                             <p>{purchase.shippingAddress}</p>
                         </div>
                     )}
+                    {purchase.eWayBillNumber && (
+                         <div className="md:col-span-2">
+                            <h3 className="font-semibold mb-2">Logistics</h3>
+                            <p><strong>E-Way Bill No:</strong> {purchase.eWayBillNumber}</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -217,25 +223,25 @@ export default function PurchaseDetailsPage() {
                             <span>Subtotal</span>
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
-                         {purchase.cgstRate && (
+                         {typeof purchase.cgstRate === 'number' && (
                             <div className="flex justify-between">
                                 <span>CGST ({purchase.cgstRate}%)</span>
                                 <span>{formatCurrencyValue(cgstAmount)}</span>
                             </div>
                         )}
-                        {purchase.sgstRate && (
+                        {typeof purchase.sgstRate === 'number' && (
                             <div className="flex justify-between">
                                 <span>SGST ({purchase.sgstRate}%)</span>
                                 <span>{formatCurrencyValue(sgstAmount)}</span>
                             </div>
                         )}
-                        {purchase.igstRate && (
+                        {typeof purchase.igstRate === 'number' && (
                             <div className="flex justify-between">
                                 <span>IGST ({purchase.igstRate}%)</span>
                                 <span>{formatCurrencyValue(igstAmount)}</span>
                             </div>
                         )}
-                        {purchase.insuranceAndOthersRate && (
+                        {typeof purchase.insuranceAndOthersRate === 'number' && (
                             <div className="flex justify-between">
                                 <span>Insurance & Others ({purchase.insuranceAndOthersRate}%)</span>
                                 <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
