@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview A flow to fetch business details based on a GSTIN.
+ * @fileOverview A flow to fetch business details based on a GSTIN using a live third-party API.
  *
  * - fetchGstinDetails - A function that fetches business details for a given GSTIN.
  */
@@ -12,24 +12,17 @@ import {z} from 'zod';
 import type { GstinInput, GstinOutput } from '@/lib/schemas/gstin';
 import { GstinInputSchema, GstinOutputSchema } from '@/lib/schemas/gstin';
 
-
-// This is a mock database of GSTIN details.
-// In a real application, this would be a call to a third-party API.
-const gstinDatabase: Record<string, GstinOutput> = {
-  '27ABCDE1234F1Z5': {
-    businessName: 'Stone Solutions Ltd.',
-    businessAddress: '101 Rock Solid Rd, Granite City, MH 400001',
-  },
-  '29BBBCD1234F1Z5': {
-    businessName: 'Quartz Co. Innovations',
-    businessAddress: '202 Crystal Heights, Silicon Valley, KA 560029',
-  },
-  // Default/fallback record
-  '09AAAAA1234A1Z4': {
-    businessName: 'Adhunik Minerals Corp',
-    businessAddress: '789 Marble Arch, Agra, UP 282001',
-  }
-};
+// Zod schema for the expected API response structure
+const GstApiResponseSchema = z.object({
+  flag: z.boolean(),
+  data: z.object({
+    tradeNam: z.string(), // Trade Name
+    pradr: z.object({
+      adr: z.string(), // Full Address
+    }),
+  }).optional(),
+  message: z.string().optional(),
+});
 
 
 export async function fetchGstinDetails(input: GstinInput): Promise<GstinOutput | null> {
@@ -43,49 +36,55 @@ const fetchGstinDetailsFlow = ai.defineFlow(
     outputSchema: z.nullable(GstinOutputSchema),
   },
   async ({ gstin }) => {
-    console.log(`Looking up GSTIN: ${gstin}`);
+    console.log(`[GSTIN Flow] Initiating lookup for GSTIN: ${gstin}`);
     
-    //
-    // TODO: Integrate a real GSTIN lookup API here.
-    //
-    // To fetch real data, you would replace the mock database logic below
-    // with a call to a third-party GSTIN verification service.
-    //
-    // Example of what a real API call might look like:
-    //
-    // const apiKey = process.env.GSTIN_API_KEY;
-    // const response = await fetch(`https://api.somegstinservice.com/v1/lookup?gstin=${gstin}`, {
-    //   headers: { 'Authorization': `Bearer ${apiKey}` }
-    // });
-    // if (!response.ok) {
-    //   // Handle error, maybe return null or throw an error
-    //   console.error("GSTIN API call failed:", response.statusText);
-    //   return null;
-    // }
-    // const data = await response.json();
-    // return {
-    //   businessName: data.legalNameOfBusiness,
-    //   businessAddress: data.principalPlaceOfBusiness,
-    // };
-    //
+    const apiKey = process.env.GSTIN_API_KEY;
 
-    // For now, we will use our mock database.
-    const upperGstin = gstin.toUpperCase();
-    const details = gstinDatabase[upperGstin];
-
-    if (details) {
-      console.log('Found details in mock database:', details);
-      return details;
-    }
-    
-    // For any other validly formatted GSTIN, return a default record for demonstration.
-    // This provides a consistent and high-quality user experience without a real API.
-    if (upperGstin.length === 15) {
-        console.log('GSTIN not in mock DB, returning default sample data.');
-        return gstinDatabase['09AAAAA1234A1Z4'];
+    if (!apiKey) {
+      console.error("[GSTIN Flow] Error: GSTIN_API_KEY is not configured in .env file.");
+      // In a real app, you might want to throw an error that the frontend can gracefully handle.
+      return null;
     }
 
-    console.log('No details found for invalid GSTIN format.');
-    return null;
+    const url = `http://gstincheck.co.in/api/v1/search?api_key=${apiKey}&gstin_no=${gstin}`;
+
+    try {
+      console.log(`[GSTIN Flow] Fetching data from external API...`);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error(`[GSTIN Flow] API call failed with status: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const rawData = await response.json();
+      console.log("[GSTIN Flow] Received raw data:", rawData);
+
+      // Validate the response with our Zod schema
+      const parsedResponse = GstApiResponseSchema.safeParse(rawData);
+
+      if (!parsedResponse.success) {
+        console.error("[GSTIN Flow] API response validation failed:", parsedResponse.error.flatten());
+        return null;
+      }
+      
+      const { flag, data, message } = parsedResponse.data;
+
+      if (flag && data) {
+        const details = {
+          businessName: data.tradeNam,
+          businessAddress: data.pradr.adr,
+        };
+        console.log('[GSTIN Flow] Successfully fetched and parsed details:', details);
+        return details;
+      } else {
+        console.warn(`[GSTIN Flow] API indicated failure for GSTIN ${gstin}. Message: ${message}`);
+        return null;
+      }
+
+    } catch (error) {
+      console.error("[GSTIN Flow] An unexpected error occurred during API fetch:", error);
+      return null;
+    }
   }
 );
