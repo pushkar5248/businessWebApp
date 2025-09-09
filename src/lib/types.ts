@@ -9,6 +9,7 @@ export type InventoryItem = {
   price: number;
   supplier: string;
   userId: string;
+  hsnCode?: string;
   [key: string]: any; // For custom columns
 };
 

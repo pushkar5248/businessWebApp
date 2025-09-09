@@ -10,13 +10,13 @@ export const chartData = [
 ];
 
 export const inventoryData: InventoryItem[] = [
-  { id: 'ITM001', name: 'Premium Marble Slab', category: 'Marble', subcategory: 'Slabs', stock: 50, price: 150.00, supplier: 'Global Stone Co.', userId: 'guest' },
-  { id: 'ITM002', name: 'Standard Granite Countertop', category: 'Granite', subcategory: 'Countertops', stock: 30, price: 250.00, supplier: 'National Granite', userId: 'guest' },
-  { id: 'ITM003', name: 'Basic Quartz Tile', category: 'Quartz', subcategory: 'Tiles', stock: 200, price: 25.50, supplier: 'Quartz Innovations', userId: 'guest' },
-  { id: 'ITM004', name: 'Outdoor Sandstone Paver', category: 'Sandstone', subcategory: 'Pavers', stock: 500, price: 15.75, supplier: 'Pioneer Pavers', userId: 'guest' },
-  { id: 'ITM005', name: 'Classic Slate Roofing Tile', category: 'Slate', subcategory: 'Tiles', stock: 1000, price: 8.20, supplier: 'Top Slate', userId: 'guest' },
-  { id: 'ITM006', name: 'Polished Travertine Tile', category: 'Travertine', subcategory: 'Tiles', stock: 150, price: 35.00, supplier: 'Ancient Floors', userId: 'guest' },
-  { id: 'ITM007', name: 'Decorative Onyx Piece', category: 'Onyx', subcategory: 'Decorative', stock: 15, price: 500.00, supplier: 'Gem Stones Inc', userId: 'guest' },
+  { id: 'ITM001', name: 'Premium Marble Slab', category: 'Marble', subcategory: 'Slabs', stock: 50, price: 150.00, supplier: 'Global Stone Co.', userId: 'guest', hsnCode: '6802' },
+  { id: 'ITM002', name: 'Standard Granite Countertop', category: 'Granite', subcategory: 'Countertops', stock: 30, price: 250.00, supplier: 'National Granite', userId: 'guest', hsnCode: '6802' },
+  { id: 'ITM003', name: 'Basic Quartz Tile', category: 'Quartz', subcategory: 'Tiles', stock: 200, price: 25.50, supplier: 'Quartz Innovations', userId: 'guest', hsnCode: '6810' },
+  { id: 'ITM004', name: 'Outdoor Sandstone Paver', category: 'Sandstone', subcategory: 'Pavers', stock: 500, price: 15.75, supplier: 'Pioneer Pavers', userId: 'guest', hsnCode: '6801' },
+  { id: 'ITM005', name: 'Classic Slate Roofing Tile', category: 'Slate', subcategory: 'Tiles', stock: 1000, price: 8.20, supplier: 'Top Slate', userId: 'guest', hsnCode: '6803' },
+  { id: 'ITM006', name: 'Polished Travertine Tile', category: 'Travertine', subcategory: 'Tiles', stock: 150, price: 35.00, supplier: 'Ancient Floors', userId: 'guest', hsnCode: '6802' },
+  { id: 'ITM007', name: 'Decorative Onyx Piece', category: 'Onyx', subcategory: 'Decorative', stock: 15, price: 500.00, supplier: 'Gem Stones Inc', userId: 'guest', hsnCode: '7103' },
 ];
 
 export const salesData: Sale[] = [

@@ -63,7 +63,8 @@ const DEFAULT_COLUMN_NAMES: Record<string, string> = {
   subcategory: 'Subcategory',
   stock: 'Stock',
   price: 'Price',
-  supplier: 'Supplier'
+  supplier: 'Supplier',
+  hsnCode: 'HSN Code'
 };
 
 const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
@@ -74,6 +75,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
     stock: 0,
     price: 0,
     supplier: "",
+    hsnCode: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +97,10 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="name" className="text-right">Name</Label>
           <Input id="name" name="name" value={newItem.name} onChange={handleChange} className="col-span-3" />
+        </div>
+         <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="hsnCode" className="text-right">HSN Code</Label>
+          <Input id="hsnCode" name="hsnCode" value={newItem.hsnCode} onChange={handleChange} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="category" className="text-right">Category</Label>
@@ -162,7 +168,7 @@ export default function InventoryPageClient() {
     if (typeof window === 'undefined') return {};
     const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
     return savedVisibility ? JSON.parse(savedVisibility) : {
-        id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true
+        id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true, hsnCode: true
     };
   });
   
@@ -445,7 +451,11 @@ const handleSaveChanges = async () => {
                 'category': { key: 'category', type: 'string' },
                 'group': { key: 'category', type: 'string' },
                 'supplier': { key: 'supplier', type: 'string' },
-                'vendor': { key: 'supplier', type: 'string' }
+                'vendor': { key: 'supplier', type: 'string' },
+                'hsn code': { key: 'hsnCode', type: 'string'},
+                'hsn': { key: 'hsnCode', type: 'string'},
+                'hsncode': { key: 'hsnCode', type: 'string'},
+                'tax code': { key: 'hsnCode', type: 'string'},
             };
 
             const newColumns: { [key: string]: string } = {};
@@ -938,7 +948,7 @@ const handleSaveChanges = async () => {
                                 className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
-                        ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
+                        ) : ['name', 'category', 'subcategory', 'supplier', 'hsnCode'].includes(key) ? (
                              <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}
