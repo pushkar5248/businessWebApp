@@ -24,17 +24,12 @@ const gstinDatabase: Record<string, GstinOutput> = {
     businessName: 'Quartz Co. Innovations',
     businessAddress: '202 Crystal Heights, Silicon Valley, KA 560029',
   },
+  // Default/fallback record
   '09AAAAA1234A1Z4': {
     businessName: 'Adhunik Minerals Corp',
     businessAddress: '789 Marble Arch, Agra, UP 282001',
   }
 };
-
-// Arrays for generating plausible random business data
-const businessNouns = ["Enterprises", "Solutions", "Innovations", "Trading", "Group", "Industries", "Exports", "Minerals", "Stones"];
-const businessAdjectives = ["Global", "National", "Sunrise", "Pioneer", "Apex", "Dynamic", "United", "Prime", "Heritage"];
-const streetTypes = ["Road", "Street", "Avenue", "Lane", "Drive", "Plaza"];
-const cityNames = ["Jaipur", "Mumbai", "Delhi", "Bangalore", "Kolkata", "Chennai", "Pune", "Ahmedabad", "Hyderabad"];
 
 
 export async function fetchGstinDetails(input: GstinInput): Promise<GstinOutput | null> {
@@ -51,7 +46,7 @@ const fetchGstinDetailsFlow = ai.defineFlow(
     console.log(`Looking up GSTIN: ${gstin}`);
     const upperGstin = gstin.toUpperCase();
     
-    // Check our mock database first for specific examples
+    // Check our mock database for specific examples
     const details = gstinDatabase[upperGstin];
 
     if (details) {
@@ -59,23 +54,14 @@ const fetchGstinDetailsFlow = ai.defineFlow(
       return details;
     }
     
-    // If not in the mock database, generate plausible random data for any other 15-digit string
+    // For any other validly formatted GSTIN, return a default record for demonstration.
+    // This provides a consistent and high-quality user experience without a real API.
     if (upperGstin.length === 15) {
-        console.log('GSTIN not in mock DB, generating random data.');
-        const randomAdjective = businessAdjectives[Math.floor(Math.random() * businessAdjectives.length)];
-        const randomNoun = businessNouns[Math.floor(Math.random() * businessNouns.length)];
-        const randomCity = cityNames[Math.floor(Math.random() * cityNames.length)];
-        const randomStreetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
-        
-        const generatedDetails: GstinOutput = {
-            businessName: `${randomAdjective} ${randomNoun}`,
-            businessAddress: `${Math.floor(Math.random() * 900) + 100} ${randomStreetType}, ${randomCity}`,
-        };
-        console.log('Generated details:', generatedDetails);
-        return generatedDetails;
+        console.log('GSTIN not in mock DB, returning default sample data.');
+        return gstinDatabase['09AAAAA1234A1Z4'];
     }
 
-    console.log('No details found for GSTIN.');
+    console.log('No details found for invalid GSTIN format.');
     return null;
   }
 );
