@@ -37,6 +37,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { type InventoryItem } from "@/lib/types";
@@ -191,6 +192,17 @@ export default function InventoryPageClient() {
           }
       } catch (e) {
         setAllPossibleColumns(DEFAULT_COLUMN_NAMES);
+      }
+    } else {
+      if (savedOrder) {
+        try {
+          const parsedOrder = JSON.parse(savedOrder);
+           const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
+           const allKeys = [...new Set([...parsedOrder, ...defaultKeys])].filter(k => defaultKeys.includes(k));
+           setColumnOrder(allKeys);
+        } catch (e) {
+           setColumnOrder(Object.keys(DEFAULT_COLUMN_NAMES));
+        }
       }
     }
     
@@ -602,7 +614,7 @@ const handleSaveChanges = async () => {
     dragItem.current = columnKey;
   };
   
-  const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, columnKey: string) => {
     dragOverItem.current = columnKey;
   };
   
@@ -779,23 +791,25 @@ const handleSaveChanges = async () => {
                     <TableHead
                       key={key}
                       className="p-0 h-12 relative select-none"
-                      onDragEnter={(e) => handleDragEnter(e, key)}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => e.preventDefault()}
                       style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : 'auto' }}
                       data-column-key={key}
                     >
-                      <div className="flex items-center justify-between px-4 h-full" suppressHydrationWarning>
-                         <div className="flex items-center gap-2">
+                      <div 
+                        className="flex items-center justify-between px-4 h-full" 
+                        suppressHydrationWarning
+                        draggable={!isEditMode}
+                        onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
+                        onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
+                        onDragEnd={!isEditMode ? handleDragEnd : undefined}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                         <div className="flex items-center gap-2" >
                              <div
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, key)}
                                 className={cn("cursor-grab", isEditMode && "cursor-not-allowed")}
-                                onDragEnd={() => isEditMode && false}
                               >
                                <GripVertical className="h-4 w-4 text-muted-foreground" />
                              </div>
-                             <span className="font-medium">{allPossibleColumns[key] || key}</span>
+                             <span className="font-medium" onClick={() => requestSort(key)}>{allPossibleColumns[key] || key}</span>
                          </div>
                         <Button
                           variant="ghost"
