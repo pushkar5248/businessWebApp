@@ -455,8 +455,15 @@ const handleSaveChanges = async () => {
             const newColumnOrder: string[] = [];
             const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
 
+            const ignoredHeaders = ['category', 'subcategory', 'supplier'];
+
             headerRow.forEach(header => {
                 const lowerHeader = header.toLowerCase();
+                
+                if (ignoredHeaders.includes(lowerHeader)) {
+                    return; // Skip ignored headers
+                }
+
                 const standardMapping = synonymMapping[lowerHeader];
                 
                 let internalKey: string;
@@ -466,12 +473,7 @@ const handleSaveChanges = async () => {
                     internalKey = standardMapping.key;
                     type = standardMapping.type;
                 } else {
-                    // Only add non-standard columns if they are not one of the removed ones
-                    if (!['category', 'subcategory', 'supplier'].includes(lowerHeader)) {
-                        internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
-                    } else {
-                        return; // Skip category, subcategory, supplier
-                    }
+                    internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
                 }
                 
                 csvToInternalKeyMap[header] = { key: internalKey, type: type };
