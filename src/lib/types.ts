@@ -59,7 +59,10 @@ export type Purchase = {
     amount: number;
     status: PurchaseStatus;
     items: LineItem[];
+    cgstRate?: number;
+    sgstRate?: number;
     igstRate?: number;
+    insuranceAndOthersRate?: number;
     deletedAt?: string | null;
     userId: string;
 };

@@ -29,7 +29,12 @@ export default function NewPurchasePage() {
     }
 
     const subtotal = data.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
-    const total = subtotal + (subtotal * (data.igstRate || 0) / 100);
+    const igstAmount = subtotal * ((data.igstRate || 0) / 100);
+    const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
+    const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
+    const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
+    const total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
+
 
     const newPurchase = {
         id: data.poNumber,
@@ -41,7 +46,10 @@ export default function NewPurchasePage() {
         amount: total,
         status: 'Pending',
         items: data.items,
+        cgstRate: data.cgstRate,
+        sgstRate: data.sgstRate,
         igstRate: data.igstRate,
+        insuranceAndOthersRate: data.insuranceAndOthersRate,
         userId: user.uid,
         deletedAt: null,
     };

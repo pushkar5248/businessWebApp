@@ -124,7 +124,9 @@ export default function PurchaseDetailsPage() {
     
     const subtotal = purchase.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
     const igstAmount = subtotal * ((purchase.igstRate || 0) / 100);
-    const total = subtotal + igstAmount;
+    const cgstAmount = subtotal * ((purchase.cgstRate || 0) / 100);
+    const sgstAmount = subtotal * ((purchase.sgstRate || 0) / 100);
+    const insuranceAndOthersAmount = subtotal * ((purchase.insuranceAndOthersRate || 0) / 100);
 
 
     return (
@@ -215,10 +217,28 @@ export default function PurchaseDetailsPage() {
                             <span>Subtotal</span>
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
-                         {purchase.igstRate && (
+                         {purchase.cgstRate && (
+                            <div className="flex justify-between">
+                                <span>CGST ({purchase.cgstRate}%)</span>
+                                <span>{formatCurrencyValue(cgstAmount)}</span>
+                            </div>
+                        )}
+                        {purchase.sgstRate && (
+                            <div className="flex justify-between">
+                                <span>SGST ({purchase.sgstRate}%)</span>
+                                <span>{formatCurrencyValue(sgstAmount)}</span>
+                            </div>
+                        )}
+                        {purchase.igstRate && (
                             <div className="flex justify-between">
                                 <span>IGST ({purchase.igstRate}%)</span>
                                 <span>{formatCurrencyValue(igstAmount)}</span>
+                            </div>
+                        )}
+                        {purchase.insuranceAndOthersRate && (
+                            <div className="flex justify-between">
+                                <span>Insurance & Others ({purchase.insuranceAndOthersRate}%)</span>
+                                <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
                             </div>
                         )}
                         <div className="flex justify-between font-bold text-lg">
@@ -232,5 +252,3 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
-
-    
