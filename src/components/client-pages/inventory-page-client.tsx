@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -43,7 +42,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -406,13 +405,14 @@ const handleSaveChanges = async () => {
                 'name': { key: 'name', type: 'string' }, 'itemname': { key: 'name', type: 'string' }, 'productname': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
                 'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'instock': { key: 'stock', type: 'number' }, 'onhand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'balqty': { key: 'stock', type: 'number' },
                 'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unitprice': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'saleprice': { key: 'price', type: 'number' }, 'purchaseprice': { key: 'price', type: 'number' },
-                'hsncode': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'taxcode': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'saccode': { key: 'hsnCode', type: 'string'},
+                'hsncode': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'taxcode': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'saccode': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'},
                 'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
             headerRow.forEach((header, index) => {
-                const mapping = synonymMapping[header];
+                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, '');
+                const mapping = synonymMapping[normalizedHeader];
                 if (mapping) {
                     headerMap[mapping.key] = index;
                 }
@@ -541,7 +541,7 @@ const handleSaveChanges = async () => {
     handleDeleteItems(itemIds);
   };
   
-  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLSpanElement>, columnKey: string) => {
     dragItem.current = columnKey;
   };
   
@@ -711,9 +711,7 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="p-0 h-12 relative"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, key)}
+                      className="p-0 h-12 relative select-none"
                       onDragEnter={(e) => handleDragEnter(e, key)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
@@ -721,18 +719,26 @@ const handleSaveChanges = async () => {
                       data-column-key={key}
                     >
                       <div className="flex items-center justify-between px-4 h-full" suppressHydrationWarning>
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key)}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
+                         <span
+                            className="flex items-center gap-2"
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, key)}
+                          >
+                           <GripVertical className="h-4 w-4 cursor-grab" />
+                            <span className="font-medium cursor-pointer" onClick={() => requestSort(key)}>
+                                {DEFAULT_COLUMN_NAMES[key] || key}
+                            </span>
+                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 ml-2 cursor-pointer"
+                          className="h-6 w-6 ml-2"
                           onClick={() => requestSort(key)}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
                       </div>
                        <div
-                            ref={resizeHandleRef}
                             onMouseDown={handleMouseDown}
                             className="absolute right-0 top-0 h-full w-2 cursor-col-resize"
                         />
