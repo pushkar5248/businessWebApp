@@ -34,8 +34,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { purchasesData } from '@/lib/data';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -55,6 +56,7 @@ export default function PurchasesBinPage() {
     const [binnedPurchases, setBinnedPurchases] = useState<Purchase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
     const fetchBinnedPurchases = useCallback(async () => {
         setIsLoading(true);
@@ -81,35 +83,47 @@ export default function PurchasesBinPage() {
         fetchBinnedPurchases();
     }, [fetchBinnedPurchases]);
 
-    const handleRestorePurchase = async (purchaseId: string) => {
+    const handleRestorePurchases = async (purchaseIds: string[]) => {
         if (!user) return;
         try {
-            const purchaseRef = doc(db, "purchases", purchaseId);
-            await updateDoc(purchaseRef, { deletedAt: null });
-            setBinnedPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
+            const batch = writeBatch(db);
+            purchaseIds.forEach(id => {
+                const purchaseRef = doc(db, "purchases", id);
+                batch.update(purchaseRef, { deletedAt: null });
+            });
+            await batch.commit();
+
+            setBinnedPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
+            setSelectedRows([]);
             toast({
-              title: "Purchase Restored",
-              description: "The purchase order has been successfully restored.",
+              title: "Purchases Restored",
+              description: `${purchaseIds.length} purchase order(s) have been successfully restored.`,
             });
         } catch (error) {
-            console.error("Error restoring purchase:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to restore purchase."});
+            console.error("Error restoring purchases:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to restore purchases."});
         }
     };
 
-    const handlePermanentDelete = async (purchaseId: string) => {
+    const handlePermanentDeletePurchases = async (purchaseIds: string[]) => {
         if (!user) return;
         try {
-            await deleteDoc(doc(db, "purchases", purchaseId));
-            setBinnedPurchases(currentPurchases => currentPurchases.filter(p => p.id !== purchaseId));
+            const batch = writeBatch(db);
+            purchaseIds.forEach(id => {
+                 batch.delete(doc(db, "purchases", id));
+            });
+            await batch.commit();
+
+            setBinnedPurchases(currentPurchases => currentPurchases.filter(p => !purchaseIds.includes(p.id)));
+            setSelectedRows([]);
             toast({
-                title: "Purchase Permanently Deleted",
-                description: "The purchase order has been permanently deleted.",
+                title: "Purchases Permanently Deleted",
+                description: `${purchaseIds.length} purchase order(s) have been permanently deleted.`,
                 variant: "destructive"
             });
         } catch (error) {
-            console.error("Error permanently deleting purchase:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to permanently delete purchase."});
+            console.error("Error permanently deleting purchases:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to permanently delete purchases."});
         }
     }
 
@@ -119,6 +133,22 @@ export default function PurchasesBinPage() {
             purchase.vendor.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [binnedPurchases, searchTerm]);
+    
+    const handleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+          setSelectedRows(filteredPurchases.map(item => item.id));
+        } else {
+          setSelectedRows([]);
+        }
+    };
+
+    const handleRowSelect = (itemId: string, checked: boolean) => {
+        if (checked) {
+          setSelectedRows(prev => [...prev, itemId]);
+        } else {
+          setSelectedRows(prev => prev.filter(id => id !== itemId));
+        }
+    };
 
   return (
     <MainLayout>
@@ -153,9 +183,48 @@ export default function PurchasesBinPage() {
           </div>
         </CardHeader>
         <CardContent>
+           {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-md mb-4 border">
+                <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
+                <Button variant="outline" size="sm" onClick={() => handleRestorePurchases(selectedRows)} disabled={!user}>
+                    <Undo className="mr-2 h-4 w-4" />
+                    Restore Selected
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={!user}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Selected
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the selected {selectedRows.length} items.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handlePermanentDeletePurchases(selectedRows)}>
+                        Delete Permanently
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+           )}
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px] px-4">
+                   <Checkbox
+                        checked={selectedRows.length > 0 && selectedRows.length === filteredPurchases.length}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                        disabled={!user || filteredPurchases.length === 0}
+                      />
+                </TableHead>
                 <TableHead className="h-12 px-4">PO #</TableHead>
                 <TableHead className="h-12 px-4">Vendor</TableHead>
                 <TableHead className="h-12 px-4">Time in Bin</TableHead>
@@ -167,12 +236,19 @@ export default function PurchasesBinPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center h-24">
+                    <TableCell colSpan={7} className="text-center h-24">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                     </TableCell>
                 </TableRow>
               ) : filteredPurchases.length > 0 ? filteredPurchases.map((purchase) => (
-                <TableRow key={purchase.id}>
+                <TableRow key={purchase.id} data-state={selectedRows.includes(purchase.id) && "selected"}>
+                  <TableCell className="px-4">
+                     <Checkbox
+                        checked={selectedRows.includes(purchase.id)}
+                        onCheckedChange={(checked) => handleRowSelect(purchase.id, !!checked)}
+                        aria-label={`Select purchase ${purchase.id}`}
+                      />
+                  </TableCell>
                   <TableCell className="font-medium">{purchase.id}</TableCell>
                   <TableCell>{purchase.vendor}</TableCell>
                   <TableCell>{purchase.deletedAt ? formatDistanceToNow(new Date(purchase.deletedAt), { addSuffix: true }) : '-'}</TableCell>
@@ -181,7 +257,7 @@ export default function PurchasesBinPage() {
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(purchase.amount)}</TableCell>
                   <TableCell className="text-right space-x-2">
-                     <Button variant="ghost" size="icon" onClick={() => handleRestorePurchase(purchase.id)} disabled={!user}>
+                     <Button variant="ghost" size="icon" onClick={() => handleRestorePurchases([purchase.id])} disabled={!user}>
                         <Undo className="h-4 w-4 text-green-600" />
                      </Button>
                     <AlertDialog>
@@ -199,7 +275,7 @@ export default function PurchasesBinPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handlePermanentDelete(purchase.id)}>
+                          <AlertDialogAction onClick={() => handlePermanentDeletePurchases([purchase.id])}>
                             Delete Permanently
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -209,7 +285,7 @@ export default function PurchasesBinPage() {
                 </TableRow>
               )) : (
                  <TableRow>
-                    <TableCell colSpan={6} className="text-center h-24">
+                    <TableCell colSpan={7} className="text-center h-24">
                         The bin is empty.
                     </TableCell>
                 </TableRow>
@@ -221,5 +297,3 @@ export default function PurchasesBinPage() {
     </MainLayout>
   );
 }
-
-    

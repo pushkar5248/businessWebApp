@@ -34,8 +34,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { salesData } from '@/lib/data';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const getBadgeVariant = (status: string) => {
   switch (status.toLowerCase()) {
@@ -57,6 +58,7 @@ export default function SalesBinPage() {
     const [binnedSales, setBinnedSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
     const fetchBinnedSales = useCallback(async () => {
         setIsLoading(true);
@@ -82,35 +84,47 @@ export default function SalesBinPage() {
         fetchBinnedSales();
     }, [fetchBinnedSales]);
 
-    const handleRestoreSale = async (saleId: string) => {
+    const handleRestoreSales = async (saleIds: string[]) => {
         if (!user) return;
         try {
-            const saleRef = doc(db, "sales", saleId);
-            await updateDoc(saleRef, { deletedAt: null });
-            setBinnedSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+            const batch = writeBatch(db);
+            saleIds.forEach(id => {
+                const saleRef = doc(db, "sales", id);
+                batch.update(saleRef, { deletedAt: null });
+            });
+            await batch.commit();
+
+            setBinnedSales(currentSales => currentSales.filter(sale => !saleIds.includes(sale.id)));
+            setSelectedRows([]);
             toast({
-              title: "Sale Restored",
-              description: "The sale has been successfully restored.",
+              title: "Sale(s) Restored",
+              description: `${saleIds.length} sale(s) have been successfully restored.`,
             });
         } catch (error) {
-            console.error("Error restoring sale:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to restore sale."});
+            console.error("Error restoring sales:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to restore sales."});
         }
     };
 
-    const handlePermanentDelete = async (saleId: string) => {
+    const handlePermanentDeleteSales = async (saleIds: string[]) => {
         if (!user) return;
         try {
-            await deleteDoc(doc(db, "sales", saleId));
-            setBinnedSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+            const batch = writeBatch(db);
+            saleIds.forEach(id => {
+                 batch.delete(doc(db, "sales", id));
+            });
+            await batch.commit();
+
+            setBinnedSales(currentSales => currentSales.filter(sale => !saleIds.includes(sale.id)));
+            setSelectedRows([]);
             toast({
-                title: "Sale Permanently Deleted",
-                description: "The sale has been permanently deleted.",
+                title: "Sale(s) Permanently Deleted",
+                description: `${saleIds.length} sale(s) have been permanently deleted.`,
                 variant: "destructive"
             });
         } catch (error) {
-            console.error("Error permanently deleting sale:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to permanently delete sale."});
+            console.error("Error permanently deleting sales:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to permanently delete sales."});
         }
     }
 
@@ -120,6 +134,22 @@ export default function SalesBinPage() {
             sale.customer.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [binnedSales, searchTerm]);
+    
+    const handleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+          setSelectedRows(filteredSales.map(item => item.id));
+        } else {
+          setSelectedRows([]);
+        }
+    };
+
+    const handleRowSelect = (itemId: string, checked: boolean) => {
+        if (checked) {
+          setSelectedRows(prev => [...prev, itemId]);
+        } else {
+          setSelectedRows(prev => prev.filter(id => id !== itemId));
+        }
+    };
 
   return (
     <MainLayout>
@@ -154,9 +184,48 @@ export default function SalesBinPage() {
           </div>
         </CardHeader>
         <CardContent>
+           {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-md mb-4 border">
+                <p className="text-sm font-medium">{selectedRows.length} item(s) selected.</p>
+                <Button variant="outline" size="sm" onClick={() => handleRestoreSales(selectedRows)} disabled={!user}>
+                    <Undo className="mr-2 h-4 w-4" />
+                    Restore Selected
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={!user}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Selected
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the selected {selectedRows.length} items from the system.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handlePermanentDeleteSales(selectedRows)}>
+                        Delete Permanently
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+           )}
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px] px-4">
+                     <Checkbox
+                        checked={selectedRows.length > 0 && selectedRows.length === filteredSales.length}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                        disabled={!user || filteredSales.length === 0}
+                      />
+                </TableHead>
                 <TableHead className="h-12 px-4">Invoice #</TableHead>
                 <TableHead className="h-12 px-4">Customer</TableHead>
                 <TableHead className="h-12 px-4">Time in Bin</TableHead>
@@ -168,12 +237,19 @@ export default function SalesBinPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center h-24">
+                    <TableCell colSpan={7} className="text-center h-24">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                     </TableCell>
                 </TableRow>
               ) : filteredSales.length > 0 ? filteredSales.map((sale) => (
-                <TableRow key={sale.id}>
+                <TableRow key={sale.id} data-state={selectedRows.includes(sale.id) && "selected"}>
+                  <TableCell className="px-4">
+                      <Checkbox
+                        checked={selectedRows.includes(sale.id)}
+                        onCheckedChange={(checked) => handleRowSelect(sale.id, !!checked)}
+                        aria-label={`Select sale ${sale.id}`}
+                      />
+                  </TableCell>
                   <TableCell className="font-medium">{sale.id}</TableCell>
                   <TableCell>{sale.customer}</TableCell>
                   <TableCell>{sale.deletedAt ? formatDistanceToNow(new Date(sale.deletedAt), { addSuffix: true }) : '-'}</TableCell>
@@ -182,7 +258,7 @@ export default function SalesBinPage() {
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(sale.amount)}</TableCell>
                   <TableCell className="text-right space-x-2">
-                     <Button variant="ghost" size="icon" onClick={() => handleRestoreSale(sale.id)} disabled={!user}>
+                     <Button variant="ghost" size="icon" onClick={() => handleRestoreSales([sale.id])} disabled={!user}>
                         <Undo className="h-4 w-4 text-green-600" />
                      </Button>
                     <AlertDialog>
@@ -200,7 +276,7 @@ export default function SalesBinPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handlePermanentDelete(sale.id)}>
+                          <AlertDialogAction onClick={() => handlePermanentDeleteSales([sale.id])}>
                             Delete Permanently
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -210,7 +286,7 @@ export default function SalesBinPage() {
                 </TableRow>
               )) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center h-24">
+                    <TableCell colSpan={7} className="text-center h-24">
                         The bin is empty.
                     </TableCell>
                 </TableRow>
@@ -222,5 +298,3 @@ export default function SalesBinPage() {
     </MainLayout>
   );
 }
-
-    
