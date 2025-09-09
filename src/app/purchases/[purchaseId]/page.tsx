@@ -81,6 +81,7 @@ export default function PurchaseDetailsPage() {
             await updateDoc(purchaseRef, { status: newStatus });
 
             if (oldStatus === 'Pending' && newStatus === 'Received') {
+                console.log('Purchase status changed to Received. Updating inventory...');
                 const freshPurchaseSnap = await getDoc(purchaseRef);
                 if (freshPurchaseSnap.exists()) {
                     const freshPurchaseData = freshPurchaseSnap.data() as Purchase;

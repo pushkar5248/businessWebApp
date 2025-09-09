@@ -30,6 +30,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
+import { updateStockOnSale } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -84,10 +85,37 @@ export default function InvoiceDetailsPage() {
 
     const handleStatusChange = async (newStatus: SaleStatus) => {
         if (!invoice || !user || newStatus === invoice.status) return;
+
+        const oldStatus = invoice.status;
         
         try {
             const invoiceRef = doc(db, "sales", invoice.id);
             await updateDoc(invoiceRef, { status: newStatus });
+            
+            // Logic to update inventory when status changes from Pending to Paid
+            if (oldStatus === 'Pending' && newStatus === 'Paid') {
+                console.log('Status change condition met. Checking items for inventoryId...');
+                console.log('Items to update:', invoice.items);
+
+                // Verify all items have an inventoryId before attempting update
+                const allItemsHaveId = invoice.items.every(item => !!item.inventoryId);
+
+                if (allItemsHaveId) {
+                    console.log('All items have inventoryId. Proceeding with stock update.');
+                    await updateStockOnSale(invoice.items);
+                    toast({
+                        title: "Inventory Updated",
+                        description: "Stock levels have been adjusted for this sale."
+                    });
+                } else {
+                    console.warn('Inventory update skipped: Not all items have an inventoryId. This may be an older sale record.');
+                    toast({
+                        variant: 'default',
+                        title: 'Inventory Update Skipped',
+                        description: 'Could not update stock for this sale as it may be an older record. Stock is only updated for sales created with the newer system.'
+                    });
+                }
+            }
 
             setInvoice({ ...invoice, status: newStatus });
             toast({
@@ -95,7 +123,7 @@ export default function InvoiceDetailsPage() {
                 description: `Invoice status changed to ${newStatus}.`
             });
         } catch (error) {
-            console.error("Error updating status:", error);
+            console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
             setInvoice(invoice); // Revert optimistic update on error
         }
@@ -227,7 +255,7 @@ export default function InvoiceDetailsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                     {saleStatuses.map(status => (
-                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)} disabled={!user || invoice.status === status}>
                             {status}
                         </DropdownMenuItem>
                     ))}
@@ -240,7 +268,7 @@ export default function InvoiceDetailsPage() {
                 <CardHeader>
                     <CardTitle>Invoice Details</CardTitle>
                     <CardDescription>
-                        Date: {invoice.date}
+                        Date: {new Date(invoice.date).toLocaleDateString()}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-8">
@@ -268,7 +296,7 @@ export default function InvoiceDetailsPage() {
                                 {invoice.transporterName && <p><strong>Name:</strong> {invoice.transporterName}</p>}
                                 {invoice.transporterVehicleNumber && <p><strong>Vehicle No:</strong> {invoice.transporterVehicleNumber}</p>}
                                 {invoice.placeOfSupply && <p><strong>Place of Supply:</strong> {invoice.placeOfSupply}</p>}
-                                {invoice.transportDate && <p><strong>Date:</strong> {invoice.transportDate}</p>}
+                                {invoice.transportDate && <p><strong>Date:</strong> {new Date(invoice.transportDate).toLocaleDateString()}</p>}
                             </div>
                         </div>
                     )}
