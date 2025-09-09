@@ -119,7 +119,10 @@ export default function InvoiceDetailsPage() {
     const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
-    const totalTaxes = cgstAmount + sgstAmount + igstAmount;
+    const totalAmount = invoice.amount;
+    const roundedTotal = Math.round(totalAmount);
+    const roundOff = roundedTotal - totalAmount;
+
     
     const handleGeneratePdf = async () => {
         if (!invoice || !settings) {
@@ -157,7 +160,7 @@ export default function InvoiceDetailsPage() {
             cgstRate: invoice.cgstRate,
             sgstRate: invoice.sgstRate,
             igstRate: invoice.igstRate,
-            total: invoice.amount,
+            total: roundedTotal,
             currency: currency,
           };
 
@@ -308,12 +311,24 @@ export default function InvoiceDetailsPage() {
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Taxes</span>
-                            <span>{formatCurrencyValue(totalTaxes)}</span>
+                            <span>CGST ({invoice.cgstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(cgstAmount)}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>SGST ({invoice.sgstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(sgstAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>IGST ({invoice.igstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(igstAmount)}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Round Off</span>
+                            <span>{formatCurrencyValue(roundOff)}</span>
                         </div>
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
-                            <span>{formatCurrencyValue(invoice.amount)}</span>
+                            <span>{formatCurrencyValue(roundedTotal)}</span>
                         </div>
                     </div>
                 </CardFooter>

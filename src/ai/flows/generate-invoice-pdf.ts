@@ -350,7 +350,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                         </tr>
                         {{/if}}
                         <tr>
-                          <td><span>Round Off / Other Charge, If Any</span> <span></span></td>
+                          <td><span>Round Off / Other Charge, If Any</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
                         </tr>
                         <tr class="grand-total">
                             <td><span>Grand Total of Invoice</span> <span>{{{currency}}}{{{total}}}</span></td>
@@ -383,6 +383,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     const cgstAmount = subtotal * ((input.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((input.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((input.igstRate || 0) / 100);
+    const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount;
+    const roundedTotal = Math.round(totalAmount);
+    const roundOffAmount = roundedTotal - totalAmount;
 
     const templateData = {
         ...input,
@@ -395,6 +398,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             itemTotal: ((item.quantity || 0) * (item.price || 0)).toFixed(2)
         })),
         total: input.total.toFixed(2),
+        roundOff: roundOffAmount.toFixed(2),
     };
 
     try {

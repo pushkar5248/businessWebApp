@@ -127,6 +127,10 @@ export default function PurchaseDetailsPage() {
     const cgstAmount = subtotal * ((purchase.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((purchase.sgstRate || 0) / 100);
     const insuranceAndOthersAmount = subtotal * ((purchase.insuranceAndOthersRate || 0) / 100);
+    
+    const totalAmount = purchase.amount;
+    const roundedTotal = Math.round(totalAmount);
+    const roundOff = roundedTotal - totalAmount;
 
 
     return (
@@ -223,33 +227,29 @@ export default function PurchaseDetailsPage() {
                             <span>Subtotal</span>
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
-                         {typeof purchase.cgstRate === 'number' && (
-                            <div className="flex justify-between">
-                                <span>CGST ({purchase.cgstRate}%)</span>
-                                <span>{formatCurrencyValue(cgstAmount)}</span>
-                            </div>
-                        )}
-                        {typeof purchase.sgstRate === 'number' && (
-                            <div className="flex justify-between">
-                                <span>SGST ({purchase.sgstRate}%)</span>
-                                <span>{formatCurrencyValue(sgstAmount)}</span>
-                            </div>
-                        )}
-                        {typeof purchase.igstRate === 'number' && (
-                            <div className="flex justify-between">
-                                <span>IGST ({purchase.igstRate}%)</span>
-                                <span>{formatCurrencyValue(igstAmount)}</span>
-                            </div>
-                        )}
-                        {typeof purchase.insuranceAndOthersRate === 'number' && (
-                            <div className="flex justify-between">
-                                <span>Insurance & Others ({purchase.insuranceAndOthersRate}%)</span>
-                                <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
-                            </div>
-                        )}
+                        <div className="flex justify-between">
+                            <span>CGST ({purchase.cgstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(cgstAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>SGST ({purchase.sgstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(sgstAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>IGST ({purchase.igstRate || 0}%)</span>
+                            <span>{formatCurrencyValue(igstAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Insurance & Others ({purchase.insuranceAndOthersRate || 0}%)</span>
+                            <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Round Off</span>
+                            <span>{formatCurrencyValue(roundOff)}</span>
+                        </div>
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
-                            <span>{formatCurrencyValue(purchase.amount)}</span>
+                            <span>{formatCurrencyValue(roundedTotal)}</span>
                         </div>
                     </div>
                 </CardFooter>
