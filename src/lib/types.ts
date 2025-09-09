@@ -3,11 +3,8 @@
 export type InventoryItem = {
   id: string;
   name: string;
-  category: string;
-  subcategory: string;
   stock: number;
   price: number;
-  supplier: string;
   userId: string;
   hsnCode?: string;
   unit?: string;

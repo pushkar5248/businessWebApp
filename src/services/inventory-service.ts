@@ -82,9 +82,8 @@ export async function updateStockOnPurchase(items: LineItem[], userId: string): 
                      name: purchasedItem.name,
                      price: purchasedItem.price,
                      stock: purchasedItem.quantity,
-                     category: 'Uncategorized',
-                     subcategory: '',
-                     supplier: '',
+                     hsnCode: '',
+                     unit: '',
                      userId: userId,
                  });
                  console.log(`No match for "${purchasedItem.name}". Creating new inventory item.`);
@@ -95,5 +94,3 @@ export async function updateStockOnPurchase(items: LineItem[], userId: string): 
     await batch.commit();
     console.log('Stock update from purchase committed successfully.');
 }
-
-    

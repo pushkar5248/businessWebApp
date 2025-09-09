@@ -54,7 +54,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 
-type ColumnKeys = Omit<InventoryItem, 'userId'>;
+type ColumnKeys = Omit<InventoryItem, 'id' | 'userId'>;
 
 const DEFAULT_COLUMN_NAMES: Record<string, string> = {
   name: 'Name',
@@ -68,11 +68,8 @@ const DEFAULT_COLUMN_NAMES: Record<string, string> = {
 const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id' | 'userId'>>({
     name: "",
-    category: "",
-    subcategory: "",
     stock: 0,
     price: 0,
-    supplier: "",
     hsnCode: "",
     unit: "",
   });
