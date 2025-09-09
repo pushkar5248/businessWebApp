@@ -19,8 +19,8 @@ export async function updateStockOnSale(items: LineItem[]): Promise<void> {
     const batch = writeBatch(db);
 
     for (const item of items) {
-        console.log('Processing sale item:', item);
         if (item.inventoryId) {
+            console.log(`Processing sale item: ${item.name} with inventoryId: ${item.inventoryId}`);
             const inventoryRef = doc(db, "inventory", item.inventoryId);
             batch.update(inventoryRef, { stock: increment(-item.quantity) });
             console.log(`Decremented stock for inventoryId: ${item.inventoryId} by ${item.quantity}`);
@@ -95,3 +95,5 @@ export async function updateStockOnPurchase(items: LineItem[], userId: string): 
     await batch.commit();
     console.log('Stock update from purchase committed successfully.');
 }
+
+    

@@ -23,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-context';
-import { updateStockOnPurchase } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -73,37 +72,21 @@ export default function PurchaseDetailsPage() {
 
     const handleStatusChange = async (newStatus: PurchaseStatus) => {
         if (!purchase || !user || newStatus === purchase.status) return;
-        
-        const oldStatus = purchase.status;
 
         try {
             const purchaseRef = doc(db, "purchases", purchase.id);
             await updateDoc(purchaseRef, { status: newStatus });
-
-            if (oldStatus === 'Pending' && newStatus === 'Received') {
-                const freshPurchaseSnap = await getDoc(purchaseRef);
-                if (freshPurchaseSnap.exists()) {
-                    const freshPurchaseData = freshPurchaseSnap.data() as Purchase;
-                    await updateStockOnPurchase(freshPurchaseData.items, user.uid);
-                    toast({
-                        title: "Inventory Stocked",
-                        description: `Inventory has been updated for PO #${purchase.id}.`
-                    });
-                } else {
-                    throw new Error("Could not re-fetch purchase for inventory update.");
-                }
-            }
             
             setPurchase(prev => prev ? { ...prev, status: newStatus } : null);
              toast({
                 title: "Status Updated",
-                description: `Purchase order status changed to ${newStatus}.`
+                description: `Purchase order status changed to ${newStatus}. Inventory will be updated separately from the purchases list page.`
             });
 
         } catch (error) {
              console.error("Error updating status or inventory:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
-            setPurchase({ ...purchase, status: oldStatus });
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
+            setPurchase({ ...purchase, status: purchase.status });
         }
     };
 
@@ -230,3 +213,5 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
+
+    

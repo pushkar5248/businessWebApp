@@ -42,7 +42,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot, getDoc } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { updateStockOnSale } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -151,6 +152,13 @@ export default function SalesPageClient() {
 
     const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
         if (!user) return;
+        
+        const originalSale = sales.find(s => s.id === saleId);
+        if (!originalSale) return;
+        
+        const oldStatus = originalSale.status;
+        const newStatus = field === 'status' ? value : oldStatus;
+
         try {
             const saleRef = doc(db, "sales", saleId);
             await updateDoc(saleRef, { [field]: value });
@@ -158,6 +166,20 @@ export default function SalesPageClient() {
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Sale status has been updated." });
             }
+
+            if (oldStatus === 'Pending' && newStatus === 'Paid') {
+                const saleDoc = await getDoc(saleRef);
+                if (saleDoc.exists()) {
+                    const saleData = saleDoc.data() as Sale;
+                    if(saleData.items && saleData.items.every(item => item.inventoryId)){
+                        await updateStockOnSale(saleData.items);
+                        toast({ title: "Inventory Updated", description: `Stock updated for sale #${saleId}.` });
+                    } else {
+                         toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${saleId} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
+                    }
+                }
+            }
+
         } catch (error) {
             console.error(`Error updating sale ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
@@ -516,3 +538,5 @@ export default function SalesPageClient() {
     </>
   );
 }
+
+    

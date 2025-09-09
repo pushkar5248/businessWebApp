@@ -30,7 +30,6 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
-import { updateStockOnSale } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -86,44 +85,19 @@ export default function InvoiceDetailsPage() {
     const handleStatusChange = async (newStatus: SaleStatus) => {
         if (!invoice || !user || newStatus === invoice.status) return;
 
-        const oldStatus = invoice.status;
-        
         try {
             const invoiceRef = doc(db, "sales", invoice.id);
             await updateDoc(invoiceRef, { status: newStatus });
             
-            // Logic to update inventory when status changes from Pending to Paid
-            if (oldStatus === 'Pending' && newStatus === 'Paid') {
-                console.log('Status changed from Pending to Paid. Checking items for inventory update...');
-                console.log('Invoice items:', invoice.items);
-
-                // Verify all items have an inventoryId before attempting update
-                const allItemsHaveId = invoice.items.every(item => !!item.inventoryId);
-
-                if (allItemsHaveId) {
-                    await updateStockOnSale(invoice.items);
-                    toast({
-                        title: "Inventory Updated",
-                        description: "Stock levels have been adjusted for this sale."
-                    });
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Inventory Update Failed',
-                        description: 'Could not update stock. Some items in this sale are not linked to inventory items. This may be an older sale record.'
-                    });
-                }
-            }
-
             setInvoice({ ...invoice, status: newStatus });
             toast({
                 title: "Status Updated",
-                description: `Invoice status changed to ${newStatus}.`
+                description: `Invoice status changed to ${newStatus}. Inventory will be updated separately from the sales list page.`
             });
         } catch (error) {
             console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
-            setInvoice({ ...invoice, status: oldStatus }); // Revert optimistic update on error
+            setInvoice({ ...invoice, status: invoice.status }); // Revert optimistic update on error
         }
     };
 
@@ -348,3 +322,5 @@ export default function InvoiceDetailsPage() {
         </MainLayout>
     );
 }
+
+    

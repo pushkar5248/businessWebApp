@@ -42,7 +42,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { db } from "@/lib/firebase";
-import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, onSnapshot, getDoc } from 'firebase/firestore';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { updateStockOnPurchase } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -151,6 +152,12 @@ export default function PurchasesPageClient() {
     const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
          if (!user) return;
         
+        const originalPurchase = purchases.find(p => p.id === purchaseId);
+        if (!originalPurchase) return;
+
+        const oldStatus = originalPurchase.status;
+        const newStatus = field === 'status' ? value : oldStatus;
+
         try {
             const purchaseRef = doc(db, "purchases", purchaseId);
             await updateDoc(purchaseRef, { [field]: value });
@@ -158,6 +165,16 @@ export default function PurchasesPageClient() {
             if(field === 'status') {
                  toast({ title: "Status Updated", description: "Purchase status has been updated." });
             }
+
+            if (oldStatus === 'Pending' && newStatus === 'Received') {
+                const purchaseDoc = await getDoc(purchaseRef);
+                if (purchaseDoc.exists()) {
+                    const purchaseData = purchaseDoc.data() as Purchase;
+                    await updateStockOnPurchase(purchaseData.items, user.uid);
+                    toast({ title: "Inventory Updated", description: `Stock updated for PO #${purchaseId}.` });
+                }
+            }
+
         } catch (error) {
              console.error(`Error updating purchase ${field}:`, error);
             toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
@@ -515,3 +532,5 @@ export default function PurchasesPageClient() {
     </>
   );
 }
+
+    
