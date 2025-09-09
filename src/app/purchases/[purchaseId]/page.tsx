@@ -72,19 +72,29 @@ export default function PurchaseDetailsPage() {
     }, [fetchPurchase]);
 
     const handleStatusChange = async (newStatus: PurchaseStatus) => {
-        if (!purchase || !user) return;
+        if (!purchase || !user || newStatus === purchase.status) return;
         
+        const oldStatus = purchase.status;
+
         try {
             const purchaseRef = doc(db, "purchases", purchase.id);
             await updateDoc(purchaseRef, { status: newStatus });
 
-            // If status is 'Received', update inventory using the centralized service
-            if (newStatus === 'Received' && purchase.status !== 'Received') {
-                await updateStockOnPurchase(purchase.items, user.uid);
-                 toast({
-                    title: "Status Updated & Inventory Stocked",
-                    description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
-                });
+            if (oldStatus === 'Pending' && newStatus === 'Received') {
+                console.log(`Condition met: Status changed from ${oldStatus} to ${newStatus}. Triggering inventory update.`);
+
+                const freshPurchaseSnap = await getDoc(purchaseRef);
+                if (freshPurchaseSnap.exists()) {
+                    const freshPurchaseData = freshPurchaseSnap.data() as Purchase;
+                    console.log("Fresh purchase data fetched for inventory update:", freshPurchaseData);
+                    await updateStockOnPurchase(freshPurchaseData.items, user.uid);
+                    toast({
+                        title: "Status Updated & Inventory Stocked",
+                        description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
+                    });
+                } else {
+                    throw new Error("Could not re-fetch purchase for inventory update.");
+                }
             } else {
                 toast({
                     title: "Status Updated",
@@ -95,8 +105,9 @@ export default function PurchaseDetailsPage() {
             setPurchase({ ...purchase, status: newStatus });
 
         } catch (error) {
-             console.error("Error updating status:", error);
+             console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
+            setPurchase({ ...purchase, status: oldStatus });
         }
     };
 
