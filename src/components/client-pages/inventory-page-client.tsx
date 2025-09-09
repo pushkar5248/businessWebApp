@@ -145,7 +145,40 @@ export default function InventoryPageClient() {
   const [isEditMode, setIsEditMode] = useState(false);
   const unsubscribeRef = useRef<() => void | null>(null);
 
-  const columnOrder = useMemo(() => Object.keys(DEFAULT_COLUMN_NAMES), []);
+  const [columnOrder, setColumnOrder] = useState<string[]>(Object.keys(DEFAULT_COLUMN_NAMES));
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const dragItem = useRef<string | null>(null);
+  const dragOverItem = useRef<string | null>(null);
+  const resizeHandleRef = useRef<HTMLDivElement | null>(null);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  useEffect(() => {
+    const savedOrder = localStorage.getItem('inventoryColumnOrder');
+    if (savedOrder) {
+      try {
+        setColumnOrder(JSON.parse(savedOrder));
+      } catch (e) {
+        // ignore
+      }
+    }
+    const savedWidths = localStorage.getItem('inventoryColumnWidths');
+    if (savedWidths) {
+       try {
+        setColumnWidths(JSON.parse(savedWidths));
+       } catch (e) {
+        // ignore
+       }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('inventoryColumnOrder', JSON.stringify(columnOrder));
+  }, [columnOrder]);
+  
+  useEffect(() => {
+    localStorage.setItem('inventoryColumnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
   
   const setupRealtimeListener = useCallback(() => {
     if (!user) return null;
@@ -370,43 +403,11 @@ const handleSaveChanges = async () => {
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
             const synonymMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
-                // Name Synonyms
-                'name': { key: 'name', type: 'string' },
-                'itemname': { key: 'name', type: 'string' },
-                'productname': { key: 'name', type: 'string' },
-                'particulars': { key: 'name', type: 'string' },
-                'item': { key: 'name', type: 'string' },
-                'product': { key: 'name', type: 'string' },
-                'description': { key: 'name', type: 'string' },
-                 // Stock Synonyms
-                'stock': { key: 'stock', type: 'number' },
-                'quantity': { key: 'stock', type: 'number' },
-                'qty': { key: 'stock', type: 'number' },
-                'instock': { key: 'stock', type: 'number' },
-                'onhand': { key: 'stock', type: 'number' },
-                'inventory': { key: 'stock', type: 'number' },
-                'balqty': { key: 'stock', type: 'number' },
-                // Price Synonyms
-                'price': { key: 'price', type: 'number' },
-                'rate': { key: 'price', type: 'number' },
-                'cost': { key: 'price', type: 'number' },
-                'unitprice': { key: 'price', type: 'number' },
-                'mrp': { key: 'price', type: 'number' },
-                'saleprice': { key: 'price', type: 'number' },
-                'purchaseprice': { key: 'price', type: 'number' },
-                // HSN Code Synonyms
-                'hsncode': { key: 'hsnCode', type: 'string'},
-                'hsn-code': { key: 'hsnCode', type: 'string'},
-                'hsn': { key: 'hsnCode', type: 'string'},
-                'taxcode': { key: 'hsnCode', type: 'string'},
-                'sac': { key: 'hsnCode', type: 'string'},
-                'saccode': { key: 'hsnCode', type: 'string'},
-                // Unit Synonyms
-                'unit': { key: 'unit', type: 'string' },
-                'units': { key: 'unit', type: 'string' },
-                'uom': { key: 'unit', type: 'string' },
-                'measurement': { key: 'unit', type: 'string' },
-                'per': { key: 'unit', type: 'string' },
+                'name': { key: 'name', type: 'string' }, 'itemname': { key: 'name', type: 'string' }, 'productname': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
+                'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'instock': { key: 'stock', type: 'number' }, 'onhand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'balqty': { key: 'stock', type: 'number' },
+                'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unitprice': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'saleprice': { key: 'price', type: 'number' }, 'purchaseprice': { key: 'price', type: 'number' },
+                'hsncode': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'taxcode': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'saccode': { key: 'hsnCode', type: 'string'},
+                'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
@@ -539,6 +540,55 @@ const handleSaveChanges = async () => {
   const handleConfirmDelete = (itemIds: string[]) => {
     handleDeleteItems(itemIds);
   };
+  
+  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
+    dragItem.current = columnKey;
+  };
+  
+  const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
+    dragOverItem.current = columnKey;
+  };
+  
+  const handleDragEnd = () => {
+    if (dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) {
+        const newColumnOrder = [...columnOrder];
+        const dragItemIndex = newColumnOrder.indexOf(dragItem.current);
+        const dragOverItemIndex = newColumnOrder.indexOf(dragOverItem.current);
+        
+        const [removed] = newColumnOrder.splice(dragItemIndex, 1);
+        newColumnOrder.splice(dragOverItemIndex, 0, removed);
+        
+        setColumnOrder(newColumnOrder);
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+  
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    startX.current = e.clientX;
+    const th = (e.target as HTMLElement).closest('th');
+    if (th) {
+        startWidth.current = th.offsetWidth;
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const diffX = moveEvent.clientX - startX.current;
+            const newWidth = startWidth.current + diffX;
+            if (newWidth > 50) { // Minimum width
+                setColumnWidths(prev => ({
+                    ...prev,
+                    [th.dataset.columnKey as string]: newWidth
+                }));
+            }
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }
+  };
 
   return (
     <>
@@ -604,7 +654,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {columnOrder.map((key) => (
+                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
                            <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
@@ -651,34 +701,44 @@ const handleSaveChanges = async () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="p-0 h-12">
-                    <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
+                  <TableHead className="w-12 px-4">
                        <Checkbox
                           checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
                         />
-                    </div>
                   </TableHead>
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="h-12 px-4"
+                      className="p-0 h-12 relative"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, key)}
+                      onDragEnter={(e) => handleDragEnter(e, key)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => e.preventDefault()}
+                      style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : 'auto' }}
+                      data-column-key={key}
                     >
-                      <div className="flex items-center justify-between" suppressHydrationWarning>
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key as keyof InventoryItem | 'value')}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
+                      <div className="flex items-center justify-between px-4 h-full" suppressHydrationWarning>
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key)}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 ml-2"
-                          onClick={() => requestSort(key as keyof InventoryItem | 'value')}
+                          className="h-6 w-6 ml-2 cursor-pointer"
+                          onClick={() => requestSort(key)}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
                       </div>
+                       <div
+                            ref={resizeHandleRef}
+                            onMouseDown={handleMouseDown}
+                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize"
+                        />
                     </TableHead>
                   ))}
-                  <TableHead className="h-12 px-4"/>
+                  <TableHead className="w-12 px-4"/>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -767,7 +827,7 @@ const handleSaveChanges = async () => {
               </TableBody>
               <TableFooter>
                   <TableRow>
-                      <TableCell colSpan={visibleColumns.indexOf('value') !== -1 ? visibleColumns.indexOf('value') + 1 : visibleColumns.length + 1} className="text-right font-bold text-lg">
+                      <TableCell colSpan={visibleColumns.indexOf('value') !== -1 ? visibleColumns.indexOf('value') + 2 : visibleColumns.length + 2} className="text-right font-bold text-lg">
                           Grand Total
                       </TableCell>
                       {visibleColumns.includes('value') && (
@@ -775,7 +835,7 @@ const handleSaveChanges = async () => {
                               {formatCurrency(totalInventoryValue)}
                           </TableCell>
                       )}
-                      <TableCell colSpan={visibleColumns.includes('value') ? visibleColumns.length - visibleColumns.indexOf('value') : 0}>
+                      <TableCell colSpan={visibleColumns.includes('value') ? visibleColumns.length - visibleColumns.indexOf('value') -1 : 0}>
                       </TableCell>
                   </TableRow>
               </TableFooter>
