@@ -150,14 +150,19 @@ export default function InventoryPageClient() {
   const dragOverItem = useRef<string | null>(null);
   const startX = useRef(0);
   const startWidth = useRef(0);
+  const resizingColumn = useRef<string | null>(null);
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('inventoryColumnOrder');
     if (savedOrder) {
       try {
-        setColumnOrder(JSON.parse(savedOrder));
+        const parsedOrder = JSON.parse(savedOrder);
+        // Ensure all default columns are present
+        const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
+        const allKeys = [...new Set([...parsedOrder, ...defaultKeys])];
+        setColumnOrder(allKeys);
       } catch (e) {
-        // ignore
+        setColumnOrder(Object.keys(DEFAULT_COLUMN_NAMES));
       }
     }
     const savedWidths = localStorage.getItem('inventoryColumnWidths');
@@ -168,6 +173,15 @@ export default function InventoryPageClient() {
         // ignore
        }
     }
+     const savedVisibility = localStorage.getItem('inventoryColumnVisibility');
+    if (savedVisibility) {
+        try {
+            const parsedVisibility = JSON.parse(savedVisibility);
+            setColumnVisibility(prev => ({...prev, ...parsedVisibility}));
+        } catch(e) {
+            // ignore
+        }
+    }
   }, []);
 
   useEffect(() => {
@@ -177,6 +191,10 @@ export default function InventoryPageClient() {
   useEffect(() => {
     localStorage.setItem('inventoryColumnWidths', JSON.stringify(columnWidths));
   }, [columnWidths]);
+
+  useEffect(() => {
+    localStorage.setItem('inventoryColumnVisibility', JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
   
   const setupRealtimeListener = useCallback(() => {
     if (!user) return null;
@@ -394,23 +412,23 @@ const handleSaveChanges = async () => {
                 return;
             }
             
-            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase().replace(/[\s_]/g, ''));
+            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, ''));
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
             const synonymMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
-                'name': { key: 'name', type: 'string' }, 'itemname': { key: 'name', type: 'string' }, 'productname': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
-                'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'instock': { key: 'stock', type: 'number' }, 'onhand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'balqty': { key: 'stock', type: 'number' },
-                'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unitprice': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'saleprice': { key: 'price', type: 'number' }, 'purchaseprice': { key: 'price', type: 'number' },
-                'hsncode': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'taxcode': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'saccode': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'},
+                'name': { key: 'name', type: 'string' }, 'item name': { key: 'name', type: 'string' }, 'product name': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
+                'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'in stock': { key: 'stock', type: 'number' }, 'on hand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'bal qty': { key: 'stock', type: 'number' },
+                'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unit price': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'sale price': { key: 'price', type: 'number' }, 'purchase price': { key: 'price', type: 'number' },
+                'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'},
                 'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
             headerRow.forEach((header, index) => {
-                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, '');
+                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, ' ').trim();
                 const mapping = synonymMapping[normalizedHeader];
                 if (mapping) {
                     headerMap[mapping.key] = index;
@@ -564,29 +582,33 @@ const handleSaveChanges = async () => {
   };
   
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    startX.current = e.clientX;
     const th = (e.target as HTMLElement).closest('th');
-    if (th) {
-        startWidth.current = th.offsetWidth;
-        const onMouseMove = (moveEvent: MouseEvent) => {
-            const diffX = moveEvent.clientX - startX.current;
-            const newWidth = startWidth.current + diffX;
-            if (newWidth > 50) { // Minimum width
-                setColumnWidths(prev => ({
-                    ...prev,
-                    [th.dataset.columnKey as string]: newWidth
-                }));
-            }
-        };
+    if (!th) return;
 
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-        
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
+    resizingColumn.current = th.dataset.columnKey as string;
+    startX.current = e.clientX;
+    startWidth.current = th.offsetWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+        if (!resizingColumn.current) return;
+        const diffX = moveEvent.clientX - startX.current;
+        const newWidth = startWidth.current + diffX;
+        if (newWidth > 50) { // Minimum width
+            setColumnWidths(prev => ({
+                ...prev,
+                [resizingColumn.current!]: newWidth
+            }));
+        }
+    };
+
+    const onMouseUp = () => {
+        resizingColumn.current = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   return (
@@ -725,14 +747,12 @@ const handleSaveChanges = async () => {
                           >
                            <GripVertical className="h-4 w-4 text-muted-foreground" />
                          </div>
-                        <span className="font-medium cursor-pointer" onClick={() => requestSort(key)}>
-                            {DEFAULT_COLUMN_NAMES[key] || key}
-                        </span>
+                        <span className="font-medium">{DEFAULT_COLUMN_NAMES[key] || key}</span>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => requestSort(key)}
+                           onClick={() => requestSort(key)}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
@@ -832,7 +852,7 @@ const handleSaveChanges = async () => {
               </TableBody>
               <TableFooter>
                   <TableRow>
-                      <TableCell colSpan={visibleColumns.indexOf('value') + 2} className="text-right font-bold text-lg">
+                      <TableCell colSpan={visibleColumns.indexOf('value') > -1 ? visibleColumns.indexOf('value') + 1 : visibleColumns.length + 1} className="text-right font-bold text-lg">
                           Grand Total
                       </TableCell>
                       {visibleColumns.includes('value') && (
