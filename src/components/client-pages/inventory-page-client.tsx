@@ -160,7 +160,7 @@ export default function InventoryPageClient() {
     };
   });
   
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys, direction: 'ascending' | 'descending' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys | 'value', direction: 'ascending' | 'descending' } | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
@@ -276,7 +276,7 @@ export default function InventoryPageClient() {
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys] && allAvailableColumns.includes(key));
+    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys | 'value'] && allAvailableColumns.includes(key));
   }, [columnOrder, columnVisibility, allAvailableColumns]);
   
   const requestSort = (key: keyof ColumnKeys | 'value') => {
@@ -284,7 +284,7 @@ export default function InventoryPageClient() {
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
-    setSortConfig({ key: key as keyof ColumnKeys, direction });
+    setSortConfig({ key: key as keyof ColumnKeys | 'value', direction });
   };
 
 
@@ -578,8 +578,8 @@ const handleSaveChanges = async () => {
             aValue = a.price * a.stock;
             bValue = b.price * b.stock;
         } else {
-            aValue = a[sortConfig.key];
-            bValue = b[sortConfig.key];
+            aValue = a[sortConfig.key as keyof ColumnKeys];
+            bValue = b[sortConfig.key as keyof ColumnKeys];
         }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -1009,4 +1009,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
