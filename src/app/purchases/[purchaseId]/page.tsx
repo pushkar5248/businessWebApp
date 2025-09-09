@@ -70,6 +70,26 @@ export default function PurchaseDetailsPage() {
         fetchPurchase();
     }, [fetchPurchase]);
 
+    const handleStatusChange = async (newStatus: PurchaseStatus) => {
+        if (!purchase || !user || newStatus === purchase.status) return;
+
+        try {
+            const purchaseRef = doc(db, "purchases", purchase.id);
+            await updateDoc(purchaseRef, { status: newStatus });
+            
+            setPurchase(prev => prev ? { ...prev, status: newStatus } : null);
+             toast({
+                title: "Status Updated",
+                description: `Purchase order status changed to ${newStatus}. Inventory will be updated separately from the purchases list page.`
+            });
+
+        } catch (error) {
+             console.error("Error updating status or inventory:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
+            setPurchase({ ...purchase, status: purchase.status });
+        }
+    };
+
     if (isLoading) {
         return (
             <MainLayout>
@@ -83,66 +103,6 @@ export default function PurchaseDetailsPage() {
     if (!purchase) {
         notFound();
     }
-
-    const handleStatusChange = async (newStatus: PurchaseStatus) => {
-        if (!purchase || !user) return;
-        
-        try {
-            const batch = writeBatch(db);
-            const purchaseRef = doc(db, "purchases", purchase.id);
-            
-            // Update purchase status
-            batch.update(purchaseRef, { status: newStatus });
-
-            // If status is 'Received', update inventory
-            if (newStatus === 'Received' && purchase.status !== 'Received') {
-                const itemNames = purchase.items.map(item => item.name);
-                if(itemNames.length > 0) {
-                    const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid), where("name", "in", itemNames));
-                    const inventorySnapshot = await getDocs(inventoryQuery);
-                    
-                    const inventoryMap = new Map<string, {docId: string, stock: number}>();
-                    inventorySnapshot.forEach(doc => {
-                        const item = doc.data() as InventoryItem;
-                        inventoryMap.set(item.name, { docId: doc.id, stock: item.stock });
-                    });
-
-                    for (const purchasedItem of purchase.items) {
-                        const existingItem = inventoryMap.get(purchasedItem.name);
-                        if (existingItem) {
-                            const newStock = existingItem.stock + purchasedItem.quantity;
-                            const itemRef = doc(db, "inventory", existingItem.docId);
-                            batch.update(itemRef, { stock: newStock });
-                        } else {
-                            // If item doesn't exist, create it in inventory
-                             const newItemRef = doc(collection(db, "inventory"));
-                             batch.set(newItemRef, {
-                                 name: purchasedItem.name,
-                                 quantity: purchasedItem.quantity,
-                                 price: purchasedItem.price,
-                                 category: 'Uncategorized',
-                                 subcategory: '',
-                                 supplier: purchase.vendor,
-                                 userId: user.uid,
-                                 stock: purchasedItem.quantity
-                             });
-                        }
-                    }
-                }
-            }
-            
-            await batch.commit();
-
-            setPurchase({ ...purchase, status: newStatus });
-            toast({
-                title: "Status Updated",
-                description: `Purchase order status changed to ${newStatus}. Inventory has been updated.`
-            });
-        } catch (error) {
-             console.error("Error updating status:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update status and inventory." });
-        }
-    };
     
     const subtotal = purchase.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
     const igstAmount = subtotal * ((purchase.igstRate || 0) / 100);
@@ -253,3 +213,5 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
+
+    

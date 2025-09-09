@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { updateStockOnPurchase } from "@/services/inventory-service";
 
 
 export default function NewPurchasePage() {
@@ -50,7 +51,7 @@ export default function NewPurchasePage() {
         
         toast({
             title: "Purchase Order Created",
-            description: `PO #${data.poNumber} has been successfully created.`,
+            description: `PO #${data.poNumber} has been created. Inventory will be updated when status is 'Received'.`,
         });
         router.push('/purchases');
 

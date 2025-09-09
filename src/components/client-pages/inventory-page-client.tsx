@@ -266,14 +266,22 @@ export default function InventoryPageClient() {
         localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(columns));
     }
   }, [columns, getLocalStorageKey]);
+  
+  const allAvailableColumns = useMemo(() => {
+    const columnKeys = new Set<string>();
+    items.forEach(item => {
+      Object.keys(item).forEach(key => columnKeys.add(key));
+    });
+    return Array.from(columnKeys);
+  }, [items]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys]);
-  }, [columnOrder, columnVisibility]);
+    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys] && allAvailableColumns.includes(key));
+  }, [columnOrder, columnVisibility, allAvailableColumns]);
   
   const requestSort = (key: keyof ColumnKeys) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -419,107 +427,105 @@ const handleSaveChanges = async () => {
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
-            const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name, doc.id]));
+            const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
-            const nameAlternatives = ['name', 'item name', 'particulars'];
-            const nameIndex = headerRow.findIndex(h => nameAlternatives.includes(h.toLowerCase()));
-            
-            if (nameIndex === -1) {
-                 toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'Name' or 'Particulars' column." });
-                 setIsLoading(false);
-                 setupRealtimeListener();
-                 return;
-            }
+            const internalKeyMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+                'name': { key: 'name', type: 'string' },
+                'item name': { key: 'name', type: 'string' },
+                'particulars': { key: 'name', type: 'string' },
+                'price': { key: 'price', type: 'number' },
+                'rate': { key: 'price', type: 'number' },
+                'stock': { key: 'stock', type: 'number' },
+                'quantity': { key: 'stock', type: 'number' },
+                'qty': { key: 'stock', type: 'number' },
+                'inventory': { key: 'stock', type: 'number' },
+                'category': { key: 'category', type: 'string' },
+                'group': { key: 'category', type: 'string' },
+                'supplier': { key: 'supplier', type: 'string' },
+                'vendor': { key: 'supplier', type: 'string' }
+            };
 
             const newColumns: { [key: string]: string } = {};
-            const finalColumnOrder: string[] = [];
-            const headerToKeyMap: { [key: string]: string } = {};
-            const keySet = new Set<string>();
+            const newColumnOrder: string[] = [];
+            const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
 
-            headerRow.forEach((header) => {
-                const baseKey = header.toLowerCase().replace(/\s+/g, '_');
-                let key = baseKey;
-                let counter = 1;
-                while (keySet.has(key) || (columns[key] && key !== 'id')) {
-                    key = `${baseKey}_${counter++}`;
+            headerRow.forEach(header => {
+                const lowerHeader = header.toLowerCase();
+                const internalMapping = internalKeyMapping[lowerHeader];
+                
+                let internalKey: string;
+                let type: 'string' | 'number' = 'string';
+
+                if (internalMapping) {
+                    internalKey = internalMapping.key;
+                    type = internalMapping.type;
+                } else {
+                    internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
                 }
-                keySet.add(key);
-
-                newColumns[key] = header;
-                finalColumnOrder.push(key);
-                headerToKeyMap[header] = key;
+                
+                csvToInternalKeyMap[header] = { key: internalKey, type: type };
+                newColumns[internalKey] = header; // Use original header for display
+                if (!newColumnOrder.includes(internalKey)) {
+                  newColumnOrder.push(internalKey);
+                }
             });
-            
-            const newColumnVisibility = finalColumnOrder.reduce((acc, key) => {
-                acc[key] = true;
-                return acc;
-            }, {} as Record<string, boolean>);
-            newColumnVisibility['id'] = false;
-            
-            setColumns({ ...DEFAULT_COLUMN_NAMES, ...newColumns });
-            setColumnOrder(['id', ...finalColumnOrder]);
-            setColumnVisibility({ ...columnVisibility, ...newColumnVisibility });
-            
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify({ ...DEFAULT_COLUMN_NAMES, ...newColumns }));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(['id', ...finalColumnOrder]));
-            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify({ ...columnVisibility, ...newColumnVisibility }));
 
-            const BATCH_SIZE = 499; 
-            const batches:any[] = [];
-            let currentBatch = writeBatch(db);
-            let operationsInCurrentBatch = 0;
+            // Ensure essential columns are always present
+            for (const key of ['id', 'name', 'stock', 'price']) {
+                if (!newColumnOrder.includes(key)) {
+                    newColumnOrder.unshift(key);
+                    newColumns[key] = DEFAULT_COLUMN_NAMES[key];
+                }
+            }
             
-            for (let i = 0; i < dataRows.length; i++) {
-                const row = dataRows[i];
+            setColumns(newColumns);
+            setColumnOrder(newColumnOrder);
+            const newVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), { id: false });
+            setColumnVisibility(newVisibility);
+            
+            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumns));
+            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(newColumnOrder));
+            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(newVisibility));
+
+
+            const batch = writeBatch(db);
+            
+            for (const row of dataRows) {
                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
                 const newItemData: { [key: string]: any } = {};
-
-                const itemName = values[nameIndex];
-                if (!itemName) continue;
-
+                let itemName: string | null = null;
+                
                 headerRow.forEach((csvHeader, index) => {
-                    const customKey = headerToKeyMap[csvHeader];
+                    const mapping = csvToInternalKeyMap[csvHeader];
                     const value = values[index];
-                    
-                    if (value !== undefined) {
-                         const isNumericField = ['stock', 'price'].includes(customKey);
-                         if (isNumericField) {
-                            newItemData[customKey] = Number(value) || 0;
-                         } else {
-                            newItemData[customKey] = value || '';
-                         }
+
+                    if (mapping && value !== undefined) {
+                        newItemData[mapping.key] = mapping.type === 'number' ? Number(value) || 0 : value || '';
+                        if (mapping.key === 'name') {
+                            itemName = value;
+                        }
                     }
                 });
+                
+                if (!itemName) {
+                    continue; // Skip rows without a name
+                };
 
-                newItemData.userId = user.uid;
-                const existingItemId = existingItemsMap.get(itemName);
+                const existingItem = existingItemsMap.get(itemName.toLowerCase());
                 
-                if (operationsInCurrentBatch >= BATCH_SIZE) {
-                    batches.push(currentBatch);
-                    currentBatch = writeBatch(db);
-                    operationsInCurrentBatch = 0;
-                }
-                
-                if (existingItemId) {
-                    const itemRef = doc(db, "inventory", existingItemId);
-                    currentBatch.update(itemRef, newItemData);
+                if (existingItem) {
+                    const itemRef = doc(db, "inventory", existingItem.id);
+                    // Non-destructive update: only merge new fields
+                    batch.set(itemRef, newItemData, { merge: true });
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
-                    currentBatch.set(newDocRef, newItemData);
+                    newItemData.userId = user.uid;
+                    batch.set(newDocRef, newItemData);
                 }
-                operationsInCurrentBatch++;
             }
             
-            if (operationsInCurrentBatch > 0) {
-              batches.push(currentBatch);
-            }
-
-            if (batches.length > 0) {
-              await Promise.all(batches.map(batch => batch.commit()));
-              toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
-            } else {
-              toast({ title: "No items to import", description: "The CSV file was empty or contained no valid data." });
-            }
+            await batch.commit();
+            toast({ title: "Success", description: `Successfully imported/updated ${dataRows.length} items.` });
 
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message || "Failed to parse and import CSV file." });
@@ -772,7 +778,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columns).filter(key => key !== 'id').map((key) => (
+                        {allAvailableColumns.filter(key => key !== 'id' && key !== 'userId').map((key) => (
                            <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
                              <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
                                <Checkbox
@@ -780,7 +786,7 @@ const handleSaveChanges = async () => {
                                  onCheckedChange={(checked) => handleColumnVisibilityChange(key, !!checked)}
                                  className="mr-2"
                                />
-                               <span className="flex-1">{columns[key]}</span>
+                               <span className="flex-1">{columns[key] || key}</span>
                                <Button
                                  variant="ghost"
                                  size="icon"
@@ -867,7 +873,7 @@ const handleSaveChanges = async () => {
                           />
                         </div>
                       ) : (
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key]}</span>
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key] || key}</span>
                       )}
                       <Button
                         variant="ghost"

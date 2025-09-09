@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
+import { useAuth } from '@/context/auth-context';
 
 
 const getBadgeVariant = (status: string) => {
@@ -49,6 +50,7 @@ const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
 export default function InvoiceDetailsPage() {
     const params = useParams();
     const { invoiceId } = params;
+    const { user } = useAuth();
     const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const { settings } = useSettings();
@@ -80,6 +82,25 @@ export default function InvoiceDetailsPage() {
         fetchInvoice();
     }, [fetchInvoice]);
 
+    const handleStatusChange = async (newStatus: SaleStatus) => {
+        if (!invoice || !user || newStatus === invoice.status) return;
+
+        try {
+            const invoiceRef = doc(db, "sales", invoice.id);
+            await updateDoc(invoiceRef, { status: newStatus });
+            
+            setInvoice({ ...invoice, status: newStatus });
+            toast({
+                title: "Status Updated",
+                description: `Invoice status changed to ${newStatus}. Inventory will be updated separately from the sales list page.`
+            });
+        } catch (error) {
+            console.error("Error updating status or inventory:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
+            setInvoice({ ...invoice, status: invoice.status }); // Revert optimistic update on error
+        }
+    };
+
     if (isLoading || !settings) {
         return (
             <MainLayout>
@@ -99,23 +120,6 @@ export default function InvoiceDetailsPage() {
     const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
     const totalTaxes = cgstAmount + sgstAmount + igstAmount;
-
-    const handleStatusChange = async (newStatus: SaleStatus) => {
-        if (invoice) {
-            try {
-                const invoiceRef = doc(db, "sales", invoice.id);
-                await updateDoc(invoiceRef, { status: newStatus });
-                setInvoice({ ...invoice, status: newStatus });
-                toast({
-                    title: "Status Updated",
-                    description: `Invoice status changed to ${newStatus}.`
-                });
-            } catch (error) {
-                console.error("Error updating status:", error);
-                toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
-            }
-        }
-    };
     
     const handleGeneratePdf = async () => {
         if (!invoice || !settings) {
@@ -223,7 +227,7 @@ export default function InvoiceDetailsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                     {saleStatuses.map(status => (
-                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
+                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)} disabled={!user || invoice.status === status}>
                             {status}
                         </DropdownMenuItem>
                     ))}
@@ -236,7 +240,7 @@ export default function InvoiceDetailsPage() {
                 <CardHeader>
                     <CardTitle>Invoice Details</CardTitle>
                     <CardDescription>
-                        Date: {invoice.date}
+                        Date: {new Date(invoice.date).toLocaleDateString()}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-8">
@@ -264,7 +268,7 @@ export default function InvoiceDetailsPage() {
                                 {invoice.transporterName && <p><strong>Name:</strong> {invoice.transporterName}</p>}
                                 {invoice.transporterVehicleNumber && <p><strong>Vehicle No:</strong> {invoice.transporterVehicleNumber}</p>}
                                 {invoice.placeOfSupply && <p><strong>Place of Supply:</strong> {invoice.placeOfSupply}</p>}
-                                {invoice.transportDate && <p><strong>Date:</strong> {invoice.transportDate}</p>}
+                                {invoice.transportDate && <p><strong>Date:</strong> {new Date(invoice.transportDate).toLocaleDateString()}</p>}
                             </div>
                         </div>
                     )}
@@ -318,3 +322,5 @@ export default function InvoiceDetailsPage() {
         </MainLayout>
     );
 }
+
+    
