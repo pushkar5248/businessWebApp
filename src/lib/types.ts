@@ -6,9 +6,8 @@ export type InventoryItem = {
   stock: number;
   price: number;
   userId: string;
-  hsnCode?: string;
-  unit?: string;
-  [key: string]: any; // For custom columns
+  hsnCode: string;
+  unit: string;
 };
 
 export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';

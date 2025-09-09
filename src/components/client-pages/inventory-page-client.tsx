@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -15,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -43,7 +43,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { type InventoryItem } from "@/lib/types";
 import { inventoryData } from "@/lib/data";
-import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save, X } from "lucide-react";
+import { PlusCircle, FileDown, FileUp, Columns, Search, Trash2, Loader2, ArrowUpDown, Edit, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
@@ -130,22 +130,12 @@ export default function InventoryPageClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isImportModalOpen, setImportModalOpen] = useState(false);
-  const [isAddColumnModalOpen, setAddColumnModalOpen] = useState(false);
-  const [newColumnName, setNewColumnName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
-
   
   const getLocalStorageKey = useCallback((key: string) => {
     return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
   }, [user]);
-
-  const [columns, setColumns] = useState<Record<string, string>>(() => {
-    if (typeof window === 'undefined') return DEFAULT_COLUMN_NAMES;
-    const saved = localStorage.getItem(getLocalStorageKey("columnNames"));
-    return saved ? JSON.parse(saved) : DEFAULT_COLUMN_NAMES;
-  });
 
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     if(typeof window === 'undefined') return Object.keys(DEFAULT_COLUMN_NAMES);
@@ -167,9 +157,6 @@ export default function InventoryPageClient() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys | 'value', direction: 'ascending' | 'descending' } | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
-  const [columnToRename, setColumnToRename] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
   const unsubscribeRef = useRef<() => void | null>(null);
 
   const setupRealtimeListener = useCallback(() => {
@@ -259,20 +246,6 @@ export default function InventoryPageClient() {
     }
   }, [sortConfig, getLocalStorageKey]);
   
-   useEffect(() => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(columns));
-    }
-  }, [columns, getLocalStorageKey]);
-  
-  const allAvailableColumns = useMemo(() => {
-    const columnKeys = new Set<string>(Object.keys(DEFAULT_COLUMN_NAMES));
-    items.forEach(item => {
-        Object.keys(item).forEach(key => columnKeys.add(key));
-    });
-    return Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
-  }, [items]);
-
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
@@ -370,7 +343,7 @@ const handleSaveChanges = async () => {
   const handleExport = () => {
     const headers = visibleColumns;
     const csvContent = [
-      headers.map(h => columns[h]).join(','),
+      headers.map(h => DEFAULT_COLUMN_NAMES[h]).join(','),
       ...sortedItems.map(item => headers.map(headerKey => {
         let value;
         if (headerKey === 'value') {
@@ -379,10 +352,11 @@ const handleSaveChanges = async () => {
           value = item[headerKey as keyof ColumnKeys];
         }
 
-        if (typeof value === 'string' && value.includes(',')) {
-          return `"${value}"`;
+        const valueStr = String(value ?? '');
+        if (valueStr.includes(',')) {
+          return `"${valueStr}"`;
         }
-        return value;
+        return valueStr;
       }).join(','))
     ].join('\n');
 
@@ -427,7 +401,7 @@ const handleSaveChanges = async () => {
                 return;
             }
             
-            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
@@ -453,86 +427,46 @@ const handleSaveChanges = async () => {
                 'units': { key: 'unit', type: 'string' },
             };
 
-            const newColumnsFromCsv: { [key: string]: string } = {};
-            const newColumnOrderFromCsv: string[] = [];
-            const csvToInternalKeyMap: { [csvHeader: string]: { key: string, type: 'string' | 'number' } } = {};
-
-            const ignoredHeaders = ['category', 'subcategory', 'supplier'];
-
-            headerRow.forEach(header => {
-                const lowerHeader = header.toLowerCase();
-                
-                if (ignoredHeaders.includes(lowerHeader)) {
-                    return; // Skip ignored headers
-                }
-
-                const standardMapping = synonymMapping[lowerHeader];
-                
-                let internalKey: string;
-                let type: 'string' | 'number' = 'string';
-
-                if (standardMapping) {
-                    internalKey = standardMapping.key;
-                    type = standardMapping.type;
-                } else {
-                    internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
-                }
-                
-                csvToInternalKeyMap[header] = { key: internalKey, type: type };
-                if (!newColumnsFromCsv[internalKey]) {
-                  newColumnsFromCsv[internalKey] = header; // Use original header for display
-                }
-                if (!newColumnOrderFromCsv.includes(internalKey)) {
-                  newColumnOrderFromCsv.push(internalKey);
+            const headerMap: { [key: string]: number } = {};
+            headerRow.forEach((header, index) => {
+                const mapping = synonymMapping[header];
+                if (mapping) {
+                    headerMap[mapping.key] = index;
                 }
             });
-
-            // Combine existing columns with new ones, ensuring Value is always there
-            const finalColumns = { ...DEFAULT_COLUMN_NAMES, ...newColumnsFromCsv };
-            const finalColumnOrder = [...Object.keys(DEFAULT_COLUMN_NAMES), ...newColumnOrderFromCsv.filter(key => !DEFAULT_COLUMN_NAMES[key])];
-            const finalVisibility = finalColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
-
-            setColumns(finalColumns);
-            setColumnOrder(finalColumnOrder);
-            setColumnVisibility(finalVisibility);
             
-            localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(finalColumns));
-            localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(finalColumnOrder));
-            localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(finalVisibility));
+            if (!headerMap.hasOwnProperty('name')) {
+                toast({ variant: "destructive", title: "Import Error", description: "CSV must contain a 'Name' column (or a synonym like 'Item Name')." });
+                setIsLoading(false);
+                setupRealtimeListener();
+                return;
+            }
 
 
             const batch = writeBatch(db);
             
             for (const row of dataRows) {
                 const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
-                const newItemData: { [key: string]: any } = {};
-                let itemName: string | null = null;
                 
-                headerRow.forEach((csvHeader, index) => {
-                    const mapping = csvToInternalKeyMap[csvHeader];
-                    const value = values[index];
+                const itemName = values[headerMap['name']];
+                if (!itemName) continue;
 
-                    if (mapping && value !== undefined) {
-                        newItemData[mapping.key] = mapping.type === 'number' ? Number(value) || 0 : value || '';
-                        if (mapping.key === 'name') {
-                            itemName = value;
-                        }
-                    }
-                });
-                
-                if (!itemName) {
-                    continue; // Skip rows without a name
+                const newItemData: Partial<InventoryItem> = {
+                    name: itemName,
+                    price: Number(values[headerMap['price']]) || 0,
+                    stock: Number(values[headerMap['stock']]) || 0,
+                    hsnCode: values[headerMap['hsnCode']] || '',
+                    unit: values[headerMap['unit']] || '',
+                    userId: user.uid,
                 };
-
+                
                 const existingItem = existingItemsMap.get(itemName.toLowerCase());
                 
                 if (existingItem) {
                     const itemRef = doc(db, "inventory", existingItem.id);
-                    // Non-destructive update: only merge new fields
                     batch.set(itemRef, newItemData, { merge: true });
                 } else {
                     const newDocRef = doc(collection(db, "inventory"));
-                    newItemData.userId = user.uid;
                     batch.set(newDocRef, newItemData);
                 }
             }
@@ -619,85 +553,10 @@ const handleSaveChanges = async () => {
       setIsEditMode(true);
     }
   };
-  
-  const confirmDeleteColumn = () => {
-    if (!columnToDelete) return;
-    setColumns(prev => {
-        const newCols = { ...prev };
-        delete newCols[columnToDelete];
-        return newCols;
-    });
-    setColumnOrder(prev => prev.filter(key => key !== columnToDelete));
-    setColumnVisibility(prev => {
-        const newVis = { ...prev };
-        delete newVis[columnToDelete];
-        return newVis;
-    });
-    toast({ title: "Column Deleted", description: `Column "${columns[columnToDelete]}" has been deleted.` });
-    setColumnToDelete(null);
-  };
-  
-  const handleAddColumn = () => {
-    if (!newColumnName.trim()) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Column name cannot be empty.'})
-        return;
-    }
-    const newColumnKey = newColumnName.toLowerCase().replace(/\s+/g, '_');
-    if (columns[newColumnKey]) {
-        toast({ variant: 'destructive', title: 'Error', description: 'A column with this name already exists.'})
-        return;
-    }
-    
-    setColumns(prev => ({...prev, [newColumnKey]: newColumnName}));
-    setColumnOrder(prev => [...prev, newColumnKey]);
-    setColumnVisibility(prev => ({...prev, [newColumnKey]: true}));
-    
-    setItems(prev => prev.map(item => ({...item, [newColumnKey]: ''})));
-    setOriginalItems(prev => prev.map(item => ({...item, [newColumnKey]: ''})));
-
-    setNewColumnName('');
-    setAddColumnModalOpen(false);
-    toast({ title: 'Column Added', description: `Column "${newColumnName}" has been added.`});
-  };
 
   const handleConfirmDelete = (itemIds: string[]) => {
     handleDeleteItems(itemIds);
   };
-  
-  const handleRenameColumn = (key: string) => {
-    if (!renameValue.trim()) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Column name cannot be empty.'});
-        return;
-    }
-    setColumns(prev => ({ ...prev, [key]: renameValue }));
-    setColumnToRename(null);
-    setRenameValue("");
-  };
-
-  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, key: string) => {
-    setDraggedColumn(key);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-  
-  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
-    e.preventDefault();
-  };
-  
-  const handleDrop = (e: React.DragEvent<HTMLTableCellElement>, dropKey: string) => {
-    e.preventDefault();
-    if (draggedColumn) {
-      const newColumnOrder = [...columnOrder];
-      const dragIndex = newColumnOrder.indexOf(draggedColumn);
-      const dropIndex = newColumnOrder.indexOf(dropKey);
-      
-      const [removed] = newColumnOrder.splice(dragIndex, 1);
-      newColumnOrder.splice(dropIndex, 0, removed);
-      
-      setColumnOrder(newColumnOrder);
-      setDraggedColumn(null);
-    }
-  };
-
 
   return (
     <>
@@ -730,7 +589,7 @@ const handleSaveChanges = async () => {
           <div className="py-4">
             <Input type="file" accept=".csv" ref={fileInputRef} onChange={handleImport} />
              <p className="text-sm text-muted-foreground mt-2">
-                Make sure your CSV file has a 'name' or 'particulars' column to identify items.
+                Your CSV must contain a 'Name' column. Other supported columns are HSN, Unit, Stock, and Price (or their synonyms). Other columns will be ignored.
             </p>
           </div>
            <DialogFooter>
@@ -738,45 +597,6 @@ const handleSaveChanges = async () => {
            </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={isAddColumnModalOpen} onOpenChange={setAddColumnModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Custom Column</DialogTitle>
-            <DialogDescription>Enter a name for your new custom column.</DialogDescription>
-          </DialogHeader>
-           <div className="grid gap-4 py-4">
-               <div className="grid grid-cols-4 items-center gap-4">
-                   <Label htmlFor="new-column-name" className="text-right">Name</Label>
-                   <Input 
-                        id="new-column-name" 
-                        value={newColumnName}
-                        onChange={(e) => setNewColumnName(e.target.value)}
-                        className="col-span-3"
-                    />
-               </div>
-           </div>
-           <DialogFooter>
-             <Button variant="outline" onClick={() => { setAddColumnModalOpen(false); setNewColumnName(''); }}>Cancel</Button>
-             <Button onClick={handleAddColumn}>Add Column</Button>
-           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-        <AlertDialog open={!!columnToDelete} onOpenChange={(open) => !open && setColumnToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the 
-                        <strong> &quot;{columnToDelete && columns[columnToDelete]}&quot; </strong> 
-                        column and all its associated settings. The data will remain in your database but will be hidden.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setColumnToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmDeleteColumn}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
       <Card>
         <CardHeader>
             <div className="flex items-center justify-between">
@@ -799,37 +619,19 @@ const handleSaveChanges = async () => {
                           <Columns className="mr-2" /> Columns
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[250px]">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(columns).map((key) => (
-                           <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
-                             <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
-                               <Checkbox
-                                 checked={columnVisibility[key]}
-                                 onCheckedChange={(checked) => handleColumnVisibilityChange(key, !!checked)}
-                                 className="mr-2"
-                               />
-                               <span className="flex-1">{columns[key] || key}</span>
-                               <Button
-                                 variant="ghost"
-                                 size="icon"
-                                 className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setColumnToDelete(key);
-                                 }}
-                               >
-                                 <X className="h-4 w-4" />
-                               </Button>
-                             </label>
-                           </DropdownMenuItem>
+                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
+                           <DropdownMenuCheckboxItem
+                            key={key}
+                            className="capitalize"
+                            checked={columnVisibility[key]}
+                            onCheckedChange={(value) => handleColumnVisibilityChange(key, !!value)}
+                          >
+                            {DEFAULT_COLUMN_NAMES[key]}
+                          </DropdownMenuCheckboxItem>
                         ))}
-                         <DropdownMenuSeparator />
-                         <DropdownMenuItem onSelect={() => setAddColumnModalOpen(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Custom Column
-                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -879,27 +681,10 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="h-12 px-4 cursor-move"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, key)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, key)}
+                      className="h-12 px-4"
                     >
                       <div className="flex items-center justify-between" suppressHydrationWarning>
-                       {columnToRename === key ? (
-                          <div className="flex items-center gap-1">
-                            <Input 
-                              value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
-                              onBlur={() => handleRenameColumn(key)}
-                              onKeyDown={(e) => { if(e.key === 'Enter') handleRenameColumn(key) }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          </div>
-                        ) : (
-                          <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key] || key}</span>
-                        )}
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key as keyof ColumnKeys | 'value')}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -960,18 +745,10 @@ const handleSaveChanges = async () => {
                                   className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                   disabled={!isEditMode || !user}
                               />
-                          ) : ['name', 'hsnCode', 'unit'].includes(key) ? (
+                          ) : (
                                <Input
                                   type="text"
                                   value={item[key as keyof typeof item]}
-                                  onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                  className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                  disabled={!isEditMode || !user}
-                              />
-                          ) : (
-                              <Input
-                                  type="text"
-                                  value={(item as any)[key] ?? ''}
                                   onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
                                   className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                   disabled={!isEditMode || !user}
@@ -1008,13 +785,15 @@ const handleSaveChanges = async () => {
               </TableBody>
               <TableFooter>
                   <TableRow>
-                      <TableCell colSpan={visibleColumns.indexOf('value') + 1} className="text-right font-bold text-lg">
+                      <TableCell colSpan={visibleColumns.indexOf('value') !== -1 ? visibleColumns.indexOf('value') + 1 : visibleColumns.length + 1} className="text-right font-bold text-lg">
                           Grand Total
                       </TableCell>
-                      <TableCell className="text-left font-bold text-lg">
-                          {formatCurrency(totalInventoryValue)}
-                      </TableCell>
-                      <TableCell colSpan={visibleColumns.length - visibleColumns.indexOf('value')}>
+                      {visibleColumns.includes('value') && (
+                          <TableCell className="text-left font-bold text-lg">
+                              {formatCurrency(totalInventoryValue)}
+                          </TableCell>
+                      )}
+                      <TableCell colSpan={visibleColumns.includes('value') ? visibleColumns.length - visibleColumns.indexOf('value') : 0}>
                       </TableCell>
                   </TableRow>
               </TableFooter>
@@ -1025,4 +804,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
