@@ -63,6 +63,7 @@ const DEFAULT_COLUMN_NAMES: Record<string, string> = {
   subcategory: 'Subcategory',
   stock: 'Stock',
   price: 'Price',
+  value: 'Value',
   supplier: 'Supplier',
   hsnCode: 'HSN Code'
 };
@@ -134,7 +135,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
 
 export default function InventoryPageClient() {
   const { user } = useAuth();
-  const { formatCurrencyValue } = useCurrency();
+  const { formatCurrency, formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [originalItems, setOriginalItems] = useState<InventoryItem[]>([]);
@@ -168,7 +169,7 @@ export default function InventoryPageClient() {
     if (typeof window === 'undefined') return {};
     const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
     return savedVisibility ? JSON.parse(savedVisibility) : {
-        id: false, name: true, category: true, subcategory: true, stock: true, price: true, supplier: true, hsnCode: true
+        id: false, name: true, category: true, subcategory: true, stock: true, price: true, value: true, supplier: true, hsnCode: true
     };
   });
   
@@ -278,8 +279,9 @@ export default function InventoryPageClient() {
     items.forEach(item => {
       Object.keys(item).forEach(key => columnKeys.add(key));
     });
-    // Explicitly filter out 'id' and 'userId' here
-    return Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
+    // Explicitly filter out 'id' and 'userId' here, but add our calculated 'value' column
+    const baseKeys = Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
+    return ['value', ...baseKeys];
   }, [items]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
@@ -290,12 +292,12 @@ export default function InventoryPageClient() {
     return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys] && allAvailableColumns.includes(key));
   }, [columnOrder, columnVisibility, allAvailableColumns]);
   
-  const requestSort = (key: keyof ColumnKeys) => {
+  const requestSort = (key: keyof ColumnKeys | 'value') => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
-    setSortConfig({ key, direction });
+    setSortConfig({ key: key as keyof ColumnKeys, direction });
   };
 
 
@@ -381,7 +383,13 @@ const handleSaveChanges = async () => {
     const csvContent = [
       headers.map(h => columns[h]).join(','),
       ...sortedItems.map(item => headers.map(headerKey => {
-        const value = item[headerKey as keyof ColumnKeys];
+        let value;
+        if (headerKey === 'value') {
+          value = item.stock * item.price;
+        } else {
+          value = item[headerKey as keyof ColumnKeys];
+        }
+
         if (typeof value === 'string' && value.includes(',')) {
           return `"${value}"`;
         }
@@ -572,8 +580,15 @@ const handleSaveChanges = async () => {
 
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+        let aValue, bValue;
+
+        if (sortConfig.key === 'value') {
+            aValue = a.price * a.stock;
+            bValue = b.price * b.stock;
+        } else {
+            aValue = a[sortConfig.key];
+            bValue = b[sortConfig.key];
+        }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
             return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
@@ -793,7 +808,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {allAvailableColumns.map((key) => (
+                        {Object.keys(columns).map((key) => (
                            <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
                              <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
                                <Checkbox
@@ -894,7 +909,7 @@ const handleSaveChanges = async () => {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 ml-2"
-                        onClick={() => requestSort(key as keyof ColumnKeys)}
+                        onClick={() => requestSort(key as keyof ColumnKeys | 'value')}
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -940,6 +955,8 @@ const handleSaveChanges = async () => {
                                 disabled={!isEditMode || !user}
                             />
                            </div>
+                        ) : key === 'value' ? (
+                            formatCurrency(item.stock * item.price)
                         ) : key === 'stock' ? (
                             <Input
                                 type="number"
