@@ -154,32 +154,35 @@ export default function InventoryPageClient() {
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('inventoryColumnOrder');
+    const savedWidths = localStorage.getItem('inventoryColumnWidths');
+    const savedVisibility = localStorage.getItem('inventoryColumnVisibility');
+    
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder);
-        // Ensure all default columns are present
         const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
         const allKeys = [...new Set([...parsedOrder, ...defaultKeys])];
         setColumnOrder(allKeys);
       } catch (e) {
+        // Fallback to default if parsing fails
         setColumnOrder(Object.keys(DEFAULT_COLUMN_NAMES));
       }
     }
-    const savedWidths = localStorage.getItem('inventoryColumnWidths');
+    
     if (savedWidths) {
        try {
         setColumnWidths(JSON.parse(savedWidths));
        } catch (e) {
-        // ignore
+        // ignore error
        }
     }
-     const savedVisibility = localStorage.getItem('inventoryColumnVisibility');
+    
     if (savedVisibility) {
         try {
             const parsedVisibility = JSON.parse(savedVisibility);
             setColumnVisibility(prev => ({...prev, ...parsedVisibility}));
         } catch(e) {
-            // ignore
+            // ignore error
         }
     }
   }, []);
@@ -422,13 +425,13 @@ const handleSaveChanges = async () => {
                 'name': { key: 'name', type: 'string' }, 'item name': { key: 'name', type: 'string' }, 'product name': { key: 'name', type: 'string' }, 'particulars': { key: 'name', type: 'string' }, 'item': { key: 'name', type: 'string' }, 'product': { key: 'name', type: 'string' }, 'description': { key: 'name', type: 'string' },
                 'stock': { key: 'stock', type: 'number' }, 'quantity': { key: 'stock', type: 'number' }, 'qty': { key: 'stock', type: 'number' }, 'in stock': { key: 'stock', type: 'number' }, 'on hand': { key: 'stock', type: 'number' }, 'inventory': { key: 'stock', type: 'number' }, 'bal qty': { key: 'stock', type: 'number' },
                 'price': { key: 'price', type: 'number' }, 'rate': { key: 'price', type: 'number' }, 'cost': { key: 'price', type: 'number' }, 'unit price': { key: 'price', type: 'number' }, 'mrp': { key: 'price', type: 'number' }, 'sale price': { key: 'price', type: 'number' }, 'purchase price': { key: 'price', type: 'number' },
-                'hsn': { key: 'hsnCode', type: 'string'}, 'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'},
+                'hsn': { key: 'hsnCode', type: 'string'}, 'hsn code': { key: 'hsnCode', type: 'string'}, 'hsn-code': { key: 'hsnCode', type: 'string'}, 'hsn_code': { key: 'hsnCode', type: 'string'}, 'tax code': { key: 'hsnCode', type: 'string'}, 'sac': { key: 'hsnCode', type: 'string'}, 'sac code': { key: 'hsnCode', type: 'string'}, 'hsncode': { key: 'hsnCode', type: 'string' },
                 'unit': { key: 'unit', type: 'string' }, 'units': { key: 'unit', type: 'string' }, 'uom': { key: 'unit', type: 'string' }, 'measurement': { key: 'unit', type: 'string' }, 'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
             headerRow.forEach((header, index) => {
-                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, ' ').trim();
+                const normalizedHeader = header.toLowerCase().replace(/[\s_]/g, '').trim();
                 const mapping = synonymMapping[normalizedHeader];
                 if (mapping) {
                     headerMap[mapping.key] = index;
@@ -732,7 +735,7 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="p-0 h-12 relative select-none"
+                      className="p-0 h-12 relative select-none border-r"
                       onDragEnter={(e) => handleDragEnter(e, key)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
@@ -761,11 +764,11 @@ const handleSaveChanges = async () => {
                       </div>
                        <div
                             onMouseDown={handleMouseDown}
-                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize border-r border-transparent hover:border-border"
+                            className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:border-r-2 hover:border-primary"
                         />
                     </TableHead>
                   ))}
-                  <TableHead className="w-12 px-4 border-l"/>
+                  <TableHead className="w-12 px-4"/>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -862,8 +865,7 @@ const handleSaveChanges = async () => {
                               {formatCurrency(totalInventoryValue)}
                           </TableCell>
                       )}
-                      <TableCell colSpan={visibleColumns.includes('value') ? visibleColumns.length - visibleColumns.indexOf('value') -1 : 0}>
-                      </TableCell>
+                      {visibleColumns.includes('value') && <TableCell colSpan={visibleColumns.length - visibleColumns.indexOf('value') -1 } />}
                   </TableRow>
               </TableFooter>
             </Table>
