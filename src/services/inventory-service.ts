@@ -6,30 +6,16 @@ import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs, 
 /**
  * Updates the stock level of inventory items when a sale is made.
  * It decrements the stock for each item in the sale.
- * If inventoryId is missing, it falls back to matching by name.
+ * This function relies on the inventoryId being present in the line item.
  * @param items - An array of line items from the sale.
- * @param userId - The ID of the user who owns the inventory.
  */
-export async function updateStockOnSale(items: LineItem[], userId: string): Promise<void> {
+export async function updateStockOnSale(items: LineItem[]): Promise<void> {
     const batch = writeBatch(db);
 
     for (const item of items) {
         if (item.inventoryId) {
             const inventoryRef = doc(db, "inventory", item.inventoryId);
             batch.update(inventoryRef, { stock: increment(-item.quantity) });
-        } else {
-            // Fallback for older sale records without inventoryId
-            const inventoryQuery = query(
-                collection(db, "inventory"),
-                where("userId", "==", userId),
-                where("name", "==", item.name)
-            );
-            const querySnapshot = await getDocs(inventoryQuery);
-            if (!querySnapshot.empty) {
-                const existingDoc = querySnapshot.docs[0];
-                const itemRef = doc(db, "inventory", existingDoc.id);
-                batch.update(itemRef, { stock: increment(-item.quantity) });
-            }
         }
     }
     

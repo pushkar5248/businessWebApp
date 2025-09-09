@@ -42,6 +42,7 @@ import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
+import { updateStockOnSale } from "@/services/inventory-service";
 
 
 const lineItemSchema = z.object({
@@ -203,6 +204,7 @@ export function InvoiceForm() {
     try {
         const saleDocRef = doc(db, "sales", newSale.id);
         await setDoc(saleDocRef, newSale);
+        await updateStockOnSale(data.items);
 
         toast({
           title: "Sale Created",

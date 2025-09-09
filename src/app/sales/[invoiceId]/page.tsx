@@ -29,7 +29,6 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
-import { updateStockOnSale } from '@/services/inventory-service';
 import { useAuth } from '@/context/auth-context';
 
 
@@ -85,26 +84,10 @@ export default function InvoiceDetailsPage() {
 
     const handleStatusChange = async (newStatus: SaleStatus) => {
         if (!invoice || !user || newStatus === invoice.status) return;
-
-        const oldStatus = invoice.status;
         
         try {
             const invoiceRef = doc(db, "sales", invoice.id);
             await updateDoc(invoiceRef, { status: newStatus });
-
-            if (oldStatus === 'Pending' && newStatus === 'Paid') {
-                 const freshInvoiceSnap = await getDoc(invoiceRef);
-                 if (freshInvoiceSnap.exists()) {
-                    const freshInvoiceData = freshInvoiceSnap.data() as Sale;
-                    await updateStockOnSale(freshInvoiceData.items, user.uid);
-                    toast({
-                        title: "Inventory Updated",
-                        description: "Stock levels have been decreased for the items in this sale."
-                    });
-                 } else {
-                     throw new Error("Could not re-fetch invoice for inventory update.");
-                 }
-            }
 
             setInvoice({ ...invoice, status: newStatus });
             toast({
@@ -112,9 +95,9 @@ export default function InvoiceDetailsPage() {
                 description: `Invoice status changed to ${newStatus}.`
             });
         } catch (error) {
-            console.error("Error updating status or inventory:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to update status or inventory." });
-            setInvoice({ ...invoice, status: oldStatus });
+            console.error("Error updating status:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
+            setInvoice(invoice); // Revert optimistic update on error
         }
     };
 
