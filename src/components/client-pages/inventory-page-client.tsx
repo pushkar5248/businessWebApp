@@ -148,7 +148,6 @@ export default function InventoryPageClient() {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const dragItem = useRef<string | null>(null);
   const dragOverItem = useRef<string | null>(null);
-  const resizeHandleRef = useRef<HTMLDivElement | null>(null);
   const startX = useRef(0);
   const startWidth = useRef(0);
 
@@ -541,7 +540,7 @@ const handleSaveChanges = async () => {
     handleDeleteItems(itemIds);
   };
   
-  const handleDragStart = (e: React.DragEvent<HTMLSpanElement>, columnKey: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, columnKey: string) => {
     dragItem.current = columnKey;
   };
   
@@ -700,7 +699,7 @@ const handleSaveChanges = async () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="w-12 px-4">
                        <Checkbox
                           checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
@@ -711,28 +710,28 @@ const handleSaveChanges = async () => {
                   {visibleColumns.map((key) => (
                     <TableHead
                       key={key}
-                      className="p-0 h-12 relative select-none"
+                      className="p-0 h-12 relative select-none border-x"
                       onDragEnter={(e) => handleDragEnter(e, key)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
                       style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : 'auto' }}
                       data-column-key={key}
                     >
-                      <div className="flex items-center justify-between px-4 h-full" suppressHydrationWarning>
-                         <span
-                            className="flex items-center gap-2"
+                      <div className="flex items-center justify-center gap-2 px-4 h-full" suppressHydrationWarning>
+                         <div
                             draggable
                             onDragStart={(e) => handleDragStart(e, key)}
+                            className="cursor-grab"
                           >
-                           <GripVertical className="h-4 w-4 cursor-grab" />
-                            <span className="font-medium cursor-pointer" onClick={() => requestSort(key)}>
-                                {DEFAULT_COLUMN_NAMES[key] || key}
-                            </span>
-                         </span>
+                           <GripVertical className="h-4 w-4 text-muted-foreground" />
+                         </div>
+                        <span className="font-medium cursor-pointer" onClick={() => requestSort(key)}>
+                            {DEFAULT_COLUMN_NAMES[key] || key}
+                        </span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 ml-2"
+                          className="h-6 w-6"
                           onClick={() => requestSort(key)}
                         >
                           <ArrowUpDown className="h-4 w-4" />
@@ -744,7 +743,7 @@ const handleSaveChanges = async () => {
                         />
                     </TableHead>
                   ))}
-                  <TableHead className="w-12 px-4"/>
+                  <TableHead className="w-12 px-4 border-l"/>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -833,7 +832,7 @@ const handleSaveChanges = async () => {
               </TableBody>
               <TableFooter>
                   <TableRow>
-                      <TableCell colSpan={visibleColumns.indexOf('value') !== -1 ? visibleColumns.indexOf('value') + 2 : visibleColumns.length + 2} className="text-right font-bold text-lg">
+                      <TableCell colSpan={visibleColumns.indexOf('value') + 2} className="text-right font-bold text-lg">
                           Grand Total
                       </TableCell>
                       {visibleColumns.includes('value') && (
