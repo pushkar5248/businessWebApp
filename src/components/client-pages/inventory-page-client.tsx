@@ -55,17 +55,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 
-type ColumnKeys = Omit<InventoryItem, 'id' | 'userId'>;
-
-const DEFAULT_COLUMN_NAMES: Record<string, string> = {
-  name: 'Name',
-  stock: 'Stock',
-  price: 'Price',
-  value: 'Value',
-  hsnCode: 'HSN Code',
-  unit: 'Unit'
-};
-
 const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id' | 'userId'>>({
     name: "",
@@ -120,6 +109,15 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
   );
 };
 
+const DEFAULT_COLUMN_NAMES: Record<string, string> = {
+  name: 'Name',
+  stock: 'Stock',
+  price: 'Price',
+  value: 'Value',
+  hsnCode: 'HSN Code',
+  unit: 'Unit'
+};
+
 
 export default function InventoryPageClient() {
   const { user } = useAuth();
@@ -133,32 +131,22 @@ export default function InventoryPageClient() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const getLocalStorageKey = useCallback((key: string) => {
-    return user ? `inventory_${user.uid}_${key}` : `inventory_guest_${key}`;
-  }, [user]);
-
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    if(typeof window === 'undefined') return Object.keys(DEFAULT_COLUMN_NAMES);
-    const saved = localStorage.getItem(getLocalStorageKey("columnOrder"));
-    return saved ? JSON.parse(saved) : Object.keys(DEFAULT_COLUMN_NAMES);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+     name: true,
+     stock: true,
+     price: true,
+     value: true,
+     hsnCode: true,
+     unit: true
   });
   
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') {
-        return { name: true, stock: true, price: true, value: true, hsnCode: true, unit: true };
-    };
-    const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
-    if (savedVisibility) {
-        return JSON.parse(savedVisibility);
-    }
-    return { name: true, stock: true, price: true, value: true, hsnCode: true, unit: true };
-  });
-  
-  const [sortConfig, setSortConfig] = useState<{ key: keyof ColumnKeys | 'value', direction: 'ascending' | 'descending' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' } | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const unsubscribeRef = useRef<() => void | null>(null);
 
+  const columnOrder = useMemo(() => Object.keys(DEFAULT_COLUMN_NAMES), []);
+  
   const setupRealtimeListener = useCallback(() => {
     if (!user) return null;
 
@@ -220,46 +208,20 @@ export default function InventoryPageClient() {
     }
   }, [user, setupRealtimeListener]);
   
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const savedSortConfig = localStorage.getItem(getLocalStorageKey("sortConfig"));
-        if (savedSortConfig) setSortConfig(JSON.parse(savedSortConfig));
-    }
-  }, [getLocalStorageKey]);
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(getLocalStorageKey("columnVisibility"), JSON.stringify(columnVisibility));
-    }
-  }, [columnVisibility, getLocalStorageKey]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(getLocalStorageKey("columnOrder"), JSON.stringify(columnOrder));
-    }
-  }, [columnOrder, getLocalStorageKey]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(getLocalStorageKey("sortConfig"), JSON.stringify(sortConfig));
-    }
-  }, [sortConfig, getLocalStorageKey]);
-  
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
     setColumnVisibility(prev => ({ ...prev, [key]: checked }));
   };
   
   const visibleColumns = useMemo(() => {
-    return columnOrder.filter(key => columnVisibility[key as keyof ColumnKeys | 'value']);
+    return columnOrder.filter(key => columnVisibility[key as keyof typeof columnVisibility]);
   }, [columnOrder, columnVisibility]);
   
-  const requestSort = (key: keyof ColumnKeys | 'value') => {
+  const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
-    setSortConfig({ key: key as keyof ColumnKeys | 'value', direction });
+    setSortConfig({ key, direction });
   };
 
 
@@ -349,7 +311,7 @@ const handleSaveChanges = async () => {
         if (headerKey === 'value') {
           value = item.stock * item.price;
         } else {
-          value = item[headerKey as keyof ColumnKeys];
+          value = item[headerKey as keyof InventoryItem];
         }
 
         const valueStr = String(value ?? '');
@@ -510,8 +472,8 @@ const handleSaveChanges = async () => {
             aValue = a.price * a.stock;
             bValue = b.price * b.stock;
         } else {
-            aValue = a[sortConfig.key as keyof ColumnKeys];
-            bValue = b[sortConfig.key as keyof ColumnKeys];
+            aValue = a[sortConfig.key as keyof InventoryItem];
+            bValue = b[sortConfig.key as keyof InventoryItem];
         }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -622,7 +584,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {Object.keys(DEFAULT_COLUMN_NAMES).map((key) => (
+                        {columnOrder.map((key) => (
                            <DropdownMenuCheckboxItem
                             key={key}
                             className="capitalize"
@@ -684,12 +646,12 @@ const handleSaveChanges = async () => {
                       className="h-12 px-4"
                     >
                       <div className="flex items-center justify-between" suppressHydrationWarning>
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key as keyof ColumnKeys | 'value')}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
+                        <span className="font-medium flex-1 cursor-pointer" onClick={() => requestSort(key as keyof InventoryItem | 'value')}>{DEFAULT_COLUMN_NAMES[key] || key}</span>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 ml-2"
-                          onClick={() => requestSort(key as keyof ColumnKeys | 'value')}
+                          onClick={() => requestSort(key as keyof InventoryItem | 'value')}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
@@ -749,7 +711,7 @@ const handleSaveChanges = async () => {
                                <Input
                                   type="text"
                                   value={item[key as keyof typeof item]}
-                                  onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                  onChange={(e) => handleItemChange(item.id, key as keyof Omit<InventoryItem, 'id'|'userId'>, e.target.value)}
                                   className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                   disabled={!isEditMode || !user}
                               />
