@@ -863,161 +863,163 @@ const handleSaveChanges = async () => {
                 </AlertDialog>
             </div>
           )}
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="p-0 h-12">
-                  <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
-                     <Checkbox
-                        checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                  </div>
-                </TableHead>
-                {visibleColumns.map((key) => (
-                  <TableHead
-                    key={key}
-                    className="h-12 px-4 cursor-move"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, key)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, key)}
-                  >
-                    <div className="flex items-center justify-between" suppressHydrationWarning>
-                     {columnToRename === key ? (
-                        <div className="flex items-center gap-1">
-                          <Input 
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={() => handleRenameColumn(key)}
-                            onKeyDown={(e) => { if(e.key === 'Enter') handleRenameColumn(key) }}
-                            autoFocus
-                            className="h-8"
-                          />
-                        </div>
-                      ) : (
-                        <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key] || key}</span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 ml-2"
-                        onClick={() => requestSort(key as keyof ColumnKeys | 'value')}
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                      </Button>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="p-0 h-12">
+                    <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
+                       <Checkbox
+                          checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
                     </div>
                   </TableHead>
-                ))}
-                <TableHead className="h-12 px-4"/>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                  </TableCell>
-                </TableRow>
-              ) : sortedItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
-                    No items found. Get started by adding a new item.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedItems.map((item) => (
-                  <TableRow key={item.id} data-state={selectedRows.includes(item.id) && "selected"}>
-                    <TableCell>
-                       <Checkbox
-                          checked={selectedRows.includes(item.id)}
-                          onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
-                          aria-label={`Select item ${item.name}`}
-                        />
-                    </TableCell>
-                    {visibleColumns.map((key) => (
-                      <TableCell key={key}>
-                         {key === 'price' ? (
-                           <div className="flex items-center gap-2">
-                            <span>{formatCurrencyValue(0).charAt(0)}</span>
-                            <Input
-                                type="number"
-                                value={item.price}
-                                onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
-                                className={cn("w-24", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user}
+                  {visibleColumns.map((key) => (
+                    <TableHead
+                      key={key}
+                      className="h-12 px-4 cursor-move"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, key)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, key)}
+                    >
+                      <div className="flex items-center justify-between" suppressHydrationWarning>
+                       {columnToRename === key ? (
+                          <div className="flex items-center gap-1">
+                            <Input 
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={() => handleRenameColumn(key)}
+                              onKeyDown={(e) => { if(e.key === 'Enter') handleRenameColumn(key) }}
+                              autoFocus
+                              className="h-8"
                             />
-                           </div>
-                        ) : key === 'value' ? (
-                            formatCurrency(item.stock * item.price)
-                        ) : key === 'stock' ? (
-                            <Input
-                                type="number"
-                                value={item.stock}
-                                onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
-                                className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user}
-                            />
-                        ) : ['name', 'hsnCode', 'unit'].includes(key) ? (
-                             <Input
-                                type="text"
-                                value={item[key as keyof typeof item]}
-                                onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user}
-                            />
+                          </div>
                         ) : (
-                            <Input
-                                type="text"
-                                value={(item as any)[key] ?? ''}
-                                onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
-                                className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user}
-                            />
+                          <span className="font-medium flex-1 cursor-pointer" onClick={() => { setColumnToRename(key); setRenameValue(columns[key]); }}>{columns[key] || key}</span>
                         )}
-                      </TableCell>
-                    ))}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 ml-2"
+                          onClick={() => requestSort(key as keyof ColumnKeys | 'value')}
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead className="h-12 px-4"/>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    </TableCell>
+                  </TableRow>
+                ) : sortedItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
+                      No items found. Get started by adding a new item.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedItems.map((item) => (
+                    <TableRow key={item.id} data-state={selectedRows.includes(item.id) && "selected"}>
                       <TableCell>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the item from your inventory.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleConfirmDelete([item.id])}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                         <Checkbox
+                            checked={selectedRows.includes(item.id)}
+                            onCheckedChange={(checked) => handleRowSelect(item.id, !!checked)}
+                            aria-label={`Select item ${item.name}`}
+                          />
+                      </TableCell>
+                      {visibleColumns.map((key) => (
+                        <TableCell key={key}>
+                           {key === 'price' ? (
+                             <div className="flex items-center gap-2">
+                              <span>{formatCurrencyValue(0).charAt(0)}</span>
+                              <Input
+                                  type="number"
+                                  value={item.price}
+                                  onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))}
+                                  className={cn("w-24", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
+                                  disabled={!isEditMode || !user}
+                              />
+                             </div>
+                          ) : key === 'value' ? (
+                              formatCurrency(item.stock * item.price)
+                          ) : key === 'stock' ? (
+                              <Input
+                                  type="number"
+                                  value={item.stock}
+                                  onChange={(e) => handleItemChange(item.id, 'stock', Number(e.target.value))}
+                                  className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
+                                  disabled={!isEditMode || !user}
+                              />
+                          ) : ['name', 'hsnCode', 'unit'].includes(key) ? (
+                               <Input
+                                  type="text"
+                                  value={item[key as keyof typeof item]}
+                                  onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                  className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
+                                  disabled={!isEditMode || !user}
+                              />
+                          ) : (
+                              <Input
+                                  type="text"
+                                  value={(item as any)[key] ?? ''}
+                                  onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
+                                  className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
+                                  disabled={!isEditMode || !user}
+                              />
+                          )}
+                        </TableCell>
+                      ))}
+                        <TableCell>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the item from your inventory.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleConfirmDelete([item.id])}>
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+              <TableFooter>
+                  <TableRow>
+                      <TableCell colSpan={visibleColumns.indexOf('value') + 1} className="text-right font-bold text-lg">
+                          Grand Total
+                      </TableCell>
+                      <TableCell className="text-left font-bold text-lg">
+                          {formatCurrency(totalInventoryValue)}
+                      </TableCell>
+                      <TableCell colSpan={visibleColumns.length - visibleColumns.indexOf('value')}>
                       </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-            <TableFooter>
-                <TableRow>
-                    <TableCell colSpan={visibleColumns.indexOf('value') + 1} className="text-right font-bold text-lg">
-                        Grand Total
-                    </TableCell>
-                    <TableCell className="text-left font-bold text-lg">
-                        {formatCurrency(totalInventoryValue)}
-                    </TableCell>
-                    <TableCell colSpan={visibleColumns.length - visibleColumns.indexOf('value')}>
-                    </TableCell>
-                </TableRow>
-            </TableFooter>
-          </Table>
+              </TableFooter>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </>
