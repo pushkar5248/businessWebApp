@@ -272,7 +272,8 @@ export default function InventoryPageClient() {
     items.forEach(item => {
       Object.keys(item).forEach(key => columnKeys.add(key));
     });
-    return Array.from(columnKeys);
+    // Explicitly filter out 'id' and 'userId' here
+    return Array.from(columnKeys).filter(key => key !== 'id' && key !== 'userId');
   }, [items]);
 
   const handleColumnVisibilityChange = (key: string, checked: boolean) => {
@@ -782,7 +783,7 @@ const handleSaveChanges = async () => {
                       <DropdownMenuContent align="end" className="w-[250px]">
                         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {allAvailableColumns.filter(key => key !== 'userId' && key !== 'id').map((key) => (
+                        {allAvailableColumns.map((key) => (
                            <DropdownMenuItem key={key} className="p-0" onSelect={(e) => e.preventDefault()}>
                              <label className="flex items-center gap-2 w-full h-full p-2 cursor-pointer">
                                <Checkbox
@@ -937,13 +938,13 @@ const handleSaveChanges = async () => {
                                 className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
-                        ) : ['name', 'category', 'subcategory', 'supplier', 'id'].includes(key) ? (
+                        ) : ['name', 'category', 'subcategory', 'supplier'].includes(key) ? (
                              <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}
                                 onChange={(e) => handleItemChange(item.id, key as keyof ColumnKeys, e.target.value)}
                                 className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
-                                disabled={!isEditMode || !user || key === 'id'}
+                                disabled={!isEditMode || !user}
                             />
                         ) : (
                             <Input
