@@ -57,15 +57,12 @@ import { cn } from "@/lib/utils";
 type ColumnKeys = Omit<InventoryItem, 'userId'>;
 
 const DEFAULT_COLUMN_NAMES: Record<string, string> = {
-  id: 'Item ID',
   name: 'Name',
-  category: 'Category',
-  subcategory: 'Subcategory',
   stock: 'Stock',
   price: 'Price',
   value: 'Value',
-  supplier: 'Supplier',
-  hsnCode: 'HSN Code'
+  hsnCode: 'HSN Code',
+  unit: 'Unit'
 };
 
 const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
@@ -77,6 +74,7 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
     price: 0,
     supplier: "",
     hsnCode: "",
+    unit: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,12 +102,8 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
           <Input id="hsnCode" name="hsnCode" value={newItem.hsnCode} onChange={handleChange} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="category" className="text-right">Category</Label>
-          <Input id="category" name="category" value={newItem.category} onChange={handleChange} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="subcategory" className="text-right">Subcategory</Label>
-          <Input id="subcategory" name="subcategory" value={newItem.subcategory} onChange={handleChange} className="col-span-3" />
+          <Label htmlFor="unit" className="text-right">Unit</Label>
+          <Input id="unit" name="unit" value={newItem.unit} onChange={handleChange} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="stock" className="text-right">Stock</Label>
@@ -118,10 +112,6 @@ const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<Inventory
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="price" className="text-right">Price</Label>
           <Input id="price" name="price" type="number" value={newItem.price} onChange={handleChange} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="supplier" className="text-right">Supplier</Label>
-          <Input id="supplier" name="supplier" value={newItem.supplier} onChange={handleChange} className="col-span-3" />
         </div>
       </div>
       <DialogFooter>
@@ -169,7 +159,7 @@ export default function InventoryPageClient() {
     if (typeof window === 'undefined') return {};
     const savedVisibility = localStorage.getItem(getLocalStorageKey("columnVisibility"));
     return savedVisibility ? JSON.parse(savedVisibility) : {
-        id: false, name: true, category: true, subcategory: true, stock: true, price: true, value: true, supplier: true, hsnCode: true
+        name: true, stock: true, price: true, value: true, hsnCode: true, unit: true
     };
   });
   
@@ -456,14 +446,12 @@ const handleSaveChanges = async () => {
                 'quantity': { key: 'stock', type: 'number' },
                 'qty': { key: 'stock', type: 'number' },
                 'inventory': { key: 'stock', type: 'number' },
-                'category': { key: 'category', type: 'string' },
-                'group': { key: 'category', type: 'string' },
-                'supplier': { key: 'supplier', type: 'string' },
-                'vendor': { key: 'supplier', type: 'string' },
                 'hsn code': { key: 'hsnCode', type: 'string'},
                 'hsn': { key: 'hsnCode', type: 'string'},
                 'hsncode': { key: 'hsnCode', type: 'string'},
                 'tax code': { key: 'hsnCode', type: 'string'},
+                'unit': { key: 'unit', type: 'string' },
+                'units': { key: 'unit', type: 'string' },
             };
 
             const newColumns: { [key: string]: string } = {};
@@ -481,7 +469,12 @@ const handleSaveChanges = async () => {
                     internalKey = standardMapping.key;
                     type = standardMapping.type;
                 } else {
-                    internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
+                    // Only add non-standard columns if they are not one of the removed ones
+                    if (!['category', 'subcategory', 'supplier'].includes(lowerHeader)) {
+                        internalKey = `custom_${lowerHeader.replace(/\s+/g, '_')}`;
+                    } else {
+                        return; // Skip category, subcategory, supplier
+                    }
                 }
                 
                 csvToInternalKeyMap[header] = { key: internalKey, type: type };
@@ -494,7 +487,7 @@ const handleSaveChanges = async () => {
             });
 
             // Ensure essential columns are always present
-            for (const key of ['id', 'name', 'stock', 'price']) {
+            for (const key of ['name', 'stock', 'price', 'hsnCode', 'unit']) {
                 if (!newColumnOrder.includes(key)) {
                     newColumnOrder.unshift(key);
                     newColumns[key] = DEFAULT_COLUMN_NAMES[key] || key;
@@ -503,7 +496,7 @@ const handleSaveChanges = async () => {
             
             setColumns(newColumns);
             setColumnOrder(newColumnOrder);
-            const newVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), { id: false });
+            const newVisibility = newColumnOrder.reduce((acc, key) => ({...acc, [key]: true}), {});
             setColumnVisibility(newVisibility);
             
             localStorage.setItem(getLocalStorageKey("columnNames"), JSON.stringify(newColumns));
@@ -965,7 +958,7 @@ const handleSaveChanges = async () => {
                                 className={cn("w-20", !isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                 disabled={!isEditMode || !user}
                             />
-                        ) : ['name', 'category', 'subcategory', 'supplier', 'hsnCode'].includes(key) ? (
+                        ) : ['name', 'hsnCode', 'unit'].includes(key) ? (
                              <Input
                                 type="text"
                                 value={item[key as keyof typeof item]}

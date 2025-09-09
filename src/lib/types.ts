@@ -10,6 +10,7 @@ export type InventoryItem = {
   supplier: string;
   userId: string;
   hsnCode?: string;
+  unit?: string;
   [key: string]: any; // For custom columns
 };
 
@@ -63,6 +64,7 @@ export type Purchase = {
     sgstRate?: number;
     igstRate?: number;
     insuranceAndOthersRate?: number;
+    eWayBillNumber?: string;
     deletedAt?: string | null;
     userId: string;
 };
