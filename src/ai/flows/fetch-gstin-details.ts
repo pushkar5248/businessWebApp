@@ -12,7 +12,7 @@ import {z} from 'zod';
 import type { GstinInput, GstinOutput } from '@/lib/schemas/gstin';
 import { GstinInputSchema, GstinOutputSchema } from '@/lib/schemas/gstin';
 
-// Zod schema for the expected API response structure
+// Zod schema for the expected API response structure from gstincheck.co.in
 const GstApiResponseSchema = z.object({
   flag: z.boolean(),
   data: z.object({
@@ -46,10 +46,11 @@ const fetchGstinDetailsFlow = ai.defineFlow(
       return null;
     }
 
-    const url = `http://gstincheck.co.in/api/v1/search?api_key=${apiKey}&gstin_no=${gstin}`;
+    // Corrected URL format based on user finding.
+    const url = `http://sheet.gstincheck.co.in/check/${apiKey}/${gstin}`;
 
     try {
-      console.log(`[GSTIN Flow] Fetching data from external API...`);
+      console.log(`[GSTIN Flow] Fetching data from external API: ${url}`);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -60,25 +61,40 @@ const fetchGstinDetailsFlow = ai.defineFlow(
       const rawData = await response.json();
       console.log("[GSTIN Flow] Received raw data:", rawData);
 
-      // Validate the response with our Zod schema
-      const parsedResponse = GstApiResponseSchema.safeParse(rawData);
+      // The API response for this endpoint is slightly different.
+      // It seems to directly return the data object if successful.
+      // We will create a new schema to handle this direct data structure.
+      const DirectGstDataSchema = z.object({
+        tradeNam: z.string(),
+        pradr: z.object({
+            adr: z.string(),
+        }),
+      });
 
-      if (!parsedResponse.success) {
-        console.error("[GSTIN Flow] API response validation failed:", parsedResponse.error.flatten());
-        return null;
-      }
-      
-      const { flag, data, message } = parsedResponse.data;
+      const parsedResponse = DirectGstDataSchema.safeParse(rawData);
 
-      if (flag && data) {
-        const details = {
-          businessName: data.tradeNam,
-          businessAddress: data.pradr.adr,
-        };
-        console.log('[GSTIN Flow] Successfully fetched and parsed details:', details);
-        return details;
+      if (parsedResponse.success) {
+         const { tradeNam, pradr } = parsedResponse.data;
+         const details = {
+            businessName: tradeNam,
+            businessAddress: pradr.adr,
+         };
+         console.log('[GSTIN Flow] Successfully fetched and parsed details:', details);
+         return details;
       } else {
-        console.warn(`[GSTIN Flow] API indicated failure for GSTIN ${gstin}. Message: ${message}`);
+        // Fallback to check if it's wrapped in { flag: true, data: {...} }
+        const wrappedParsedResponse = GstApiResponseSchema.safeParse(rawData);
+        if (wrappedParsedResponse.success && wrappedParsedResponse.data.flag && wrappedParsedResponse.data.data) {
+             const { tradeNam, pradr } = wrappedParsedResponse.data.data;
+             const details = {
+                businessName: tradeNam,
+                businessAddress: pradr.adr,
+             };
+             console.log('[GSTIN Flow] Successfully fetched and parsed details from wrapped response:', details);
+             return details;
+        }
+
+        console.error("[GSTIN Flow] API response validation failed for both direct and wrapped structures:", parsedResponse.error.flatten());
         return null;
       }
 
