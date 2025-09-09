@@ -363,30 +363,50 @@ const handleSaveChanges = async () => {
                 return;
             }
             
-            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+            const headerRow = allRows[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase().replace(/[\s_]/g, ''));
             const dataRows = allRows.slice(1);
             
             const existingItemsSnapshot = await getDocs(query(collection(db, "inventory"), where("userId", "==", user.uid)));
             const existingItemsMap = new Map(existingItemsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), { id: doc.id, data: doc.data() }]));
 
             const synonymMapping: { [key: string]: { key: keyof InventoryItem, type: 'string' | 'number' } } = {
+                // Name Synonyms
                 'name': { key: 'name', type: 'string' },
-                'item name': { key: 'name', type: 'string' },
-                'product name': { key: 'name', type: 'string' },
+                'itemname': { key: 'name', type: 'string' },
+                'productname': { key: 'name', type: 'string' },
                 'particulars': { key: 'name', type: 'string' },
-                'price': { key: 'price', type: 'number' },
-                'rate': { key: 'price', type: 'number' },
-                'cost': { key: 'price', type: 'number' },
+                'item': { key: 'name', type: 'string' },
+                'product': { key: 'name', type: 'string' },
+                'description': { key: 'name', type: 'string' },
+                 // Stock Synonyms
                 'stock': { key: 'stock', type: 'number' },
                 'quantity': { key: 'stock', type: 'number' },
                 'qty': { key: 'stock', type: 'number' },
+                'instock': { key: 'stock', type: 'number' },
+                'onhand': { key: 'stock', type: 'number' },
                 'inventory': { key: 'stock', type: 'number' },
-                'hsn code': { key: 'hsnCode', type: 'string'},
-                'hsn': { key: 'hsnCode', type: 'string'},
+                'balqty': { key: 'stock', type: 'number' },
+                // Price Synonyms
+                'price': { key: 'price', type: 'number' },
+                'rate': { key: 'price', type: 'number' },
+                'cost': { key: 'price', type: 'number' },
+                'unitprice': { key: 'price', type: 'number' },
+                'mrp': { key: 'price', type: 'number' },
+                'saleprice': { key: 'price', type: 'number' },
+                'purchaseprice': { key: 'price', type: 'number' },
+                // HSN Code Synonyms
                 'hsncode': { key: 'hsnCode', type: 'string'},
-                'tax code': { key: 'hsnCode', type: 'string'},
+                'hsn-code': { key: 'hsnCode', type: 'string'},
+                'hsn': { key: 'hsnCode', type: 'string'},
+                'taxcode': { key: 'hsnCode', type: 'string'},
+                'sac': { key: 'hsnCode', type: 'string'},
+                'saccode': { key: 'hsnCode', type: 'string'},
+                // Unit Synonyms
                 'unit': { key: 'unit', type: 'string' },
                 'units': { key: 'unit', type: 'string' },
+                'uom': { key: 'unit', type: 'string' },
+                'measurement': { key: 'unit', type: 'string' },
+                'per': { key: 'unit', type: 'string' },
             };
 
             const headerMap: { [key: string]: number } = {};
