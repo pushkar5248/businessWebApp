@@ -50,6 +50,8 @@ const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
+  hsnCode: z.string().optional(),
+  unit: z.string().optional(),
 });
 
 const formSchema = z.object({
@@ -97,7 +99,7 @@ export function InvoiceForm() {
     defaultValues: {
       invoiceDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-      items: [{ name: "", quantity: 1, price: 0 }],
+      items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
       cgstRate: settings?.billing.defaultCgstRate ?? 9,
       sgstRate: settings?.billing.defaultSgstRate ?? 9,
       igstRate: 0,
@@ -138,7 +140,7 @@ export function InvoiceForm() {
           reset({
               invoiceDate: new Date().toISOString().split("T")[0],
               invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-              items: [{ name: "", quantity: 1, price: 0 }],
+              items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
               cgstRate: settings.billing.defaultCgstRate,
               sgstRate: settings.billing.defaultSgstRate,
               igstRate: 0,
@@ -181,7 +183,7 @@ export function InvoiceForm() {
       date: data.invoiceDate,
       amount: total,
       status: "Pending", // Default status
-      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId })),
+      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId, hsnCode: i.hsnCode, unit: i.unit })),
       customerAddress: data.customerAddress,
       customerPhone: data.customerPhone,
       customerState: data.customerState,
@@ -454,7 +456,9 @@ export function InvoiceForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50%] h-12 px-4">Item</TableHead>
+                  <TableHead className="w-[35%] h-12 px-4">Item</TableHead>
+                  <TableHead className="h-12 px-4">HSN</TableHead>
+                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Quantity</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
@@ -478,6 +482,8 @@ export function InvoiceForm() {
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
                                         setValue(`items.${index}.name`, selectedItem.name);
                                         setValue(`items.${index}.price`, selectedItem.price);
+                                        setValue(`items.${index}.hsnCode`, selectedItem.hsnCode);
+                                        setValue(`items.${index}.unit`, selectedItem.unit);
                                     }
                                 }}
                                 placeholder="Select item..."
@@ -488,6 +494,18 @@ export function InvoiceForm() {
                       {errors.items?.[index]?.name && (
                         <p className="text-sm text-destructive">{errors.items[index].name.message}</p>
                       )}
+                    </TableCell>
+                     <TableCell>
+                      <Input
+                        {...methods.register(`items.${index}.hsnCode`)}
+                        placeholder="HSN Code"
+                      />
+                    </TableCell>
+                     <TableCell>
+                      <Input
+                        {...methods.register(`items.${index}.unit`)}
+                        placeholder="Unit"
+                      />
                     </TableCell>
                     <TableCell>
                       <Input
@@ -528,7 +546,7 @@ export function InvoiceForm() {
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => append({ name: "", quantity: 1, price: 0 })}
+              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" })}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -606,3 +624,5 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
+
+    
