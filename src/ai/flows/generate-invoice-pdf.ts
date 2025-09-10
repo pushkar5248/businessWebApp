@@ -307,9 +307,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <tr>
                         <td style="text-align: center;">{{addOne @index}}</td>
                         <td>{{{name}}}</td>
-                        <td>{{{hsnCode}}}</td>
+                        <td style="text-align: center;">{{{hsnCode}}}</td>
                         <td style="text-align: right;">{{{quantity}}}</td>
-                        <td>{{{unit}}}</td>
+                        <td style="text-align: center;">{{{unit}}}</td>
                         <td style="text-align: right;">{{{../currency}}}{{{price}}}</td>
                         <td style="text-align: right;">{{{../currency}}}{{{itemTotal}}}</td>
                     </tr>
@@ -416,3 +416,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
