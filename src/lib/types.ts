@@ -87,5 +87,11 @@ export type UserSettings = {
     defaultSgstRate: number;
     invoiceFooter: string;
     invoiceTerms: string;
+  },
+  preferences?: {
+    inventorySort?: {
+        key: string;
+        direction: 'ascending' | 'descending';
+    }
   }
 }

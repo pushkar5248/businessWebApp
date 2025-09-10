@@ -52,6 +52,7 @@ import { collection, addDoc, doc, deleteDoc, updateDoc, query, where, writeBatch
 import { useAuth } from "@/context/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/context/settings-context";
 
 
 const AddItemForm = ({ onAddItem, onCancel }: { onAddItem: (item: Omit<InventoryItem, 'id' | 'userId'>) => void; onCancel: () => void }) => {
@@ -120,6 +121,7 @@ const DEFAULT_COLUMN_NAMES: Record<string, string> = {
 
 export default function InventoryPageClient() {
   const { user } = useAuth();
+  const { settings, saveSettings } = useSettings();
   const { formatCurrency, formatCurrencyValue } = useCurrency();
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -153,6 +155,12 @@ export default function InventoryPageClient() {
   const startX = useRef(0);
   const startWidth = useRef(0);
   const resizingColumn = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (settings?.preferences?.inventorySort) {
+      setSortConfig(settings.preferences.inventorySort);
+    }
+  }, [settings]);
   
   const handleRemoveColumn = (columnKey: string) => {
     setAllPossibleColumns(prev => {
@@ -310,7 +318,11 @@ export default function InventoryPageClient() {
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
-    setSortConfig({ key, direction });
+    const newSortConfig = { key, direction };
+    setSortConfig(newSortConfig);
+    if(user){
+        saveSettings({ preferences: { inventorySort: newSortConfig } });
+    }
   };
 
 
@@ -641,13 +653,16 @@ const handleSaveChanges = async () => {
     const onMouseMove = (moveEvent: MouseEvent) => {
         if (!resizingColumn.current) return;
         const diffX = moveEvent.clientX - startX.current;
-        const newWidth = startWidth.current + diffX;
-        if (newWidth > 50) { // Minimum width
-            setColumnWidths(prev => ({
-                ...prev,
-                [resizingColumn.current!]: newWidth
-            }));
+        let newWidth = startWidth.current + diffX;
+        
+        if (newWidth < 60) {
+            newWidth = 60;
         }
+
+        setColumnWidths(prev => ({
+            ...prev,
+            [resizingColumn.current!]: newWidth
+        }));
     };
 
     const onMouseUp = () => {
@@ -794,13 +809,13 @@ const handleSaveChanges = async () => {
                       >
                          <div 
                            className="flex items-center gap-2"
-                           draggable={!isEditMode}
-                           onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
-                           onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
-                           onDragEnd={!isEditMode ? handleDragEnd : undefined}
-                           onDragOver={(e) => e.preventDefault()}
                          >
                              <div
+                                draggable={!isEditMode}
+                                onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
+                                onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
+                                onDragEnd={!isEditMode ? handleDragEnd : undefined}
+                                onDragOver={(e) => e.preventDefault()}
                                 className={cn("cursor-grab", isEditMode && "cursor-not-allowed")}
                               >
                                <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -850,7 +865,7 @@ const handleSaveChanges = async () => {
                           />
                       </TableCell>
                       {visibleColumns.map((key) => (
-                        <TableCell key={key} className="px-4">
+                        <TableCell key={key} className="px-4 break-words">
                            {key === 'price' ? (
                              <div className="flex items-center gap-2">
                               <span>{formatCurrencyValue(0).charAt(0)}</span>
@@ -930,5 +945,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
-    

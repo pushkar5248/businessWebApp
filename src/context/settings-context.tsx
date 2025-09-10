@@ -31,6 +31,12 @@ export const defaultSettings: UserSettings = {
         defaultSgstRate: 9,
         invoiceFooter: 'Thank you for your business!',
         invoiceTerms: 'All sales are final.\nPlease make payments to the account details provided.',
+    },
+    preferences: {
+        inventorySort: {
+            key: 'name',
+            direction: 'ascending'
+        }
     }
 };
 
@@ -128,8 +134,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             if (dataToSave.appearance?.theme) {
                 applyTheme(dataToSave.appearance.theme);
             }
+            
+            const isSilent = dataToSave.preferences?.inventorySort;
 
-            toast({ title: 'Success', description: "Your settings have been saved."});
+            if (!isSilent) {
+              toast({ title: 'Success', description: "Your settings have been saved."});
+            }
         } catch (error) {
             console.error("Error saving settings:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not save settings."});
