@@ -14,6 +14,14 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from "firebase/firestore";
 import { z } from 'zod';
 
+// Hardcoded local data for guaranteed lookup.
+const localGstinData: Record<string, GstinOutput> = {
+  '09AGZPA5852F1Z0': {
+    businessName: 'Adhunik Marbles',
+    businessAddress: 'KUNDAN BHAWAN, ROHTA, GWALIOR ROAD, AGRA, Agra, Uttar Pradesh, 282001',
+  },
+};
+
 
 export async function fetchGstinDetails(input: GstinInput): Promise<GstinOutput | null> {
   return fetchGstinDetailsFlow(input);
@@ -26,8 +34,17 @@ const fetchGstinDetailsFlow = ai.defineFlow(
     outputSchema: z.nullable(GstinOutputSchema),
   },
   async ({ gstin }) => {
-    console.log(`[GSTIN Flow] Initiating local database lookup for GSTIN: ${gstin}`);
+    console.log(`[GSTIN Flow] Initiating lookup for GSTIN: ${gstin}`);
 
+    // First, check the hardcoded local data.
+    if (localGstinData[gstin]) {
+      const details = localGstinData[gstin];
+      console.log('[GSTIN Flow] Successfully fetched details from hardcoded data:', details);
+      return details;
+    }
+
+    // If not in local data, check Firestore.
+    console.log(`[GSTIN Flow] GSTIN ${gstin} not found in hardcoded data, checking Firestore.`);
     try {
       const docRef = doc(db, "gstin_data", gstin);
       const docSnap = await getDoc(docRef);
@@ -38,10 +55,10 @@ const fetchGstinDetailsFlow = ai.defineFlow(
             businessName: data.businessName,
             businessAddress: data.businessAddress,
         };
-        console.log('[GSTIN Flow] Successfully fetched details from local DB:', details);
+        console.log('[GSTIN Flow] Successfully fetched details from Firestore:', details);
         return details;
       } else {
-        console.log(`[GSTIN Flow] GSTIN ${gstin} not found in the local database.`);
+        console.log(`[GSTIN Flow] GSTIN ${gstin} not found in Firestore.`);
         return null;
       }
     } catch (error) {
