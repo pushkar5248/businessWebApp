@@ -40,6 +40,8 @@ const GenerateInvoicePdfInputSchema = z.object({
       name: z.string().describe('The name of the item.'),
       quantity: z.number().describe('The quantity of the item.'),
       price: z.number().describe('The price of the item.'),
+      hsnCode: z.string().optional().describe('The HSN code of the item.'),
+      unit: z.string().optional().describe('The unit of the item (e.g., pcs, sqft).'),
     })
   ).describe('An array of items in the invoice.'),
   cgstRate: z.number().optional().describe('The CGST rate percentage.'),
@@ -305,9 +307,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <tr>
                         <td style="text-align: center;">{{addOne @index}}</td>
                         <td>{{{name}}}</td>
-                        <td></td>
+                        <td>{{{hsnCode}}}</td>
                         <td style="text-align: right;">{{{quantity}}}</td>
-                        <td></td>
+                        <td>{{{unit}}}</td>
                         <td style="text-align: right;">{{{../currency}}}{{{price}}}</td>
                         <td style="text-align: right;">{{{../currency}}}{{{itemTotal}}}</td>
                     </tr>
