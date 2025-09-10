@@ -174,36 +174,30 @@ export default function InventoryPageClient() {
     const savedVisibility = localStorage.getItem('inventoryColumnVisibility');
     const savedAllColumns = localStorage.getItem('inventoryAllPossibleColumns');
 
+    let currentColumns = DEFAULT_COLUMN_NAMES;
     if (savedAllColumns) {
       try {
-        const parsedAllColumns = JSON.parse(savedAllColumns);
-        setAllPossibleColumns(parsedAllColumns);
-         if (savedOrder) {
-            try {
-              const parsedOrder = JSON.parse(savedOrder);
-              const defaultKeys = Object.keys(parsedAllColumns);
-              const allKeys = [...new Set([...parsedOrder, ...defaultKeys])].filter(k => defaultKeys.includes(k));
-              setColumnOrder(allKeys);
-            } catch (e) {
-              setColumnOrder(Object.keys(parsedAllColumns));
-            }
-          } else {
-            setColumnOrder(Object.keys(parsedAllColumns));
-          }
+        currentColumns = JSON.parse(savedAllColumns);
+        setAllPossibleColumns(currentColumns);
       } catch (e) {
         setAllPossibleColumns(DEFAULT_COLUMN_NAMES);
       }
-    } else {
-      if (savedOrder) {
-        try {
-          const parsedOrder = JSON.parse(savedOrder);
-           const defaultKeys = Object.keys(DEFAULT_COLUMN_NAMES);
-           const allKeys = [...new Set([...parsedOrder, ...defaultKeys])].filter(k => defaultKeys.includes(k));
-           setColumnOrder(allKeys);
-        } catch (e) {
-           setColumnOrder(Object.keys(DEFAULT_COLUMN_NAMES));
-        }
+    }
+
+    if (savedOrder) {
+      try {
+        const parsedOrder = JSON.parse(savedOrder);
+        const defaultKeys = Object.keys(currentColumns);
+        // Ensure saved order only contains keys that still exist in allPossibleColumns
+        const validOrder = parsedOrder.filter((key: string) => defaultKeys.includes(key));
+        // Add any new default keys that are not in the saved order
+        const allKeys = [...validOrder, ...defaultKeys.filter(k => !validOrder.includes(k))];
+        setColumnOrder(allKeys);
+      } catch (e) {
+        setColumnOrder(Object.keys(currentColumns));
       }
+    } else {
+        setColumnOrder(Object.keys(currentColumns));
     }
     
     if (savedWidths) {
@@ -217,6 +211,7 @@ export default function InventoryPageClient() {
     if (savedVisibility) {
         try {
             const parsedVisibility = JSON.parse(savedVisibility);
+            // Merge saved visibility with default, so new columns are visible by default
             setColumnVisibility(prev => ({...prev, ...parsedVisibility}));
         } catch(e) {
             // ignore error
@@ -480,7 +475,7 @@ const handleSaveChanges = async () => {
             const localAllPossibleColumns = {...allPossibleColumns};
 
             headerRow.forEach((header, index) => {
-                const normalizedHeader = header.toLowerCase().replace(/[\s_-]/g, '').trim();
+                const normalizedHeader = header.toLowerCase().replace(/[\s_-]/g, ' ').trim();
                 const mapping = synonymMapping[normalizedHeader];
                  if (mapping) {
                     headerMap[mapping.key] = index;
@@ -795,27 +790,29 @@ const handleSaveChanges = async () => {
                       data-column-key={key}
                     >
                       <div 
-                        className="flex items-center justify-between px-4 h-full" 
-                        suppressHydrationWarning
-                        draggable={!isEditMode}
-                        onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
-                        onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
-                        onDragEnd={!isEditMode ? handleDragEnd : undefined}
-                        onDragOver={(e) => e.preventDefault()}
+                        className="flex items-center justify-between px-4 h-full"
                       >
-                         <div className="flex items-center gap-2" >
+                         <div 
+                           className="flex items-center gap-2"
+                           draggable={!isEditMode}
+                           onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
+                           onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
+                           onDragEnd={!isEditMode ? handleDragEnd : undefined}
+                           onDragOver={(e) => e.preventDefault()}
+                         >
                              <div
                                 className={cn("cursor-grab", isEditMode && "cursor-not-allowed")}
                               >
                                <GripVertical className="h-4 w-4 text-muted-foreground" />
                              </div>
-                             <span className="font-medium" onClick={() => requestSort(key)}>{allPossibleColumns[key] || key}</span>
+                             <span className="font-medium">{allPossibleColumns[key] || key}</span>
                          </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
                            onClick={() => requestSort(key)}
+                           disabled={isEditMode}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
@@ -878,7 +875,7 @@ const handleSaveChanges = async () => {
                           ) : (
                                <Input
                                   type="text"
-                                  value={item[key as keyof typeof item]}
+                                  value={item[key as keyof typeof item] as string}
                                   onChange={(e) => handleItemChange(item.id, key as keyof Omit<InventoryItem, 'id'|'userId'>, e.target.value)}
                                   className={cn(!isEditMode && "border-none bg-transparent disabled:cursor-text disabled:opacity-100")}
                                   disabled={!isEditMode || !user}
@@ -933,3 +930,5 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
+    
