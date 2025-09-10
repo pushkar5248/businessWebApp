@@ -471,11 +471,11 @@ export function InvoiceForm() {
                     <TableCell>
                       <Controller
                           control={control}
-                          name={`items.${index}.name`}
+                          name={`items.${index}.inventoryId`}
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={watchedFormValues.items?.[index]?.inventoryId || ''}
+                                value={field.value}
                                 onChange={(value) => {
                                     const selectedItem = inventoryItems.find(item => item.id === value);
                                     if (selectedItem) {
@@ -484,6 +484,10 @@ export function InvoiceForm() {
                                         setValue(`items.${index}.price`, selectedItem.price);
                                         setValue(`items.${index}.hsnCode`, selectedItem.hsnCode);
                                         setValue(`items.${index}.unit`, selectedItem.unit);
+                                    } else {
+                                        // Handle manual entry or clearing the selection
+                                        setValue(`items.${index}.inventoryId`, undefined);
+                                        setValue(`items.${index}.name`, '');
                                     }
                                 }}
                                 placeholder="Select item..."
@@ -496,15 +500,29 @@ export function InvoiceForm() {
                       )}
                     </TableCell>
                      <TableCell>
-                      <Input
-                        {...methods.register(`items.${index}.hsnCode`)}
-                        placeholder="HSN Code"
+                      <Controller
+                        control={control}
+                        name={`items.${index}.hsnCode`}
+                        render={({ field }) => (
+                            <Input
+                                {...field}
+                                placeholder="HSN Code"
+                                readOnly={!!watchedFormValues.items?.[index]?.inventoryId}
+                            />
+                        )}
                       />
                     </TableCell>
                      <TableCell>
-                      <Input
-                        {...methods.register(`items.${index}.unit`)}
-                        placeholder="Unit"
+                      <Controller
+                        control={control}
+                        name={`items.${index}.unit`}
+                        render={({ field }) => (
+                            <Input
+                                {...field}
+                                placeholder="Unit"
+                                readOnly={!!watchedFormValues.items?.[index]?.inventoryId}
+                            />
+                        )}
                       />
                     </TableCell>
                     <TableCell>
@@ -624,5 +642,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
-    
