@@ -20,6 +20,10 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'Adhunik Marbles',
     businessAddress: 'KUNDAN BHAWAN, ROHTA, GWALIOR ROAD, AGRA, Agra, Uttar Pradesh, 282001',
   },
+  '09BEZPA5480A1ZD': {
+    businessName: 'KHUSHI ENTERPRISES',
+    businessAddress: 'GROUND FLOOR, PLOT NO. 76, SHOP NO. 3, 4 & 5, Paschim Puri Road, Sikandra, Agra, Agra, Uttar Pradesh, 282007',
+  },
 };
 
 
