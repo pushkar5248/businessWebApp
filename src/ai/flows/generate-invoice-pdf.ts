@@ -409,7 +409,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             </div>
              <div class="terms">
                 <h4>Terms & Conditions</h4>
-                <p>Goods once sold will not be taken back or exchanged. Subject to Agra Jurisdiction only. E. & O. E.</p>
+                <p>1. Goods once sold will not be taken back or exchanged.</p>
+                <p>2. Subject to Agra Jurisdiction only. E. & O. E.</p>
             </div>
 
 
@@ -505,3 +506,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
