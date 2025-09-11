@@ -153,6 +153,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 color: #0052A3;
+                text-decoration: underline;
             }
             .info-block .field-grid {
                  display: grid;
@@ -235,9 +236,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 min-height: 40px;
                 font-weight: bold;
             }
-            .rupees-in-words strong {
+            .rupees-in-words h4 {
                 color: #0052A3;
                 font-weight: bold;
+                margin: 0 0 5px 0;
+                text-decoration: underline;
             }
             .rupees-in-words span {
                 font-weight: normal;
@@ -256,6 +259,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
                 font-size: 11px;
                 color: #0052A3;
+                text-decoration: underline;
             }
              .terms {
                 border: 2px solid #000;
@@ -370,7 +374,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             <div class="summary-section">
                 <div class="summary-left">
                     <div class="rupees-in-words">
-                        <strong>Amount in Words:</strong><br/>
+                        <h4>Amount in Words</h4>
                         <span>{{{totalInWords}}}</span>
                     </div>
                      <div class="bank-details">
