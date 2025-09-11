@@ -36,7 +36,7 @@ const GenerateInvoicePdfInputSchema = z.object({
   transporterVehicleNumber: z.string().optional().describe('The vehicle number of the transporter.'),
   placeOfSupply: z.string().optional().describe('The place of supply.'),
   transportDate: z.string().optional().describe('The date of transport.'),
-  eWayBillNumber: z.string().optional().describe('The e-way bill number.'),
+  eWayBillNumber: zstring().optional().describe('The e-way bill number.'),
   items: z.array(
     z.object({
       name: z.string().describe('The name of the item.'),
