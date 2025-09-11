@@ -115,13 +115,14 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #6B7280;
             }
             .header-right {
-                text-align: right;
+                text-align: left;
             }
             .header-right .invoice-title {
                 font-size: 22px;
                 font-weight: 600;
                 margin: 0 0 10px 0;
                 color: #000;
+                text-align: left;
             }
              .header-right .meta-grid {
                 display: grid;
