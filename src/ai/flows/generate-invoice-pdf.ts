@@ -458,5 +458,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
