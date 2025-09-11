@@ -102,7 +102,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .header .company-details h2 {
                 font-size: 28px;
                 font-weight: bold;
-                color: #0052A3;
+                color: #000;
                 margin: 0 0 10px 0;
             }
             .header .company-details p {
@@ -117,7 +117,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 22px;
                 font-weight: 600;
                 margin: 0 0 10px 0;
-                color: #0052A3;
+                color: #000;
             }
              .header-right .meta-grid {
                 display: grid;
@@ -136,7 +136,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
             .details-section .info-block {
                 padding: 15px;
-                background-color: #F9FAFB;
                 border: 2px solid #000;
                 border-radius: 8px;
             }
@@ -146,7 +145,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                color: #0052A3;
+                color: #000;
             }
             .info-block .field-grid {
                  display: grid;
@@ -168,11 +167,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 1px solid #000;
             }
             .items-table th {
-                background-color: #EFF6FF;
+                background-color: #f0f0f0;
                 font-weight: 600;
                 text-transform: uppercase;
                 font-size: 10px;
-                color: #0052A3;
+                color: #000;
             }
             .items-table .text-right { text-align: right; }
             .items-table .text-center { text-align: center; }
@@ -188,6 +187,13 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .summary-left { width: 60%; }
             .summary-right { width: 38%; }
 
+            .totals-table-wrapper {
+                border: 2px solid #000;
+                border-radius: 8px;
+                padding: 5px;
+                background-color: #F9FAFB;
+            }
+
             .totals-table {
                 width: 100%;
             }
@@ -201,36 +207,40 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .totals-table .grand-total td {
                 font-weight: bold;
                 font-size: 14px;
-                background-color: #DBEAFE;
-                color: #0052A3;
+                background-color: #e0e0e0;
+                color: #000;
                 border-radius: 6px;
             }
             .rupees-in-words {
                 font-size: 12px;
                 margin-bottom: 15px;
                 padding: 10px;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #F9FAFB;
-                border: 1px solid #e5e7eb;
+                border: 2px solid #000;
                 min-height: 40px;
             }
             .rupees-in-words strong {
                 color: #0052A3;
+                font-weight: bold;
             }
             .rupees-in-words span {
                 font-weight: normal;
             }
             .bank-details, .terms {
                 padding: 10px;
-                border-radius: 6px;
-                background-color: #F9FAFB;
+                border-radius: 8px;
                 margin-top: 10px;
+                 border: 2px solid #000;
+            }
+            .bank-details {
+                background-color: #F9FAFB;
             }
             .bank-details h4, .terms h4 {
                 margin: 0 0 5px 0;
                 font-weight: bold;
                 font-size: 11px;
-                color: #0052A3;
+                color: #000;
             }
              .terms {
                 border: 2px solid #000;
@@ -241,18 +251,13 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border-top: 2px solid #000;
                 font-size: 11px;
                 color: #6B7280;
-                position: relative;
                 height: 100px;
             }
             .footer-left {
-                position: absolute;
-                left: 0;
-                bottom: 20px;
+                float: left;
             }
             .footer-right {
-                position: absolute;
-                right: 0;
-                bottom: 20px;
+                float: right;
                 text-align: center;
             }
             .footer .signature-line {
@@ -362,32 +367,34 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     </div>
                 </div>
                 <div class="summary-right">
-                    <table class="totals-table">
-                         <tr>
-                            <td><span>Subtotal</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
-                        </tr>
-                        {{#if sgst}}
-                        <tr>
-                            <td><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></td>
-                        </tr>
-                        {{/if}}
-                        {{#if cgst}}
-                        <tr>
-                            <td><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></td>
-                        </tr>
-                        {{/if}}
-                        {{#if igst}}
-                        <tr>
-                            <td><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></td>
-                        </tr>
-                        {{/if}}
-                        <tr>
-                          <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
-                        </tr>
-                        <tr class="grand-total">
-                            <td><span>Grand Total</span> <span>{{{currency}}}{{{total}}}</span></td>
-                        </tr>
-                    </table>
+                    <div class="totals-table-wrapper">
+                        <table class="totals-table">
+                             <tr>
+                                <td><span>Subtotal</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
+                            </tr>
+                            {{#if sgst}}
+                            <tr>
+                                <td><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></td>
+                            </tr>
+                            {{/if}}
+                            {{#if cgst}}
+                            <tr>
+                                <td><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></td>
+                            </tr>
+                            {{/if}}
+                            {{#if igst}}
+                            <tr>
+                                <td><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></td>
+                            </tr>
+                            {{/if}}
+                            <tr>
+                              <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
+                            </tr>
+                            <tr class="grand-total">
+                                <td><span>Grand Total</span> <span>{{{currency}}}{{{total}}}</span></td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
             </div>
              <div class="terms">
