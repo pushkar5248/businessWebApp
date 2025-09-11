@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCurrency } from '@/context/currency-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, FileDown, ChevronDown, Printer } from 'lucide-react';
+import { ArrowLeft, Loader2, FileDown, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +25,6 @@ import {
   generateInvoicePdf,
   type GenerateInvoicePdfInput,
 } from "@/ai/flows/generate-invoice-pdf";
-import {
-  generateSampleInvoicePdf
-} from "@/ai/flows/generate-sample-invoice-pdf";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -58,7 +55,6 @@ export default function InvoiceDetailsPage() {
     const { toast } = useToast();
     const { settings } = useSettings();
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isGeneratingSample, setIsGeneratingSample] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [invoice, setInvoice] = useState<Sale | null>(null);
 
@@ -206,84 +202,6 @@ export default function InvoiceDetailsPage() {
         }
     };
     
-    const handleGenerateSamplePdf = async () => {
-        if (!invoice || !settings) {
-             toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Invoice or settings data is not available.",
-            });
-            return;
-        };
-        setIsGeneratingSample(true);
-        try {
-          const input: GenerateInvoicePdfInput = {
-            businessName: settings.general.businessName,
-            businessAddress: settings.general.businessAddress,
-            businessPhone: settings.general.businessPhone,
-            businessEmail: settings.general.businessEmail,
-            businessGstin: settings.general.businessGstin,
-            invoiceNumber: invoice.id,
-            invoiceDate: invoice.date,
-            customerName: invoice.customer,
-            customerAddress: invoice.customerAddress,
-            customerPhone: invoice.customerPhone,
-            customerState: invoice.customerState,
-            customerGstin: invoice.customerGstin,
-            deliveryPlaceName: invoice.deliveryPlaceName,
-            deliveryAddress: invoice.deliveryAddress,
-            deliveryState: invoice.deliveryState,
-            deliveryGstin: invoice.deliveryGstin,
-            transporterName: invoice.transporterName,
-            transporterVehicleNumber: invoice.transporterVehicleNumber,
-            placeOfSupply: invoice.placeOfSupply,
-            transportDate: invoice.transportDate,
-            items: invoice.items.map((item) => ({ ...item })),
-            cgstRate: invoice.cgstRate,
-            sgstRate: invoice.sgstRate,
-            igstRate: invoice.igstRate,
-            total: roundedTotal,
-            currency: currency,
-          };
-
-          const result = await generateSampleInvoicePdf(input);
-          
-          if (result && result.html) {
-            const invoiceElement = document.createElement('div');
-            invoiceElement.innerHTML = result.html;
-            document.body.appendChild(invoiceElement);
-            
-            const canvas = await html2canvas(invoiceElement.querySelector('.invoice-container')!, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            
-            document.body.removeChild(invoiceElement);
-            
-            pdf.save(`sample-invoice-${invoice.id}.pdf`);
-            
-            toast({
-              title: "Success",
-              description: "Sample Invoice PDF has been generated successfully.",
-            });
-          } else {
-            throw new Error("PDF generation failed, no HTML returned.");
-          }
-        } catch (error) {
-          console.error(error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to generate sample invoice. Please try again.",
-          });
-        } finally {
-          setIsGeneratingSample(false);
-        }
-    };
-
 
     return (
         <MainLayout>
@@ -303,10 +221,6 @@ export default function InvoiceDetailsPage() {
                 <Button variant="outline" onClick={handleGeneratePdf} disabled={isGenerating}>
                     {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <FileDown className="mr-2" />}
                     Generate Invoice PDF
-                </Button>
-                <Button onClick={handleGenerateSamplePdf} disabled={isGeneratingSample}>
-                    {isGeneratingSample ? <Loader2 className="mr-2 animate-spin" /> : <Printer className="mr-2" />}
-                    Print Sample Invoice
                 </Button>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>

@@ -2,18 +2,17 @@
 'use server';
 
 /**
- * @fileOverview Invoice HTML generation flow using Genkit.
+ * @fileOverview A professional invoice HTML generation flow using Genkit.
  *
- * - generateInvoicePdf - A function that generates an HTML string of an invoice based on the provided data and template.
- * - GenerateInvoicePdfInput - The input type for the generateInvoiceHtml function, defining the invoice data.
- * - GenerateInvoiceHtmlOutput - The return type for the generateInvoiceHtml function, providing the HTML as a string.
+ * - generateInvoicePdf - A function that generates a professional HTML string of an invoice based on the provided data.
+ * - GenerateInvoicePdfInput - The input type for the function, defining the invoice data.
+ * - GenerateInvoiceHtmlOutput - The return type for the function, providing the HTML as a string.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import Handlebars from 'handlebars';
 import { getStateCode } from '@/lib/state-codes';
-
 
 const GenerateInvoicePdfInputSchema = z.object({
   businessName: z.string().describe('The name of the business.'),
@@ -76,271 +75,266 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>TAX INVOICE</title>
+        <title>Tax Invoice - {{{businessName}}}</title>
         <style>
             body {
-                font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
-                color: #333;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                color: #374151;
                 background-color: #fff;
+                font-size: 11px;
+                line-height: 1.5;
             }
             .invoice-container {
                 width: 800px;
-                margin: auto;
-                padding: 20px;
-                border: 1px solid #eee;
+                margin: 20px auto;
+                padding: 30px;
+                border: 1px solid #e5e7eb;
             }
             .header {
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            .header h1 {
-                margin: 0;
-                font-size: 20px;
-                font-weight: bold;
-            }
-            .header .ganesh {
-                font-size: 12px;
-                margin-bottom: 5px;
-            }
-            .header .contact {
-                font-size: 12px;
-                position: absolute;
-                top: 20px;
-                right: 20px;
-            }
-            .company-details {
-                text-align: center;
-                margin-bottom: 10px;
-            }
-            .company-details h2 {
-                margin: 0;
-                font-size: 32px;
-                font-weight: bold;
-            }
-            .company-details p {
-                margin: 2px 0;
-                font-size: 12px;
-            }
-            .meta-info {
                 display: flex;
                 justify-content: space-between;
-                border-top: 2px solid #000;
-                border-bottom: 2px solid #000;
-                padding: 5px 0;
-                margin-bottom: 10px;
-                font-size: 14px;
+                align-items: flex-start;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 2px solid #0052A3;
             }
-            .transporter-details {
-                border: 1px solid #000;
-                padding: 5px;
-                margin-bottom: 10px;
+            .header .company-details h2 {
+                font-size: 28px;
+                font-weight: bold;
+                color: #0052A3;
+                margin: 0 0 10px 0;
+            }
+            .header .company-details p {
+                margin: 0;
                 font-size: 12px;
+                color: #6B7280;
             }
-            .transporter-details table {
-                width: 100%;
-                border-collapse: collapse;
+            .header-right {
+                text-align: right;
             }
-             .transporter-details td {
-                padding: 2px 5px;
+            .header-right .invoice-title {
+                font-size: 22px;
+                font-weight: 600;
+                margin: 0 0 10px 0;
+                color: #0052A3;
+            }
+             .header-right .meta-grid {
+                display: grid;
+                grid-template-columns: auto auto;
+                gap: 5px 15px;
+                font-size: 11px;
              }
-            .invoice-details {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 10px;
+             .meta-grid .label { font-weight: bold; color: #374151; }
+             .meta-grid .value { text-align: left; color: #4B5563; }
+
+            .details-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 25px;
             }
-            .invoice-details .info-block {
-                width: 48%;
-                border: 1px solid #000;
-                padding: 10px;
+            .details-section .info-block {
+                padding: 15px;
+                background-color: #F9FAFB;
+                border-radius: 8px;
             }
-            .info-block .title {
-                font-weight: bold;
-                border-bottom: 1px solid #000;
-                padding-bottom: 5px;
-                margin-bottom: 5px;
-            }
-            .info-block p {
-                margin: 3px 0;
+            .info-block h3 {
+                margin: 0 0 10px 0;
                 font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: #0052A3;
             }
-             .info-block .field-row {
-                display: flex;
-                justify-content: space-between;
+            .info-block .field-grid {
+                 display: grid;
+                 grid-template-columns: 70px 1fr;
+                 gap: 6px 8px;
             }
+            .field-grid .label { font-weight: bold; color: #374151; }
+            .field-grid span { color: #4B5563; }
+            
             .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 10px;
+                margin-bottom: 25px;
             }
             .items-table th, .items-table td {
-                border: 1px solid #000;
-                padding: 8px;
-                font-size: 12px;
+                padding: 10px;
+                text-align: left;
+                border-bottom: 1px solid #e5e7eb;
             }
             .items-table th {
-                text-align: center;
+                background-color: #EFF6FF;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 10px;
+                color: #0052A3;
             }
-            .items-table .om-logo {
-                text-align: center;
-                font-size: 100px;
-                opacity: 0.1;
-                height: 150px;
-            }
-            .footer-section {
+            .items-table .text-right { text-align: right; }
+            .items-table .text-center { text-align: center; }
+            
+            .summary-section {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 10px;
-                font-size: 12px;
+                align-items: flex-start;
+                margin-top: 25px;
+                padding-top: 15px;
+                border-top: 2px solid #e5e7eb;
             }
-            .footer-left {
-                width: 60%;
-            }
-            .footer-right {
-                width: 38%;
-            }
+            .summary-left { width: 60%; }
+            .summary-right { width: 38%; }
+
             .totals-table {
                 width: 100%;
-                border-collapse: collapse;
             }
             .totals-table td {
-                border: 1px solid #000;
-                padding: 5px;
+                padding: 8px 10px;
                 display: flex;
                 justify-content: space-between;
+                border-bottom: 1px solid #e5e7eb;
             }
+            .totals-table tr:last-child td { border-bottom: none; }
             .totals-table .grand-total td {
                 font-weight: bold;
-            }
-            .bank-details {
-                border-top: 1px solid #000;
-                margin-top: 10px;
-                padding-top: 5px;
-            }
-            .bank-details p {
-                font-weight: bold;
-                margin: 2px 0;
-            }
-            .terms {
-                margin-top: 10px;
-                border-top: 1px solid #000;
-                padding-top: 5px;
-            }
-            .signature {
-                text-align: right;
-                margin-top: 20px;
-            }
-            .signature p {
-                margin:0;
+                font-size: 14px;
+                background-color: #DBEAFE;
+                color: #0052A3;
+                border-radius: 6px;
             }
             .rupees-in-words {
-                word-wrap: break-word;
+                font-weight: bold;
+                font-size: 12px;
+                margin-bottom: 15px;
+                padding: 10px;
+                border-radius: 6px;
+                background-color: #F9FAFB;
+                min-height: 40px;
+            }
+            .bank-details, .terms {
+                padding: 10px;
+                border-radius: 6px;
+                background-color: #F9FAFB;
+                margin-top: 10px;
+            }
+            .bank-details h4, .terms h4 {
+                margin: 0 0 5px 0;
+                font-weight: bold;
+                font-size: 11px;
+                color: #0052A3;
+            }
+            .footer {
+                text-align: right;
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 2px solid #e5e7eb;
+                font-size: 11px;
+                color: #6B7280;
             }
         </style>
     </head>
     <body>
         <div class="invoice-container">
             <div class="header">
-                <p class="ganesh">।। श्री गणेशाय नमः ।।</p>
-                <h1>TAX INVOICE</h1>
-                <div class="contact">
-                    <p>M.: 9760026605</p>
-                    <p>6396871665</p>
+                <div class="company-details">
+                    <h2>{{{businessName}}}</h2>
+                    <p>{{{businessAddress}}}</p>
+                    <p><strong>GSTIN:</strong> {{{businessGstin}}}</p>
+                    <p><strong>Email:</strong> {{{businessEmail}}} | <strong>Phone:</strong> {{{businessPhone}}}</p>
+                </div>
+                <div class="header-right">
+                    <h2 class="invoice-title">TAX INVOICE</h2>
+                    <div class="meta-grid">
+                        <span class="label">Invoice #:</span><span class="value">{{{invoiceNumber}}}</span>
+                        <span class="label">Date:</span><span class="value">{{{invoiceDate}}}</span>
+                        <span class="label">Transporter:</span><span class="value">{{#if transporterName}}{{{transporterName}}}{{else}}N/A{{/if}}</span>
+                        <span class="label">Vehicle No:</span><span class="value">{{#if transporterVehicleNumber}}{{{transporterVehicleNumber}}}{{else}}N/A{{/if}}</span>
+                        <span class="label">Place of Supply:</span><span class="value">{{#if placeOfSupply}}{{{placeOfSupply}}}{{else}}N/A{{/if}}</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="company-details">
-                <h2>{{{businessName}}}</h2>
-                <p>White & Coloured Marbles, Slabs Kota Stone, Granite & Tiles</p>
-                <p>{{{businessAddress}}}</p>
-            </div>
-
-            <div class="meta-info">
-                <div>GSTIN No.: {{{businessGstin}}}</div>
-                <div>Phone: {{{businessPhone}}}</div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
-                <div style="width: 48%;">Invoice No.: <strong>{{{invoiceNumber}}}</strong></div>
-                <div style="width: 48%; text-align: right;">Invoice Date: <strong>{{{invoiceDate}}}</strong></div>
+            <div class="details-section">
+                <div class="info-block">
+                    <h3>Details of Receiver (Billed To)</h3>
+                     <div class="field-grid">
+                        <span class="label">Name:</span> <span>{{{customerName}}}</span>
+                        <span class="label">Address:</span> <span>{{{customerAddress}}}</span>
+                        <span class="label">Phone:</span> <span>{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">State:</span> <span>{{#if customerState}}{{{customerState}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">Code:</span> <span>{{{customerStateCode}}}</span>
+                        <span class="label">GSTIN:</span> <span>{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</span>
+                     </div>
+                </div>
+                <div class="info-block">
+                    <h3>Details of Consignee (Shipped To)</h3>
+                     <div class="field-grid">
+                        <span class="label">Name:</span> <span>{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</span>
+                        <span class="label">Address:</span> <span>{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</span>
+                        <span class="label">Phone:</span> <span>{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">State:</span> <span>{{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</span>
+                        <span class="label">Code:</span> <span>{{{deliveryStateCode}}}</span>
+                        <span class="label">GSTIN:</span> <span>{{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}{{/if}}</span>
+                    </div>
+                </div>
             </div>
             
-            <div class="transporter-details">
-                <table>
-                    <tr>
-                        <td><strong>Transporter Name:</strong> {{#if transporterName}}{{{transporterName}}}{{else}}____________________{{/if}}</td>
-                        <td><strong>Vehicle No.:</strong> {{#if transporterVehicleNumber}}{{{transporterVehicleNumber}}}{{else}}____________________{{/if}}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Place of Supply:</strong> {{#if placeOfSupply}}{{{placeOfSupply}}}{{else}}____________________{{/if}}</td>
-                        <td><strong>Date:</strong> {{#if transportDate}}{{{transportDate}}}{{else}}____________________{{/if}}</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="invoice-details">
-                <div class="info-block">
-                    <div class="title">Details of Recipient (Purchasers)</div>
-                    <p><strong>Name:</strong> {{{customerName}}}</p>
-                    <p><strong>Address:</strong> {{{customerAddress}}}</p>
-                    <div class="field-row"><p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{else}}____________{{/if}}</p> <p><strong>Code:</strong> {{{customerStateCode}}}</p></div>
-                    <p><strong>GSTIN/UIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</p>
-                </div>
-                <div class="info-block">
-                    <div class="title">Delivery Place of Supply of Goods</div>
-                    <p><strong>Name:</strong> {{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</p>
-                    <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
-                    <div class="field-row"><p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{else}}_____________{{/if}}</p> <p><strong>Code:</strong> {{{deliveryStateCode}}}</p></div>
-                    <p><strong>GSTIN/UIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}____________________{{/if}}</p>
-                </div>
-            </div>
-
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 5%;">Sr No</th>
-                        <th>Product Name</th>
-                        <th style="width: 10%;">HSN Code</th>
-                        <th style="width: 8%;">Qty</th>
-                        <th style="width: 8%;">Unit</th>
-                        <th style="width: 12%;">Rate</th>
-                        <th style="width: 15%;">Net Taxable Value of Goods</th>
+                        <th style="width: 5%;" class="text-center">#</th>
+                        <th style="width: 40%;">Item Description</th>
+                        <th class="text-center">HSN/SAC</th>
+                        <th class="text-right">Qty</th>
+                        <th class="text-center">Unit</th>
+                        <th class="text-right">Rate</th>
+                        <th class="text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{#each items}}
                     <tr>
-                        <td style="text-align: center;">{{addOne @index}}</td>
+                        <td class="text-center">{{addOne @index}}</td>
                         <td>{{{name}}}</td>
-                        <td style="text-align: center;">{{{hsnCode}}}</td>
-                        <td style="text-align: right;">{{{quantity}}}</td>
-                        <td style="text-align: center;">{{{unit}}}</td>
-                        <td style="text-align: right;">{{{../currency}}}{{{price}}}</td>
-                        <td style="text-align: right;">{{{../currency}}}{{{itemTotal}}}</td>
+                        <td class="text-center">{{{hsnCode}}}</td>
+                        <td class="text-right">{{{quantity}}}</td>
+                        <td class="text-center">{{{unit}}}</td>
+                        <td class="text-right">{{{../currency}}}{{{price}}}</td>
+                        <td class="text-right">{{{../currency}}}{{{itemTotal}}}</td>
                     </tr>
                     {{/each}}
-                    <tr>
-                      <td colspan="7" class="om-logo">ॐ</td>
-                    </tr>
+                    {{#if (shouldAddEmptyRows items)}}
+                        {{#each (getEmptyRows items)}}
+                        <tr>
+                            <td>&nbsp;</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        {{/each}}
+                    {{/if}}
                 </tbody>
             </table>
 
-            <div class="footer-section">
-                <div class="footer-left">
-                    <p><strong>Electronics Reference No.</strong></p>
+            <div class="summary-section">
+                <div class="summary-left">
                     <div class="rupees-in-words">
-                        <p><strong>Rupees in Words</strong>:</p> 
-                        <p>{{{totalInWords}}}</p>
+                        <strong>Amount in Words:</strong><br/>
+                        {{{totalInWords}}}
                     </div>
-                    <div class="bank-details">
-                        <p>Bank Details : IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
-                        <p>CA A/c No.: 10067934008</p>
-                        <p>IFSC Code: IDFB0021293</p>
+                     <div class="bank-details">
+                        <h4>Bank Details</h4>
+                        <p><strong>Bank:</strong> IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
+                        <p><strong>A/c No.:</strong> 10067934008 | <strong>IFSC Code:</strong> IDFB0021293</p>
                     </div>
                 </div>
-                <div class="footer-right">
+                <div class="summary-right">
                     <table class="totals-table">
-                        <tr>
-                            <td><span>Total Value of Supply of Goods Before GST</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
+                         <tr>
+                            <td><span>Subtotal</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
                         </tr>
                         {{#if sgst}}
                         <tr>
@@ -358,33 +352,43 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                         </tr>
                         {{/if}}
                         <tr>
-                          <td><span>Round Off / Other Charge, If Any</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
+                          <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
                         </tr>
                         <tr class="grand-total">
-                            <td><span>Grand Total of Invoice</span> <span>{{{currency}}}{{{total}}}</span></td>
+                            <td><span>Grand Total</span> <span>{{{currency}}}{{{total}}}</span></td>
                         </tr>
                     </table>
                 </div>
             </div>
-
-            <div class="terms">
-                <p>E. & O. E.</p>
-                <p>Goods once sold will not be taken back or exchanged</p>
-                <p>Subject to Agra Jurisdiction only</p>
+             <div class="terms">
+                <h4>Terms & Conditions</h4>
+                <p>Goods once sold will not be taken back or exchanged. Subject to Agra Jurisdiction only. E. & O. E.</p>
             </div>
-            
-            <div class="signature">
-                <p>For <strong>Adhunik Marbles</strong></p>
-                <br/><br/>
-                <p>Auth Signatory</p>
+
+
+            <div class="footer">
+                For <strong>{{{businessName}}}</strong>
+                <br/><br/><br/>
+                <p style="border-top: 1px solid #000; padding-top: 5px; display: inline-block;">Authorised Signatory</p>
             </div>
 
         </div>
     </body>
     </html>
     `;
-
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
+
+    const MIN_ROWS = 8;
+
+    Handlebars.registerHelper('shouldAddEmptyRows', function(items) {
+        return items.length < MIN_ROWS;
+    });
+
+    Handlebars.registerHelper('getEmptyRows', function(items) {
+        const emptyRowsCount = MIN_ROWS - items.length;
+        return Array(emptyRowsCount).fill({});
+    });
+
 
     const subtotal = input.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
     const cgstAmount = subtotal * ((input.cgstRate || 0) / 100);
@@ -438,7 +442,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         roundOff: roundOffAmount.toFixed(2),
         totalInWords: toWords(roundedTotal),
         customerStateCode: getStateCode(input.customerState),
-        deliveryStateCode: getStateCode(input.deliveryState),
+        deliveryStateCode: getStateCode(input.deliveryState || input.customerState),
     };
 
     try {
@@ -454,7 +458,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
 
     
