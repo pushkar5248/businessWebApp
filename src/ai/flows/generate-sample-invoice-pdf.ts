@@ -264,7 +264,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                     <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
                     <div class="field-row">
                         <p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</p>
-                        <p><strong>Code:</strong> {{#if deliveryStateCode}}{{{deliveryStateCode}}}{{else}}{{{customerStateCode}}}{{/if}}</p>
+                        <p><strong>Code:</strong> {{{deliveryStateCode}}}</p>
                     </div>
                     <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{{customerGstin}}}{{/if}}</p>
                     <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{/if}}</p>
@@ -418,7 +418,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
         roundOff: roundOffAmount.toFixed(2),
         totalInWords: toWords(roundedTotal),
         customerStateCode: getStateCode(input.customerState),
-        deliveryStateCode: getStateCode(input.deliveryState),
+        deliveryStateCode: getStateCode(input.deliveryState || input.customerState),
     };
 
     try {
