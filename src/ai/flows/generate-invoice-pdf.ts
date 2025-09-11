@@ -98,6 +98,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin-bottom: 25px;
                 padding-bottom: 15px;
                 border-bottom: 2px solid #000;
+                background-color: #f0f8ff;
+                padding: 20px;
+                border-radius: 8px 8px 0 0;
             }
             .header .company-details h2 {
                 font-size: 28px;
@@ -138,6 +141,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 padding: 15px;
                 border: 2px solid #000;
                 border-radius: 8px;
+                background-color: #F9FAFB;
             }
             .info-block h3 {
                 margin: 0 0 10px 0;
@@ -167,11 +171,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 1px solid #000;
             }
             .items-table th {
-                background-color: #f0f0f0;
+                background-color: #0052A3;
                 font-weight: 600;
                 text-transform: uppercase;
-                font-size: 10px;
-                color: #000;
+                font-size: 11px;
+                color: #fff;
             }
             .items-table .text-right { text-align: right; }
             .items-table .text-center { text-align: center; }
@@ -493,5 +497,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
