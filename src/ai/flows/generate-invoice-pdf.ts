@@ -324,7 +324,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 <div class="footer-left">
                     <p><strong>Electronics Reference No.</strong>.....................................</p>
                     <p><strong>Rupees in Words</strong>: {{{totalInWords}}}</p>
-                    <p>.............................................................................................</p>
                     <div class="bank-details">
                         <p>Bank Details : IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
                         <p>CA A/c No.: 10067934008</p>
@@ -412,7 +411,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
         const day = String(adjustedDate.getDate()).padStart(2, '0');
         const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
-        const year = String(adjustedDate.getFullYear()).slice(-2);
+        const year = String(adjustedDate.getFullYear());
         return `${day}-${month}-${year}`;
     }
 

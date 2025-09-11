@@ -327,10 +327,10 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrencyValue(
+                      {currency}{formatCurrencyValue(
                         (watchedFormValues.items?.[index]?.quantity || 0) *
                         (watchedFormValues.items?.[index]?.price || 0)
-                      )}
+                      ).replace(currency, '')}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -382,15 +382,15 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
             <div className="w-full max-w-sm space-y-2">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>{formatCurrencyValue(subtotal)}</span>
+                    <span>{currency}{formatCurrencyValue(subtotal).replace(currency, '')}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Taxes</span>
-                    <span>{formatCurrencyValue(totalTaxes)}</span>
+                    <span>{currency}{formatCurrencyValue(totalTaxes).replace(currency, '')}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>{formatCurrencyValue(total)}</span>
+                    <span>{currency}{formatCurrencyValue(total).replace(currency, '')}</span>
                 </div>
             </div>
           </CardFooter>

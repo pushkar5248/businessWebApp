@@ -21,7 +21,6 @@ const currencySymbols: { [key: string]: string } = {
   CHF: 'Fr',
   CNY: '¥',
   INR: '₹',
-  RUP: '₹',
 };
 
 
@@ -29,33 +28,33 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const { settings, loading: settingsLoading } = useSettings();
-  const [currency, setCurrencyState] = useState('INR');
+  const [currency, setCurrencyState] = useState('₹');
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     if (!settingsLoading && settings) {
-      setCurrencyState(settings.billing.currency);
+      setCurrencyState(getSymbol(settings.billing.currency));
       setIsLoaded(true);
     }
   }, [settings, settingsLoading]);
 
   const setCurrency = (newCurrency: string) => {
-    setCurrencyState(newCurrency);
+    setCurrencyState(getSymbol(newCurrency));
     // The settings context will handle persistence
   };
 
-  const getSymbol = (currencyCode: string) => currencySymbols[currencyCode] || '$';
+  const getSymbol = (currencyCode: string) => currencySymbols[currencyCode] || '₹';
 
   const formatCurrency = (value: number) => {
     if (typeof value !== 'number' || isNaN(value)) {
-      return `${getSymbol(currency)}0.00`;
+      return `${currency}0.00`;
     }
-    return `${getSymbol(currency)}${value.toFixed(2)}`;
+    return `${currency}${value.toFixed(2)}`;
   };
 
   const formatCurrencyValue = (value: number) => {
-     if (!isLoaded || typeof value !== 'number' || isNaN(value)) return `${getSymbol(currency)}0.00`;
-    return `${getSymbol(currency)}${value.toFixed(2)}`;
+     if (!isLoaded || typeof value !== 'number' || isNaN(value)) return `${currency}0.00`;
+    return `${currency}${value.toFixed(2)}`;
   };
 
   const value = { currency, setCurrency, formatCurrency, formatCurrencyValue };
