@@ -215,8 +215,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #0052A3;
                 color: #fff;
                 border-radius: 6px;
-                display: flex;
-                align-items: center;
+                padding-top: 12px;
+                padding-bottom: 12px;
             }
             .rupees-in-words {
                 font-size: 12px;
