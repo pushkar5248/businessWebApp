@@ -96,7 +96,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
                 padding-bottom: 15px;
                 border-bottom: 2px solid #000;
                 background-color: #f0f8ff;
@@ -137,7 +137,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 20px;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
             }
             .details-section .info-block {
                 padding: 15px;
@@ -164,7 +164,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
                 border: 2px solid #000;
             }
             .items-table th, .items-table td {
@@ -186,7 +186,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-top: 25px;
+                margin-top: 20px;
                 padding-top: 15px;
                 border-top: 2px solid #000;
             }
@@ -257,12 +257,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 2px solid #000;
              }
             .footer {
-                margin-top: 40px;
-                padding-top: 20px;
+                margin-top: 20px;
+                padding-top: 10px;
                 font-size: 11px;
                 color: #6B7280;
                 position: relative;
-                height: 100px;
+                height: 80px;
             }
             .footer-left {
                 position: absolute;
@@ -506,5 +506,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
