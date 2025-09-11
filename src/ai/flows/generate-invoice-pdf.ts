@@ -232,12 +232,23 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 1.5px solid #d1d5db;
              }
             .footer {
-                text-align: right;
-                margin-top: 30px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                text-align: center;
+                margin-top: 40px;
                 padding-top: 20px;
                 border-top: 2px solid #e5e7eb;
                 font-size: 11px;
                 color: #6B7280;
+            }
+            .footer div {
+                width: 45%;
+            }
+            .footer .signature-line {
+                border-top: 1px solid #000;
+                padding-top: 5px;
+                margin-bottom: 50px;
             }
         </style>
     </head>
@@ -376,9 +387,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
 
             <div class="footer">
-                For <strong>{{{businessName}}}</strong>
-                <br/><br/><br/>
-                <p style="border-top: 1px solid #000; padding-top: 5px; display: inline-block;">Authorised Signatory</p>
+                <div style="text-align: left;">For <strong>Adhunik Marbles</strong></div>
+                <div>
+                    <div class="signature-line"></div>
+                    Authorised Signature
+                </div>
             </div>
 
         </div>
