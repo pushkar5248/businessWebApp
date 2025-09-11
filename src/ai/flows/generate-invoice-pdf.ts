@@ -128,7 +128,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
              .header-right .meta-grid {
                 display: grid;
                 grid-template-columns: auto auto;
-                gap: 5px 15px;
+                gap: 2px 15px;
                 font-size: 12px;
              }
              .meta-grid .label { font-weight: bold; color: #000; text-align: left; }
