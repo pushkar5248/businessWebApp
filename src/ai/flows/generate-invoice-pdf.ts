@@ -211,8 +211,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .totals-table .grand-total td {
                 font-weight: bold;
                 font-size: 14px;
-                background-color: #e0e0e0;
-                color: #000;
+                background-color: #0052A3;
+                color: #fff;
                 border-radius: 6px;
             }
             .rupees-in-words {
