@@ -102,7 +102,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .header .company-details h2 {
                 font-size: 28px;
                 font-weight: bold;
-                color: #000;
+                color: #0052A3;
                 margin: 0 0 10px 0;
             }
             .header .company-details p {
@@ -145,7 +145,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                color: #000;
+                color: #0052A3;
             }
             .info-block .field-grid {
                  display: grid;
