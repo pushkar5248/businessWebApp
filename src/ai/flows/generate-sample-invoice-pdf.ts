@@ -263,10 +263,10 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                     <p><strong>Name:</strong> {{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</p>
                     <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
                     <div class="field-row">
-                        <p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{/if}}</p>
-                        <p><strong>Code:</strong> {{{deliveryStateCode}}}</p>
+                        <p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</p>
+                        <p><strong>Code:</strong> {{#if deliveryStateCode}}{{{deliveryStateCode}}}{{else}}{{{customerStateCode}}}{{/if}}</p>
                     </div>
-                    <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{/if}}</p>
+                    <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{{customerGstin}}}{{/if}}</p>
                 </div>
             </div>
             
@@ -362,8 +362,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
         </div>
     </body>
     </html>
-    `;
-
+    `]];
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
 
     const subtotal = input.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
@@ -434,5 +433,3 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
