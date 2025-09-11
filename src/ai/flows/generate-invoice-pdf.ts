@@ -231,6 +231,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .signature p {
                 margin:0;
             }
+            .rupees-in-words {
+                word-wrap: break-word;
+            }
         </style>
     </head>
     <body>
@@ -257,7 +260,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
                 <div style="width: 48%;">Invoice No.: <strong>{{{invoiceNumber}}}</strong></div>
-                <div style="width: 48%;">Invoice Date: <strong>{{{invoiceDate}}}</strong></div>
+                <div style="width: 48%; text-align: right;">Invoice Date: <strong>{{{invoiceDate}}}</strong></div>
             </div>
             
             <div class="transporter-details">
@@ -322,8 +325,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
             <div class="footer-section">
                 <div class="footer-left">
-                    <p><strong>Electronics Reference No.</strong>.....................................</p>
-                    <p><strong>Rupees in Words</strong>: {{{totalInWords}}}</p>
+                    <p><strong>Electronics Reference No.</strong></p>
+                    <p class="rupees-in-words"><strong>Rupees in Words</strong>: {{{totalInWords}}}</p>
                     <div class="bank-details">
                         <p>Bank Details : IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
                         <p>CA A/c No.: 10067934008</p>
