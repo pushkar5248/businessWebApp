@@ -208,6 +208,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 justify-content: space-between;
                 border-bottom: 1px solid #e5e7eb;
             }
+            .totals-table td span:first-child {
+                font-weight: bold;
+            }
             .totals-table tr:last-child td { border-bottom: none; }
             .totals-table .grand-total td {
                 font-weight: bold;
@@ -501,5 +504,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
