@@ -266,7 +266,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin-top: 30px;
                 padding-top: 10px;
                 font-size: 11px;
-                color: #6B7280;
+                color: #374151;
                 font-weight: bold;
             }
             .signature-line {
