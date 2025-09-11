@@ -89,7 +89,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 800px;
                 margin: 20px auto;
                 padding: 30px;
-                border: 1px solid #e5e7eb;
+                border: 2px solid #d1d5db;
             }
             .header {
                 display: flex;
@@ -137,6 +137,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .details-section .info-block {
                 padding: 15px;
                 background-color: #F9FAFB;
+                border: 1px solid #e5e7eb;
                 border-radius: 8px;
             }
             .info-block h3 {
@@ -159,11 +160,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 25px;
+                border: 1px solid #e5e7eb;
             }
             .items-table th, .items-table td {
                 padding: 10px;
                 text-align: left;
-                border-bottom: 1px solid #e5e7eb;
+                border: 1px solid #e5e7eb;
             }
             .items-table th {
                 background-color: #EFF6FF;
@@ -210,12 +212,14 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 padding: 10px;
                 border-radius: 6px;
                 background-color: #F9FAFB;
+                border: 1px solid #e5e7eb;
                 min-height: 40px;
             }
             .bank-details, .terms {
                 padding: 10px;
                 border-radius: 6px;
                 background-color: #F9FAFB;
+                border: 1px solid #e5e7eb;
                 margin-top: 10px;
             }
             .bank-details h4, .terms h4 {
