@@ -4,7 +4,7 @@
 /**
  * @fileOverview Invoice HTML generation flow using Genkit.
  *
- * - generateInvoiceHtml - A function that generates an HTML string of an invoice based on the provided data and template.
+ * - generateInvoicePdf - A function that generates an HTML string of an invoice based on the provided data and template.
  * - GenerateInvoicePdfInput - The input type for the generateInvoiceHtml function, defining the invoice data.
  * - GenerateInvoiceHtmlOutput - The return type for the generateInvoiceHtml function, providing the HTML as a string.
  */
@@ -251,8 +251,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             </div>
 
             <div class="meta-info">
-                <div>State: Uttar Pradesh Code 09 :</div>
                 <div>GSTIN No.: {{{businessGstin}}}</div>
+                <div>Phone: {{{businessPhone}}}</div>
             </div>
 
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
@@ -323,7 +323,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             <div class="footer-section">
                 <div class="footer-left">
                     <p><strong>Electronics Reference No.</strong>.....................................</p>
-                    <p><strong>Rupees in Words</strong>........................................................</p>
+                    <p><strong>Rupees in Words</strong>: {{{totalInWords}}}</p>
                     <p>.............................................................................................</p>
                     <div class="bank-details">
                         <p>Bank Details : IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
@@ -365,7 +365,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 <p>E. & O. E.</p>
                 <p>Goods once sold will not be taken back or exchanged</p>
                 <p>Subject to Agra Jurisdiction only</p>
-                <p>Note: Total Turnover Less than 1.50 Crore does not required HSN Code</p>
             </div>
             
             <div class="signature">
@@ -389,8 +388,38 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     const roundedTotal = Math.round(totalAmount);
     const roundOffAmount = roundedTotal - totalAmount;
 
+    function toWords(num: number): string {
+        const a = ['','one ','two ','three ','four ', 'five ','six ','seven ','eight ','nine ','ten ','eleven ','twelve ','thirteen ','fourteen ','fifteen ','sixteen ','seventeen ','eighteen ','nineteen '];
+        const b = ['', '', 'twenty','thirty','forty','fifty', 'sixty','seventy','eighty','ninety'];
+        
+        if ((num = num.toString()).length > 9) return 'overflow';
+        const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return '';
+        let str = '';
+        str += (Number(n[1]) != 0) ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'crore ' : '';
+        str += (Number(n[2]) != 0) ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'lakh ' : '';
+        str += (Number(n[3]) != 0) ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'thousand ' : '';
+        str += (Number(n[4]) != 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'hundred ' : '';
+        str += (Number(n[5]) != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) + 'only ' : '';
+        return str.trim().replace(/\s+/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
+    function formatDate(dateStr: string) {
+        const date = new Date(dateStr);
+        // Adjust for timezone offset to prevent off-by-one day errors
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+
+        const day = String(adjustedDate.getDate()).padStart(2, '0');
+        const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+        const year = String(adjustedDate.getFullYear()).slice(-2);
+        return `${day}-${month}-${year}`;
+    }
+
     const templateData = {
         ...input,
+        invoiceDate: formatDate(input.invoiceDate),
+        transportDate: input.transportDate ? formatDate(input.transportDate) : null,
         subtotal: subtotal.toFixed(2),
         cgst: cgstAmount > 0 ? cgstAmount.toFixed(2) : null,
         sgst: sgstAmount > 0 ? sgstAmount.toFixed(2) : null,
@@ -401,6 +430,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         })),
         total: input.total.toFixed(2),
         roundOff: roundOffAmount.toFixed(2),
+        totalInWords: toWords(roundedTotal)
     };
 
     try {
@@ -416,5 +446,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
 
     
