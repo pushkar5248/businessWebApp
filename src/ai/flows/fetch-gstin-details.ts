@@ -17,7 +17,7 @@ import { z } from 'zod';
 // Hardcoded local data for guaranteed lookup.
 const localGstinData: Record<string, GstinOutput> = {
   '09AGZPA5852F1Z0': {
-    businessName: 'Adhunik Marbles',
+    businessName: 'M/S ADHUNIK MARBLES',
     businessAddress: 'KUNDAN BHAWAN, ROHTA, GWALIOR ROAD, AGRA, Agra, Uttar Pradesh, 282001',
   },
   '09BEZPA5480A1ZD': {
