@@ -255,6 +255,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
              .terms {
                 border: 2px solid #000;
+                margin-top: 10px;
              }
              .terms p {
                 margin: 0;
@@ -262,7 +263,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .signature-section {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 50px;
+                margin-top: 30px;
                 padding-top: 10px;
                 font-size: 11px;
                 color: #6B7280;
@@ -401,9 +402,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 </div>
             </div>
              <div class="terms">
-                <h4>Terms & Conditions</h4>
+                <h4>Terms &amp; Conditions</h4>
                 <p>1. Goods once sold will not be taken back or exchanged.</p>
-                <p>2. Subject to Agra Jurisdiction only. E. & O. E.</p>
+                <p>2. Subject to Agra Jurisdiction only. E. &amp; O. E.</p>
             </div>
 
 
