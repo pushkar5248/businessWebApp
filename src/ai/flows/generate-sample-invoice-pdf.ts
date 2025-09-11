@@ -71,6 +71,8 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
     outputSchema: GenerateSampleInvoiceHtmlOutputSchema,
   },
   async (input) => {
+    const logoDataUri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaUAAAB5CAYAAADy/rZmAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAnQSURBVHhe7d3/SxtHFgbw/zO7bJpkK61aC0mnYhGChECQBhFv6F2IDwRBLhJcBC9E504gIghBCNz13hURLyIi8S6iCKIg6sJ7QRAXQb2C6C26S7f2NpvN7u7Mzu7O7Mzs7M7s9/vu3G8e573ffI/v+zzPzjszk0wmk2q2i5hMJpNK1pWYSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCSzrzKVSCi";
+
     const handlebarsTemplate = `
     <!DOCTYPE html>
     <html>
@@ -97,13 +99,11 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 align-items: flex-start;
                 margin-bottom: 25px;
                 padding-bottom: 15px;
-                border-bottom: 2px solid #1D4ED8;
+                border-bottom: 2px solid #0052A3;
             }
-            .header .company-details h1 {
-                margin: 0 0 5px 0;
-                font-size: 28px;
-                font-weight: bold;
-                color: #1D4ED8;
+            .header .company-details .logo {
+                max-width: 250px;
+                margin-bottom: 10px;
             }
             .header .company-details p {
                 margin: 0;
@@ -117,7 +117,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 22px;
                 font-weight: 600;
                 margin: 0 0 10px 0;
-                color: #1D4ED8;
+                color: #0052A3;
             }
              .header-right .meta-grid {
                 display: grid;
@@ -145,7 +145,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                color: #1D4ED8;
+                color: #0052A3;
             }
             .info-block .field-grid {
                  display: grid;
@@ -170,7 +170,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: 600;
                 text-transform: uppercase;
                 font-size: 10px;
-                color: #1D4ED8;
+                color: #0052A3;
             }
             .items-table .text-right { text-align: right; }
             .items-table .text-center { text-align: center; }
@@ -200,7 +200,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
                 font-size: 14px;
                 background-color: #DBEAFE;
-                color: #1D4ED8;
+                color: #0052A3;
                 border-radius: 6px;
             }
             .rupees-in-words {
@@ -222,7 +222,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                 margin: 0 0 5px 0;
                 font-weight: bold;
                 font-size: 11px;
-                color: #1D4ED8;
+                color: #0052A3;
             }
             .footer {
                 text-align: right;
@@ -238,7 +238,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
         <div class="invoice-container">
             <div class="header">
                 <div class="company-details">
-                    <h1>{{{businessName}}}</h1>
+                    <img src="{{{logoDataUri}}}" alt="Company Logo" class="logo"/>
                     <p>{{{businessAddress}}}</p>
                     <p><strong>GSTIN:</strong> {{{businessGstin}}}</p>
                     <p><strong>Email:</strong> {{{businessEmail}}} | <strong>Phone:</strong> {{{businessPhone}}}</p>
@@ -429,6 +429,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
 
     const templateData = {
         ...input,
+        logoDataUri,
         invoiceDate: formatDate(input.invoiceDate),
         transportDate: input.transportDate ? formatDate(input.transportDate) : null,
         subtotal: subtotal.toFixed(2),
@@ -459,3 +460,5 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
