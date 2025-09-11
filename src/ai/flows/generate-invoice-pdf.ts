@@ -87,7 +87,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
             .invoice-container {
                 width: 800px;
-                margin: 20px auto;
+                margin: 0 auto 20px;
                 padding: 30px;
                 border: 3px solid #000;
             }
@@ -493,3 +493,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
