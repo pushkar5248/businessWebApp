@@ -89,7 +89,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 800px;
                 margin: 20px auto;
                 padding: 30px;
-                border: 2px solid #555;
+                border: 3px solid #000;
             }
             .header {
                 display: flex;
@@ -97,7 +97,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 align-items: flex-start;
                 margin-bottom: 25px;
                 padding-bottom: 15px;
-                border-bottom: 2px solid #0052A3;
+                border-bottom: 2px solid #000;
             }
             .header .company-details h2 {
                 font-size: 28px;
@@ -137,7 +137,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .details-section .info-block {
                 padding: 15px;
                 background-color: #F9FAFB;
-                border: 1.5px solid #d1d5db;
+                border: 2px solid #000;
                 border-radius: 8px;
             }
             .info-block h3 {
@@ -160,12 +160,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 25px;
-                border: 1.5px solid #d1d5db;
+                border: 2px solid #000;
             }
             .items-table th, .items-table td {
                 padding: 10px;
                 text-align: left;
-                border: 1.5px solid #d1d5db;
+                border: 1px solid #000;
             }
             .items-table th {
                 background-color: #EFF6FF;
@@ -183,7 +183,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 align-items: flex-start;
                 margin-top: 25px;
                 padding-top: 15px;
-                border-top: 2px solid #e5e7eb;
+                border-top: 2px solid #000;
             }
             .summary-left { width: 60%; }
             .summary-right { width: 38%; }
@@ -206,7 +206,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border-radius: 6px;
             }
             .rupees-in-words {
-                font-weight: bold;
                 font-size: 12px;
                 margin-bottom: 15px;
                 padding: 10px;
@@ -215,11 +214,16 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 1px solid #e5e7eb;
                 min-height: 40px;
             }
+            .rupees-in-words strong {
+                color: #0052A3;
+            }
+            .rupees-in-words span {
+                font-weight: normal;
+            }
             .bank-details, .terms {
                 padding: 10px;
                 border-radius: 6px;
                 background-color: #F9FAFB;
-                border: 1px solid #e5e7eb;
                 margin-top: 10px;
             }
             .bank-details h4, .terms h4 {
@@ -229,7 +233,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #0052A3;
             }
              .terms {
-                border: 1.5px solid #d1d5db;
+                border: 2px solid #000;
              }
             .footer {
                 display: flex;
@@ -238,7 +242,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 text-align: center;
                 margin-top: 40px;
                 padding-top: 20px;
-                border-top: 2px solid #e5e7eb;
+                border-top: 2px solid #000;
                 font-size: 11px;
                 color: #6B7280;
             }
@@ -343,7 +347,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 <div class="summary-left">
                     <div class="rupees-in-words">
                         <strong>Amount in Words:</strong><br/>
-                        {{{totalInWords}}}
+                        <span>{{{totalInWords}}}</span>
                     </div>
                      <div class="bank-details">
                         <h4>Bank Details</h4>
