@@ -186,7 +186,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-top: 20px;
+                margin-top: 10px;
                 padding-top: 15px;
                 border-top: 2px solid #000;
             }
@@ -257,7 +257,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border: 2px solid #000;
              }
             .footer {
-                margin-top: 20px;
+                margin-top: 10px;
                 padding-top: 10px;
                 font-size: 11px;
                 color: #6B7280;
@@ -425,7 +425,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     `;
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
 
-    const MIN_ROWS = 8;
+    const MIN_ROWS = 6;
 
     Handlebars.registerHelper('shouldAddEmptyRows', function(items) {
         return items.length < MIN_ROWS;
