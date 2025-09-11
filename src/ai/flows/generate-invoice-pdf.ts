@@ -89,7 +89,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 800px;
                 margin: 20px auto;
                 padding: 30px;
-                border: 2px solid #d1d5db;
+                border: 2px solid #555;
             }
             .header {
                 display: flex;
@@ -137,7 +137,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .details-section .info-block {
                 padding: 15px;
                 background-color: #F9FAFB;
-                border: 1px solid #e5e7eb;
+                border: 1.5px solid #d1d5db;
                 border-radius: 8px;
             }
             .info-block h3 {
@@ -160,12 +160,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 25px;
-                border: 1px solid #e5e7eb;
+                border: 1.5px solid #d1d5db;
             }
             .items-table th, .items-table td {
                 padding: 10px;
                 text-align: left;
-                border: 1px solid #e5e7eb;
+                border: 1.5px solid #d1d5db;
             }
             .items-table th {
                 background-color: #EFF6FF;
@@ -228,6 +228,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 11px;
                 color: #0052A3;
             }
+             .terms {
+                border: 1.5px solid #d1d5db;
+             }
             .footer {
                 text-align: right;
                 margin-top: 30px;
@@ -464,3 +467,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
