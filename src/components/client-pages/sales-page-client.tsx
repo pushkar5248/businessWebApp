@@ -399,8 +399,7 @@ export default function SalesPageClient() {
                 {visibleColumns.map((key) => (
                     <TableHead 
                         key={key}
-                        className="cursor-pointer h-12 px-4"
-                        onClick={() => requestSort(key as keyof ColumnKeys)}
+                        className="h-12 px-4"
                       >
                         <div
                           className="flex items-center justify-between"
@@ -411,6 +410,7 @@ export default function SalesPageClient() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 ml-2"
+                                onClick={() => requestSort(key as keyof ColumnKeys)}
                             >
                                 <ArrowUpDown className="h-4 w-4" />
                             </Button>
@@ -434,7 +434,12 @@ export default function SalesPageClient() {
                   </TableCell>
                 </TableRow>
               ) : (sortedSales.map((sale) => (
-                <TableRow key={sale.id} data-state={selectedRows.includes(sale.id) && "selected"}>
+                <TableRow 
+                  key={sale.id} 
+                  data-state={selectedRows.includes(sale.id) && "selected"}
+                  onClick={() => !isEditMode && handleRowClick(sale.id)}
+                  className={cn(!isEditMode && "cursor-pointer")}
+                >
                    <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
                           checked={selectedRows.includes(sale.id)}
@@ -444,15 +449,15 @@ export default function SalesPageClient() {
                         />
                     </TableCell>
                    {visibleColumns.map(key => (
-                      <TableCell key={key} onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(sale.id); }}>
+                      <TableCell key={key} onClick={(e) => { if (isEditMode) e.stopPropagation(); }}>
                            {key === 'status' ? (
                                <div onClick={(e) => e.stopPropagation()}>
                                 <Select
                                     value={sale.status}
                                     onValueChange={(newStatus) => handleSaleUpdate(sale.id, 'status', newStatus as SaleStatus)}
-                                    disabled={!user}
+                                    disabled={!isEditMode || !user}
                                 >
-                                    <SelectTrigger className="w-[120px] focus:ring-0 shadow-none bg-transparent border-0">
+                                    <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none bg-transparent", !isEditMode && "border-0")}>
                                         <SelectValue>
                                             <Badge variant={getBadgeVariant(sale.status)}>{sale.status}</Badge>
                                         </SelectValue>
@@ -472,26 +477,27 @@ export default function SalesPageClient() {
                                 value={sale.date}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                readOnly={!isEditMode}
                              />
                           ) : key === 'id' ? (
                              <Input 
                                 value={sale.id}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'id', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100 font-medium")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100 font-medium")}
+                                readOnly={!isEditMode}
                              />
                           ) : key === 'customer' ? (
                             <Input 
                                 value={sale.customer}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'customer', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                readOnly={!isEditMode}
                              />
                           ) : (
-                             <span className={cn(!isEditMode && "cursor-pointer hover:underline")} onClick={() => !isEditMode && handleRowClick(sale.id)}>
-                                {sale[key as keyof Sale] as React.ReactNode}
-                            </span>
+                             sale[key as keyof Sale] as React.ReactNode
                           )}
                       </TableCell>
                   ))}

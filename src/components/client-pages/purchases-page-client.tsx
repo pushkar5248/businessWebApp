@@ -66,7 +66,8 @@ const getBadgeVariant = (status: string) => {
   }
 };
 
-type ColumnKeys = Omit<Purchase, 'userId' | 'items' | 'vendorAddress' | 'shippingAddress' | 'deletedAt' | 'igstRate'>;
+type ColumnKeys = Omit<Purchase, 'userId' | 'items' | 'vendorAddress' | 'shippingAddress' | 'deletedAt' | 'igstRate' | 'cgstRate' | 'sgstRate' | 'insuranceAndOthersRate' | 'eWayBillNumber'>;
+
 
 const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
     id: "PO #",
@@ -394,8 +395,7 @@ export default function PurchasesPageClient() {
                 {visibleColumns.map((key) => (
                   <TableHead 
                     key={key}
-                    className="cursor-pointer h-12 px-4"
-                    onClick={() => requestSort(key as keyof ColumnKeys)}
+                    className="h-12 px-4"
                   >
                     <div
                       className="flex items-center justify-between"
@@ -406,6 +406,7 @@ export default function PurchasesPageClient() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 ml-2"
+                          onClick={() => requestSort(key as keyof ColumnKeys)}
                       >
                           <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -429,7 +430,12 @@ export default function PurchasesPageClient() {
                     </TableCell>
                 </TableRow>
               ) : (sortedPurchases.map((purchase) => (
-                <TableRow key={purchase.id} data-state={selectedRows.includes(purchase.id) && "selected"}>
+                <TableRow 
+                  key={purchase.id} 
+                  data-state={selectedRows.includes(purchase.id) && "selected"}
+                  onClick={() => !isEditMode && handleRowClick(purchase.id)}
+                  className={cn(!isEditMode && "cursor-pointer")}
+                >
                    <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
                           checked={selectedRows.includes(purchase.id)}
@@ -439,15 +445,15 @@ export default function PurchasesPageClient() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} onClick={(e) => { e.stopPropagation(); if (!isEditMode) handleRowClick(purchase.id); }}>
+                      <TableCell key={key} onClick={(e) => { if (isEditMode) e.stopPropagation(); }}>
                            {key === 'status' ? (
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <Select
                                         value={purchase.status}
                                         onValueChange={(newStatus) => handlePurchaseUpdate(purchase.id, 'status', newStatus as PurchaseStatus)}
-                                        disabled={!user}
+                                        disabled={!isEditMode || !user}
                                     >
-                                        <SelectTrigger className="w-[120px] focus:ring-0 shadow-none bg-transparent border-0">
+                                        <SelectTrigger className={cn("w-[120px] focus:ring-0 shadow-none bg-transparent", !isEditMode && "border-0")}>
                                             <SelectValue>
                                                 <Badge variant={getBadgeVariant(purchase.status)}>{purchase.status}</Badge>
                                             </SelectValue>
@@ -466,26 +472,27 @@ export default function PurchasesPageClient() {
                                 value={purchase.date}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                readOnly={!isEditMode}
                              />
                            ) : key === 'id' ? (
                              <Input 
                                 value={purchase.id}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'id', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100 font-medium")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100 font-medium")}
+                                readOnly={!isEditMode}
                              />
                           ) : key === 'vendor' ? (
                              <Input 
                                 value={purchase.vendor}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'vendor', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                readOnly={!isEditMode}
                              />
                           ) : (
-                             <span className={cn(!isEditMode && "cursor-pointer hover:underline")} onClick={() => !isEditMode && handleRowClick(purchase.id)}>
-                                {purchase[key as keyof Purchase] as React.ReactNode}
-                             </span>
+                             purchase[key as keyof Purchase] as React.ReactNode
                           )}
                       </TableCell>
                   ))}
