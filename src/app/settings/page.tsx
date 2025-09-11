@@ -392,6 +392,7 @@ export default function SettingsPage() {
         }
         setIsResetting(true);
         try {
+            // Delete all transactional data
             const collectionsToDelete = ["inventory", "sales", "purchases"];
             const batch = writeBatch(db);
 
@@ -403,15 +404,20 @@ export default function SettingsPage() {
                 });
             }
             await batch.commit();
+
+            // Reset user's profile photo in Firebase Auth
+            await updateProfile(user, { photoURL: "" });
+
+            // Reset user settings document in Firestore
             await resetSettings();
             
             toast({ title: "Data Reset", description: "All your data has been permanently deleted." });
             // Full page reload to ensure all states are reset
             window.location.href = '/';
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error resetting data:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to reset data." });
+            toast({ variant: "destructive", title: "Error", description: error.message || "Failed to reset data." });
         } finally {
             setIsResetting(false);
         }
@@ -484,5 +490,7 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
+    
 
     

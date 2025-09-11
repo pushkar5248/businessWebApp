@@ -153,7 +153,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
              profile: {
                 displayName: user.displayName || user.email || 'User',
                 email: user.email || '',
-                photoURL: user.photoURL || '',
+                photoURL: '', // Reset photoURL to empty string
             },
         }
         try {
@@ -183,3 +183,5 @@ export function useSettings() {
     }
     return context;
 }
+
+    
