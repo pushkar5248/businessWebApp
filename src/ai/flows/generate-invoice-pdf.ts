@@ -101,7 +101,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 padding-bottom: 15px;
                 border-bottom: 2px solid #000;
                 background-color: #f0f8ff;
-                padding: 20px;
+                padding: 15px;
                 border-radius: 8px 8px 0 0;
             }
             .header .company-details h2 {
@@ -111,7 +111,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin: 0 0 10px 0;
             }
             .header .company-details p {
-                margin: 0 0 5px 0;
+                margin: 0;
                 font-size: 12px;
                 color: #000;
             }
