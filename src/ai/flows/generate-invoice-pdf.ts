@@ -13,6 +13,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import Handlebars from 'handlebars';
 import { getStateCode } from '@/lib/state-codes';
+import { logoDataUri } from '@/lib/logo-data';
 
 const GenerateInvoicePdfInputSchema = z.object({
   businessName: z.string().describe('The name of the business.'),
@@ -214,6 +215,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #0052A3;
                 color: #fff;
                 border-radius: 6px;
+                display: flex;
                 align-items: center;
             }
             .rupees-in-words {
@@ -468,6 +470,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
     const templateData = {
         ...input,
+        logoDataUri: logoDataUri,
         invoiceDate: formatDate(input.invoiceDate),
         transportDate: input.transportDate ? formatDate(input.transportDate) : null,
         subtotal: subtotal.toFixed(2),
@@ -498,3 +501,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
