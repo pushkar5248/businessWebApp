@@ -156,6 +156,7 @@ export default function InvoiceDetailsPage() {
             transporterVehicleNumber: invoice.transporterVehicleNumber,
             placeOfSupply: invoice.placeOfSupply,
             transportDate: invoice.transportDate,
+            eWayBillNumber: invoice.eWayBillNumber,
             items: invoice.items.map((item) => ({ ...item })),
             cgstRate: invoice.cgstRate,
             sgstRate: invoice.sgstRate,
@@ -265,7 +266,7 @@ export default function InvoiceDetailsPage() {
                             {invoice.deliveryGstin && <p>GSTIN: {invoice.deliveryGstin}</p>}
                         </div>
                     )}
-                    {(invoice.transporterName || invoice.transporterVehicleNumber || invoice.placeOfSupply || invoice.transportDate) && (
+                    {(invoice.transporterName || invoice.transporterVehicleNumber || invoice.placeOfSupply || invoice.transportDate || invoice.eWayBillNumber) && (
                          <div className="md:col-span-2">
                             <h3 className="font-semibold mb-2">Transporter Information</h3>
                             <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
@@ -273,6 +274,7 @@ export default function InvoiceDetailsPage() {
                                 {invoice.transporterVehicleNumber && <p><strong>Vehicle No:</strong> {invoice.transporterVehicleNumber}</p>}
                                 {invoice.placeOfSupply && <p><strong>Place of Supply:</strong> {invoice.placeOfSupply}</p>}
                                 {invoice.transportDate && <p><strong>Date:</strong> {new Date(invoice.transportDate).toLocaleDateString()}</p>}
+                                {invoice.eWayBillNumber && <p><strong>E-Way Bill No:</strong> {invoice.eWayBillNumber}</p>}
                             </div>
                         </div>
                     )}

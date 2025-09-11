@@ -70,6 +70,7 @@ const formSchema = z.object({
   transporterVehicleNumber: z.string().optional(),
   placeOfSupply: z.string().optional(),
   transportDate: z.string().optional(),
+  eWayBillNumber: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
   cgstRate: z.coerce.number().min(0).optional(),
   sgstRate: z.coerce.number().min(0).optional(),
@@ -196,6 +197,7 @@ export function InvoiceForm() {
       transporterVehicleNumber: data.transporterVehicleNumber,
       placeOfSupply: data.placeOfSupply,
       transportDate: data.transportDate,
+      eWayBillNumber: data.eWayBillNumber,
       cgstRate: data.cgstRate,
       sgstRate: data.sgstRate,
       igstRate: data.igstRate,
@@ -414,7 +416,7 @@ export function InvoiceForm() {
               Enter the transporter information (optional).
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
               <Label htmlFor="transporterName">Transporter Name</Label>
               <Input
@@ -443,6 +445,13 @@ export function InvoiceForm() {
                 type="date"
                 {...methods.register("transportDate")}
               />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="eWayBillNumber">E-Way Bill Number</Label>
+                <Input
+                    id="eWayBillNumber"
+                    {...methods.register("eWayBillNumber")}
+                />
             </div>
           </CardContent>
         </Card>

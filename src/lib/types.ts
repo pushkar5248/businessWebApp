@@ -41,6 +41,7 @@ export type Sale = {
   transporterVehicleNumber?: string;
   placeOfSupply?: string;
   transportDate?: string;
+  eWayBillNumber?: string;
   cgstRate?: number;
   sgstRate?: number;
   igstRate?: number;

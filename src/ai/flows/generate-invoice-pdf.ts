@@ -35,6 +35,7 @@ const GenerateInvoicePdfInputSchema = z.object({
   transporterVehicleNumber: z.string().optional().describe('The vehicle number of the transporter.'),
   placeOfSupply: z.string().optional().describe('The place of supply.'),
   transportDate: z.string().optional().describe('The date of transport.'),
+  eWayBillNumber: z.string().optional().describe('The e-way bill number.'),
   items: z.array(
     z.object({
       name: z.string().describe('The name of the item.'),
@@ -247,6 +248,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <div class="meta-grid">
                         <span class="label">Invoice #:</span><span class="value">{{{invoiceNumber}}}</span>
                         <span class="label">Date:</span><span class="value">{{{invoiceDate}}}</span>
+                        <span class="label">E-Way Bill:</span><span class="value">{{#if eWayBillNumber}}{{{eWayBillNumber}}}{{else}}N/A{{/if}}</span>
                         <span class="label">Transporter:</span><span class="value">{{#if transporterName}}{{{transporterName}}}{{else}}N/A{{/if}}</span>
                         <span class="label">Vehicle No:</span><span class="value">{{#if transporterVehicleNumber}}{{{transporterVehicleNumber}}}{{else}}N/A{{/if}}</span>
                         <span class="label">Place of Supply:</span><span class="value">{{#if placeOfSupply}}{{{placeOfSupply}}}{{else}}N/A{{/if}}</span>
