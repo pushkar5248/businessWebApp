@@ -460,6 +460,4 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
   }
 );
 
-      
-
     
