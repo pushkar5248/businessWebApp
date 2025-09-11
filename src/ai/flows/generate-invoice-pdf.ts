@@ -256,24 +256,17 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
              .terms {
                 border: 2px solid #000;
              }
-            .footer {
-                margin-top: 10px;
+             .terms p {
+                margin: 0;
+             }
+            .signature-section {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 50px;
                 padding-top: 10px;
                 font-size: 11px;
                 color: #6B7280;
-                position: relative;
-                height: 80px;
-            }
-            .footer-left {
-                position: absolute;
-                left: 0;
-                bottom: 0;
-            }
-            .footer-right {
-                position: absolute;
-                right: 0;
-                bottom: 0;
-                text-align: center;
+                font-weight: bold;
             }
         </style>
     </head>
@@ -414,9 +407,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             </div>
 
 
-            <div class="footer">
-                <div class="footer-left">For Adhunik Marbles</div>
-                <div class="footer-right">Authorised Signature</div>
+            <div class="signature-section">
+                <div>For Adhunik Marbles</div>
+                <div>Authorised Signature</div>
             </div>
 
         </div>
