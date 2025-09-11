@@ -12,6 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import Handlebars from 'handlebars';
+import { getStateCode } from '@/lib/state-codes';
 
 
 const GenerateSampleInvoicePdfInputSchema = z.object({
@@ -252,7 +253,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                     <p><strong>Address:</strong> {{{customerAddress}}}</p>
                     <div class="field-row">
                         <p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{/if}}</p> 
-                        <p><strong>Code:</strong></p>
+                        <p><strong>Code:</strong> {{{customerStateCode}}}</p>
                     </div>
                     <p><strong>GSTIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{/if}}</p>
                     <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{/if}}</p>
@@ -263,7 +264,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                     <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
                     <div class="field-row">
                         <p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{/if}}</p>
-                        <p><strong>Code:</strong></p>
+                        <p><strong>Code:</strong> {{{deliveryStateCode}}}</p>
                     </div>
                     <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{/if}}</p>
                 </div>
@@ -415,7 +416,9 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
         })),
         total: input.total.toFixed(2),
         roundOff: roundOffAmount.toFixed(2),
-        totalInWords: toWords(roundedTotal)
+        totalInWords: toWords(roundedTotal),
+        customerStateCode: getStateCode(input.customerState),
+        deliveryStateCode: getStateCode(input.deliveryState),
     };
 
     try {

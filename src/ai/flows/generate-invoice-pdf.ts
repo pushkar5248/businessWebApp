@@ -12,6 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import Handlebars from 'handlebars';
+import { getStateCode } from '@/lib/state-codes';
 
 
 const GenerateInvoicePdfInputSchema = z.object({
@@ -281,14 +282,14 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <div class="title">Details of Recipient (Purchasers)</div>
                     <p><strong>Name:</strong> {{{customerName}}}</p>
                     <p><strong>Address:</strong> {{{customerAddress}}}</p>
-                    <div class="field-row"><p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{else}}____________{{/if}}</p> <p><strong>Code:</strong> ___</p></div>
+                    <div class="field-row"><p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{else}}____________{{/if}}</p> <p><strong>Code:</strong> {{{customerStateCode}}}</p></div>
                     <p><strong>GSTIN/UIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</p>
                 </div>
                 <div class="info-block">
                     <div class="title">Delivery Place of Supply of Goods</div>
                     <p><strong>Name:</strong> {{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</p>
                     <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
-                    <div class="field-row"><p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{else}}_____________{{/if}}</p> <p><strong>Code:</strong> ___</p></div>
+                    <div class="field-row"><p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{else}}_____________{{/if}}</p> <p><strong>Code:</strong> {{{deliveryStateCode}}}</p></div>
                     <p><strong>GSTIN/UIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}____________________{{/if}}</p>
                 </div>
             </div>
@@ -326,7 +327,10 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             <div class="footer-section">
                 <div class="footer-left">
                     <p><strong>Electronics Reference No.</strong></p>
-                    <p class="rupees-in-words"><strong>Rupees in Words</strong>: {{{totalInWords}}}</p>
+                    <div class="rupees-in-words">
+                        <p><strong>Rupees in Words</strong>:</p> 
+                        <p>{{{totalInWords}}}</p>
+                    </div>
                     <div class="bank-details">
                         <p>Bank Details : IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
                         <p>CA A/c No.: 10067934008</p>
@@ -432,7 +436,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         })),
         total: input.total.toFixed(2),
         roundOff: roundOffAmount.toFixed(2),
-        totalInWords: toWords(roundedTotal)
+        totalInWords: toWords(roundedTotal),
+        customerStateCode: getStateCode(input.customerState),
+        deliveryStateCode: getStateCode(input.deliveryState),
     };
 
     try {
