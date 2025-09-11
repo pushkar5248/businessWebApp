@@ -87,7 +87,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
             .invoice-container {
                 width: 800px;
-                margin: 0 auto 20px;
+                margin: 0 auto;
                 padding: 30px;
                 border: 3px solid #000;
             }
@@ -240,7 +240,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin: 0 0 5px 0;
                 font-weight: bold;
                 font-size: 11px;
-                color: #000;
+                color: #0052A3;
             }
              .terms {
                 border: 2px solid #000;
