@@ -252,11 +252,11 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                     <p><strong>Name:</strong> {{{customerName}}}</p>
                     <p><strong>Address:</strong> {{{customerAddress}}}</p>
                     <div class="field-row">
-                        <p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{/if}}</p> 
+                        <p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{else}}_____________{{/if}}</p>
                         <p><strong>Code:</strong> {{{customerStateCode}}}</p>
                     </div>
-                    <p><strong>GSTIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{/if}}</p>
-                    <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{/if}}</p>
+                    <p><strong>GSTIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</p>
+                    <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</p>
                 </div>
                 <div class="info-block">
                     <h3>Shipped To</h3>
@@ -267,6 +267,7 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
                         <p><strong>Code:</strong> {{#if deliveryStateCode}}{{{deliveryStateCode}}}{{else}}{{{customerStateCode}}}{{/if}}</p>
                     </div>
                     <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{{customerGstin}}}{{/if}}</p>
+                    <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{/if}}</p>
                 </div>
             </div>
             
