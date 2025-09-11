@@ -68,7 +68,7 @@ const getBadgeVariant = (status: string) => {
   }
 };
 
-type ColumnKeys = Omit<Sale, 'userId' | 'items' | 'deletedAt' | 'customerAddress' | 'customerPhone' | 'customerState' | 'customerGstin' | 'deliveryPlaceName' | 'deliveryAddress' | 'deliveryState' | 'deliveryGstin' | 'transporterName' | 'transporterVehicleNumber' | 'placeOfSupply' | 'transportDate' | 'cgstRate' | 'sgstRate' | 'igstRate' >;
+type ColumnKeys = Omit<Sale, 'userId' | 'items' | 'deletedAt' | 'customerAddress' | 'customerPhone' | 'customerState' | 'customerGstin' | 'deliveryPlaceName' | 'deliveryAddress' | 'deliveryState' | 'deliveryGstin' | 'transporterName' | 'transporterVehicleNumber' | 'placeOfSupply' | 'transportDate' | 'eWayBillNumber' | 'cgstRate' | 'sgstRate' | 'igstRate' >;
 
 const COLUMN_NAMES: Record<keyof ColumnKeys, string> = {
     id: "Invoice #",
@@ -150,40 +150,8 @@ export default function SalesPageClient() {
         router.push(`/sales/${invoiceId}`);
     };
 
-    const handleSaleUpdate = async (saleId: string, field: keyof Sale, value: any) => {
-        if (!user) return;
-        
-        const originalSale = sales.find(s => s.id === saleId);
-        if (!originalSale) return;
-        
-        const oldStatus = originalSale.status;
-        const newStatus = field === 'status' ? value : oldStatus;
-
-        try {
-            const saleRef = doc(db, "sales", saleId);
-            await updateDoc(saleRef, { [field]: value });
-            
-            if(field === 'status') {
-                 toast({ title: "Status Updated", description: "Sale status has been updated." });
-            }
-
-            if (oldStatus === 'Pending' && newStatus === 'Paid') {
-                const saleDoc = await getDoc(saleRef);
-                if (saleDoc.exists()) {
-                    const saleData = saleDoc.data() as Sale;
-                    if(saleData.items && saleData.items.every(item => item.inventoryId)){
-                        await updateStockOnSale(saleData.items);
-                        toast({ title: "Inventory Updated", description: `Stock updated for sale #${saleId}.` });
-                    } else {
-                         toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${saleId} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
-                    }
-                }
-            }
-
-        } catch (error) {
-            console.error(`Error updating sale ${field}:`, error);
-            toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
-        }
+    const handleSaleUpdate = (saleId: string, field: keyof Sale, value: any) => {
+        setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
     };
 
     const handleSaveChanges = async () => {
@@ -192,13 +160,27 @@ export default function SalesPageClient() {
         const batch = writeBatch(db);
         let changesCount = 0;
         
-        sales.forEach(currentSale => {
+        sales.forEach(async (currentSale) => {
             const originalSale = originalSales.find(s => s.id === currentSale.id);
             if (originalSale && JSON.stringify(currentSale) !== JSON.stringify(originalSale)) {
                 const { id, userId, ...saleData } = currentSale;
                 const saleRef = doc(db, "sales", id);
                 batch.update(saleRef, saleData as { [x: string]: any; });
                 changesCount++;
+
+                if (originalSale.status === 'Pending' && currentSale.status === 'Paid') {
+                    if(currentSale.items && currentSale.items.every(item => item.inventoryId)){
+                        try {
+                            await updateStockOnSale(currentSale.items);
+                            toast({ title: "Inventory Updated", description: `Stock updated for sale #${currentSale.id}.` });
+                        } catch(e) {
+                            console.error(`Error updating stock for sale #${currentSale.id}:`, e);
+                            toast({ variant: "destructive", title: "Stock Update Error", description: `Could not update stock for sale #${currentSale.id}.` });
+                        }
+                    } else {
+                         toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${currentSale.id} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
+                    }
+                }
             }
         });
 
@@ -492,6 +474,13 @@ export default function SalesPageClient() {
                                 disabled={!isEditMode || !user}
                                 className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
+                          ) : key === 'id' ? (
+                             <Input 
+                                value={sale.id}
+                                onChange={(e) => handleSaleUpdate(sale.id, 'id', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100 font-medium")}
+                             />
                           ) : key === 'customer' ? (
                             <Input 
                                 value={sale.customer}
@@ -538,5 +527,3 @@ export default function SalesPageClient() {
     </>
   );
 }
-
-    

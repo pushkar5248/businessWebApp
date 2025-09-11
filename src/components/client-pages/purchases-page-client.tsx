@@ -149,36 +149,8 @@ export default function PurchasesPageClient() {
         router.push(`/purchases/${purchaseId}`);
     };
 
-    const handlePurchaseUpdate = async (purchaseId: string, field: keyof Purchase, value: any) => {
-         if (!user) return;
-        
-        const originalPurchase = purchases.find(p => p.id === purchaseId);
-        if (!originalPurchase) return;
-
-        const oldStatus = originalPurchase.status;
-        const newStatus = field === 'status' ? value : oldStatus;
-
-        try {
-            const purchaseRef = doc(db, "purchases", purchaseId);
-            await updateDoc(purchaseRef, { [field]: value });
-            
-            if(field === 'status') {
-                 toast({ title: "Status Updated", description: "Purchase status has been updated." });
-            }
-
-            if (oldStatus === 'Pending' && newStatus === 'Received') {
-                const purchaseDoc = await getDoc(purchaseRef);
-                if (purchaseDoc.exists()) {
-                    const purchaseData = purchaseDoc.data() as Purchase;
-                    await updateStockOnPurchase(purchaseData.items, user.uid);
-                    toast({ title: "Inventory Updated", description: `Stock updated for PO #${purchaseId}.` });
-                }
-            }
-
-        } catch (error) {
-             console.error(`Error updating purchase ${field}:`, error);
-            toast({ variant: "destructive", title: "Error", description: `Failed to update ${field}.` });
-        }
+    const handlePurchaseUpdate = (purchaseId: string, field: keyof Purchase, value: any) => {
+        setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
     };
 
     const handleSaveChanges = async () => {
@@ -187,13 +159,23 @@ export default function PurchasesPageClient() {
         const batch = writeBatch(db);
         let changesCount = 0;
         
-        purchases.forEach(currentPurchase => {
+        purchases.forEach(async (currentPurchase) => {
             const originalPurchase = originalPurchases.find(p => p.id === currentPurchase.id);
             if (originalPurchase && JSON.stringify(currentPurchase) !== JSON.stringify(originalPurchase)) {
                 const { id, userId, ...purchaseData } = currentPurchase;
                 const purchaseRef = doc(db, "purchases", id);
                 batch.update(purchaseRef, purchaseData as { [x: string]: any; });
                 changesCount++;
+
+                if (originalPurchase.status === 'Pending' && currentPurchase.status === 'Received') {
+                    try {
+                        await updateStockOnPurchase(currentPurchase.items, user.uid);
+                        toast({ title: "Inventory Updated", description: `Stock updated for PO #${currentPurchase.id}.` });
+                    } catch (error) {
+                        console.error(`Error updating stock for PO #${currentPurchase.id}:`, error);
+                        toast({ variant: "destructive", title: "Stock Update Error", description: `Could not update stock for PO #${currentPurchase.id}.` });
+                    }
+                }
             }
         });
 
@@ -486,6 +468,13 @@ export default function PurchasesPageClient() {
                                 disabled={!isEditMode || !user}
                                 className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100")}
                              />
+                           ) : key === 'id' ? (
+                             <Input 
+                                value={purchase.id}
+                                onChange={(e) => handlePurchaseUpdate(purchase.id, 'id', e.target.value)}
+                                disabled={!isEditMode || !user}
+                                className={cn(!isEditMode && "border-none disabled:cursor-text disabled:opacity-100 font-medium")}
+                             />
                           ) : key === 'vendor' ? (
                              <Input 
                                 value={purchase.vendor}
@@ -532,5 +521,3 @@ export default function PurchasesPageClient() {
     </>
   );
 }
-
-    
