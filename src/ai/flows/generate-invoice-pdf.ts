@@ -111,7 +111,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin: 0 0 10px 0;
             }
             .header .company-details p {
-                margin: 0;
+                margin: 0 0 5px 0;
                 font-size: 12px;
                 color: #000;
             }
@@ -512,5 +512,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
