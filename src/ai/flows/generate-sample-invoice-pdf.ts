@@ -148,6 +148,11 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
             }
             .info-block p {
                 margin: 4px 0;
+                min-height: 1em;
+            }
+            .info-block .field-row {
+                display: flex;
+                justify-content: space-between;
             }
             .items-table {
                 width: 100%;
@@ -243,18 +248,24 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
             <div class="details-section">
                 <div class="info-block">
                     <h3>Billed To</h3>
-                    <p><strong>{{{customerName}}}</strong></p>
-                    <p>{{{customerAddress}}}</p>
-                    {{#if customerState}}<p>{{{customerState}}}</p>{{/if}}
-                    {{#if customerPhone}}<p><strong>Phone:</strong> {{{customerPhone}}}</p>{{/if}}
-                    {{#if customerGstin}}<p><strong>GSTIN:</strong> {{{customerGstin}}}</p>{{/if}}
+                    <p><strong>Name:</strong> {{{customerName}}}</p>
+                    <p><strong>Address:</strong> {{{customerAddress}}}</p>
+                    <div class="field-row">
+                        <p><strong>State:</strong> {{#if customerState}}{{{customerState}}}{{/if}}</p> 
+                        <p><strong>Code:</strong></p>
+                    </div>
+                    <p><strong>GSTIN:</strong> {{#if customerGstin}}{{{customerGstin}}}{{/if}}</p>
+                    <p><strong>Phone:</strong> {{#if customerPhone}}{{{customerPhone}}}{{/if}}</p>
                 </div>
                 <div class="info-block">
                     <h3>Shipped To</h3>
-                    <p><strong>{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</strong></p>
-                    <p>{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
-                    {{#if deliveryState}}<p>{{{deliveryState}}}</p>{{/if}}
-                    {{#if deliveryGstin}}<p><strong>GSTIN:</strong> {{{deliveryGstin}}}</p>{{/if}}
+                    <p><strong>Name:</strong> {{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</p>
+                    <p><strong>Address:</strong> {{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</p>
+                    <div class="field-row">
+                        <p><strong>State:</strong> {{#if deliveryState}}{{{deliveryState}}}{{/if}}</p>
+                        <p><strong>Code:</strong></p>
+                    </div>
+                    <p><strong>GSTIN:</strong> {{#if deliveryGstin}}{{{deliveryGstin}}}{{/if}}</p>
                 </div>
             </div>
             
@@ -420,3 +431,5 @@ const generateSampleInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
