@@ -24,6 +24,42 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'KHUSHI ENTERPRISES',
     businessAddress: 'GROUND FLOOR, PLOT NO. 76, SHOP NO. 3, 4 & 5, Paschim Puri Road, Sikandra, Agra, Agra, Uttar Pradesh, 282007',
   },
+  '09AEXPA3496B1ZA': {
+    businessName: 'M/S SHRI AGRAWAL DYES AND CHEMICAL INDUSTRIES',
+    businessAddress: 'NAI KA NAGLA ROAD, HATHRAS, HATHRAS, Hathras, Uttar Pradesh, 204101',
+  },
+  '09CEJPA5520E1ZV': {
+    businessName: 'KRISHNA MARBLES',
+    businessAddress: 'PURA GOVERDHAN, 10, PILI POKHAR, HATHRAS ROAD, AGRA, Agra, Uttar Pradesh, 282006',
+  },
+  '08AUHPB1384K1ZK': {
+    businessName: 'STANDARD GRANITES',
+    businessAddress: 'Plot No. F-334, Silora, RIICO Industrial Area, Kishangarh, Ajmer, Rajasthan, 305802',
+  },
+  '09AAZFG6660R1Z2': {
+    businessName: 'Gunjan Polyplast',
+    businessAddress: 'Khasara No.- 565, Mauza Ramnagar, Near Yamuna Expressway, Khandauli, Agra, Uttar Pradesh, 283126',
+  },
+  '24ACDFA2859E1ZO': {
+    businessName: 'ALASKA SURFACES LLP',
+    businessAddress: 'Survey No. 575P1 , 576P1 P2 , 576P2 P2, Jetpar Road, At: Shapar, Jetpur Machchhukantha, Morbi, Gujarat, 363630',
+  },
+  '06BBKPA1054J2ZY': {
+    businessName: 'WONDER POWER INDUSTRIES',
+    businessAddress: 'LADWA, BABAIN ROAD, CHOUDHARY COLONY, Ladwa Rural Part, LADWA, Kurukshetra, Haryana, 136132',
+  },
+  '09ANDPD5794J1ZM': {
+    businessName: 'DIXIT ENTERPRISES',
+    businessAddress: '111, om shri town, rajarai road, rajarai, Agra, Uttar Pradesh, 282001',
+  },
+  '09BYTPA2451F1ZF': {
+    businessName: 'AGRASEN MARBLES',
+    businessAddress: '00, Bharatpur Road, Bichpuri, Agra, Uttar Pradesh, 283105',
+  },
+  '08ABBFS2396H1ZY': {
+    businessName: 'SHREE DHAR INDUSTRIES',
+    businessAddress: 'GA-109,, OLD INDUSTRIAL AREA,, MADANGANJ-KISHANGARH, Ajmer, Rajasthan, 305801',
+  },
 };
 
 
