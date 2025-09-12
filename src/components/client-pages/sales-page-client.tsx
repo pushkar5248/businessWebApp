@@ -146,10 +146,6 @@ export default function SalesPageClient() {
         localStorage.setItem('salesSortConfig', JSON.stringify(sortConfig));
     }, [sortConfig]);
 
-    const handleRowClick = (invoiceId: string) => {
-        router.push(`/sales/${invoiceId}`);
-    };
-
     const handleSaleUpdate = (saleId: string, field: keyof Sale, value: any) => {
         setSales(prev => prev.map(s => s.id === saleId ? { ...s, [field]: value } : s));
     };
@@ -437,8 +433,6 @@ export default function SalesPageClient() {
                 <TableRow 
                   key={sale.id} 
                   data-state={selectedRows.includes(sale.id) && "selected"}
-                  onClick={() => !isEditMode && handleRowClick(sale.id)}
-                  className={cn(!isEditMode && "cursor-pointer")}
                 >
                    <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
@@ -481,13 +475,17 @@ export default function SalesPageClient() {
                                 readOnly={!isEditMode}
                              />
                           ) : key === 'id' ? (
-                             <Input 
-                                value={sale.id}
-                                onChange={(e) => handleSaleUpdate(sale.id, 'id', e.target.value)}
-                                disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100 font-medium")}
-                                readOnly={!isEditMode}
-                             />
+                            isEditMode ? (
+                                <Input 
+                                    value={sale.id}
+                                    onChange={(e) => handleSaleUpdate(sale.id, 'id', e.target.value)}
+                                    className="font-medium"
+                                />
+                            ) : (
+                                <Link href={`/sales/${sale.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {sale.id}
+                                </Link>
+                            )
                           ) : key === 'customer' ? (
                             <Input 
                                 value={sale.customer}

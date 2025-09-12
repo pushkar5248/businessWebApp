@@ -146,10 +146,6 @@ export default function PurchasesPageClient() {
         localStorage.setItem('purchasesSortConfig', JSON.stringify(sortConfig));
     }, [sortConfig]);
 
-    const handleRowClick = (purchaseId: string) => {
-        router.push(`/purchases/${purchaseId}`);
-    };
-
     const handlePurchaseUpdate = (purchaseId: string, field: keyof Purchase, value: any) => {
         setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, [field]: value } : p));
     };
@@ -433,8 +429,6 @@ export default function PurchasesPageClient() {
                 <TableRow 
                   key={purchase.id} 
                   data-state={selectedRows.includes(purchase.id) && "selected"}
-                  onClick={() => !isEditMode && handleRowClick(purchase.id)}
-                  className={cn(!isEditMode && "cursor-pointer")}
                 >
                    <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
@@ -466,7 +460,7 @@ export default function PurchasesPageClient() {
                                 </div>
                           ) : key === 'amount' ? (
                             formatCurrency(purchase.amount)
-                          ) : key === 'date' ? (
+                           ) : key === 'date' ? (
                              <Input 
                                 type="date"
                                 value={purchase.date}
@@ -476,13 +470,17 @@ export default function PurchasesPageClient() {
                                 readOnly={!isEditMode}
                              />
                            ) : key === 'id' ? (
-                             <Input 
-                                value={purchase.id}
-                                onChange={(e) => handlePurchaseUpdate(purchase.id, 'id', e.target.value)}
-                                disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100 font-medium")}
-                                readOnly={!isEditMode}
-                             />
+                            isEditMode ? (
+                                <Input 
+                                    value={purchase.id}
+                                    onChange={(e) => handlePurchaseUpdate(purchase.id, 'id', e.target.value)}
+                                    className="font-medium"
+                                />
+                            ) : (
+                                <Link href={`/purchases/${purchase.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {purchase.id}
+                                </Link>
+                            )
                           ) : key === 'vendor' ? (
                              <Input 
                                 value={purchase.vendor}
