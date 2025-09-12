@@ -271,7 +271,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
             }
             .signature-area { text-align: right; }
-            .signature-area .for-company { padding-bottom: 40px; }
+            .signature-area .for-company { padding-bottom: 20px; }
 
         </style>
     </head>
