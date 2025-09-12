@@ -230,7 +230,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #0052A3;
                 color: #fff;
                 border-radius: 0 0 6px 6px;
-                padding: 6px 12px;
+                padding: 4px 12px;
             }
             .rupees-in-words {
                 font-size: 12px;
@@ -516,5 +516,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
