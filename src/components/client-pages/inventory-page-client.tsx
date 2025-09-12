@@ -838,7 +838,7 @@ const handleSaveChanges = async () => {
                         />
                     </TableHead>
                   ))}
-                  <TableHead className="w-12 px-4" style={{width: '48px'}}/>
+                  <TableHead className="text-right" style={{width: '60px'}}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -945,4 +945,3 @@ const handleSaveChanges = async () => {
     </>
   );
 }
-
