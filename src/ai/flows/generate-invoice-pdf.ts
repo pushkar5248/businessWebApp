@@ -92,61 +92,64 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 padding: 30px;
                 border: 3px solid #000;
             }
-            .header {
+
+            /* --- Header --- */
+            .invoice-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
                 margin-bottom: 20px;
-                padding-bottom: 15px;
+                padding: 15px;
+                padding-bottom: 30px;
                 border-bottom: 2px solid #000;
                 background-color: #f0f8ff;
-                padding: 15px;
                 border-radius: 8px 8px 0 0;
             }
-            .header .company-details h2 {
+            .company-details h2 {
                 font-size: 28px;
                 font-weight: bold;
                 color: #0052A3;
                 margin: 0 0 10px 0;
             }
-            .header .company-details p {
+            .company-details p {
                 margin: 0;
                 font-size: 12px;
                 color: #000;
                 font-weight: bold;
             }
-            .header-right {
+            .invoice-meta {
                 text-align: left;
             }
-            .header-right .invoice-title {
+            .invoice-meta .title {
                 font-size: 22px;
                 font-weight: bold;
                 margin: 0 0 10px 0;
                 color: #000;
-                text-align: left;
             }
-             .header-right .meta-grid {
+            .invoice-meta-grid {
                 display: grid;
                 grid-template-columns: auto auto;
                 gap: 2px 15px;
                 font-size: 12px;
-             }
-             .meta-grid .label { font-weight: bold; color: #000; text-align: left; }
-             .meta-grid .value { text-align: left; color: #000; font-weight: bold; }
+                font-weight: bold;
+            }
+            .invoice-meta-grid .label { text-align: left; }
+            .invoice-meta-grid .value { text-align: left; }
 
-            .details-section {
+            /* --- Party Details --- */
+            .party-details-section {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 20px;
                 margin-bottom: 20px;
             }
-            .details-section .info-block {
+            .party-info-box {
                 padding: 15px;
                 border: 2px solid #000;
                 border-radius: 8px;
                 background-color: #F9FAFB;
             }
-            .info-block h3 {
+            .party-info-box h3 {
                 margin: 0 0 10px 0;
                 font-size: 13px;
                 font-weight: bold;
@@ -155,20 +158,15 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #0052A3;
                 text-decoration: underline;
             }
-            .info-block .field-grid {
-                 display: flex;
-                 flex-direction: column;
-                 font-weight: bold;
-            }
-            .field-grid .field-row {
+            .party-field-grid {
                  display: grid;
                  grid-template-columns: 70px 1fr;
-                 gap: 0 8px;
-                 margin-bottom: 2px;
+                 gap: 2px 8px;
+                 font-weight: bold;
             }
-            .field-grid .label { font-weight: bold; color: #000; }
-            .field-grid .value { color: #000; font-weight: bold; }
+            .party-field-grid .label { font-weight: bold; }
             
+            /* --- Items Table --- */
             .items-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -191,7 +189,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .items-table .text-right { text-align: right; }
             .items-table .text-center { text-align: center; }
             
-            .summary-section {
+            /* --- Summary Section --- */
+            .invoice-summary {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
@@ -199,85 +198,66 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 padding-top: 15px;
                 border-top: 2px solid #000;
             }
-            .summary-left { width: 60%; }
+            .summary-left { width: 60%; display: flex; flex-direction: column; gap: 10px; }
             .summary-right { width: 38%; }
 
+            .summary-box {
+                padding: 10px;
+                border: 2px solid #000;
+                border-radius: 8px;
+            }
+            .summary-box h4 {
+                color: #0052A3;
+                font-weight: bold;
+                margin: 0 0 5px 0;
+                text-decoration: underline;
+            }
+            .amount-in-words { background-color: #F9FAFB; min-height: 40px; }
+            .amount-in-words span { font-weight: bold; }
+            .bank-details { background-color: #F9FAFB; }
+            .bank-details p { margin: 0; font-weight: bold; }
+            
             .totals-table-wrapper {
                 border: 2px solid #000;
                 border-radius: 8px;
                 background-color: #F9FAFB;
                 overflow: hidden;
             }
-
             .totals-table {
                 width: 100%;
+                border-collapse: collapse;
             }
-            .totals-table td {
-                padding: 4px 10px;
-            }
-            .totals-table td > span {
+            .totals-table tr td {
+                padding: 8px 10px;
+                display: flex;
+                justify-content: space-between;
                 font-weight: bold;
             }
-            .totals-table td > span:first-child {
-                float: left;
-            }
-             .totals-table td > span:last-child {
-                float: right;
-             }
-            .totals-table tr:last-child td { border-bottom: none; }
-            .totals-table .grand-total td {
+            .totals-table .grand-total-row td {
                 font-weight: bold;
                 font-size: 14px;
                 background-color: #0052A3;
                 color: #fff;
-                border-radius: 0 0 6px 6px;
                 padding: 4px 12px;
             }
-            .totals-table .grand-total .total-flex-container {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .rupees-in-words {
-                font-size: 12px;
-                margin-bottom: 15px;
-                padding: 10px;
-                border-radius: 8px;
-                background-color: #F9FAFB;
-                border: 2px solid #000;
-                min-height: 40px;
-            }
-            .rupees-in-words h4 {
-                color: #0052A3;
-                font-weight: bold;
-                margin: 0 0 5px 0;
-                text-decoration: underline;
-            }
-            .rupees-in-words span {
-                font-weight: bold;
-            }
-            .bank-details, .terms {
-                padding: 10px;
-                border-radius: 8px;
+            
+            /* --- Footer --- */
+            .invoice-footer {
                 margin-top: 10px;
-                 border: 2px solid #000;
             }
-            .bank-details {
-                background-color: #F9FAFB;
+            .terms-box {
+                padding: 10px;
+                border-radius: 8px;
+                border: 2px solid #000;
             }
-            .bank-details h4, .terms h4 {
+            .terms-box h4 {
                 margin: 0 0 5px 0;
                 font-weight: bold;
                 font-size: 11px;
                 color: #0052A3;
                 text-decoration: underline;
             }
-            .bank-details p { margin: 0; font-weight: bold; }
-             .terms {
-                border: 2px solid #000;
-                margin-top: 10px;
-             }
-             .terms p {
+            .terms-box p {
                 margin: 0 0 4px 0;
                 font-weight: bold;
              }
@@ -289,26 +269,24 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #000;
                 font-weight: bold;
             }
-            .signature-area {
-                text-align: right;
-            }
-            .for-company {
-                padding-bottom: 40px;
-            }
+            .signature-area { text-align: right; }
+            .signature-area .for-company { padding-bottom: 40px; }
+
         </style>
     </head>
     <body>
         <div class="invoice-container">
-            <div class="header">
+            
+            <header class="invoice-header">
                 <div class="company-details">
                     <h2>{{{businessName}}}</h2>
                     <p>{{{businessAddress}}}</p>
                     <p><strong>GSTIN:</strong> {{{businessGstin}}}</p>
                     <p><strong>Email:</strong> {{{businessEmail}}} | <strong>Phone:</strong> {{{businessPhone}}}</p>
                 </div>
-                <div class="header-right">
-                    <h2 class="invoice-title">TAX INVOICE</h2>
-                    <div class="meta-grid">
+                <div class="invoice-meta">
+                    <h2 class="title">TAX INVOICE</h2>
+                    <div class="invoice-meta-grid">
                         <span class="label">Invoice #:</span><span class="value">{{{invoiceNumber}}}</span>
                         <span class="label">Date:</span><span class="value">{{{invoiceDate}}}</span>
                         <span class="label">E-Way Bill:</span><span class="value">{{#if eWayBillNumber}}{{{eWayBillNumber}}}{{else}}N/A{{/if}}</span>
@@ -317,83 +295,85 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                         <span class="label">Place of Supply:</span><span class="value">{{#if placeOfSupply}}{{{placeOfSupply}}}{{else}}N/A{{/if}}</span>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <div class="details-section">
-                <div class="info-block">
+            <section class="party-details-section">
+                <div class="party-info-box">
                     <h3>Details of Receiver (Billed To)</h3>
-                     <div class="field-grid">
-                        <div class="field-row"><span class="label">Name:</span> <span class="value">{{{customerName}}}</span></div>
-                        <div class="field-row"><span class="label">Address:</span> <span class="value">{{{customerAddress}}}</span></div>
-                        <div class="field-row"><span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span></div>
-                        <div class="field-row"><span class="label">State:</span> <span class="value">{{#if customerState}}{{{customerState}}}{{else}}____________________{{/if}}</span></div>
-                        <div class="field-row"><span class="label">Code:</span> <span class="value">{{{customerStateCode}}}</span></div>
-                        <div class="field-row"><span class="label">GSTIN:</span> <span class="value">{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</span></div>
+                     <div class="party-field-grid">
+                        <span class="label">Name:</span> <span class="value">{{{customerName}}}</span>
+                        <span class="label">Address:</span> <span class="value">{{{customerAddress}}}</span>
+                        <span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">State:</span> <span class="value">{{#if customerState}}{{{customerState}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">Code:</span> <span class="value">{{{customerStateCode}}}</span>
+                        <span class="label">GSTIN:</span> <span class="value">{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</span>
                      </div>
                 </div>
-                <div class="info-block">
+                <div class="party-info-box">
                     <h3>Details of Consignee (Shipped To)</h3>
-                     <div class="field-grid">
-                        <div class="field-row"><span class="label">Name:</span> <span class="value">{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</span></div>
-                        <div class="field-row"><span class="label">Address:</span> <span class="value">{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</span></div>
-                        <div class="field-row"><span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span></div>
-                        <div class="field-row"><span class="label">State:</span> <span class="value">{{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</span></div>
-                        <div class="field-row"><span class="label">Code:</span> <span class="value">{{{deliveryStateCode}}}</span></div>
-                        <div class="field-row"><span class="label">GSTIN:</span> <span class="value">{{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}{{/if}}</span></div>
+                     <div class="party-field-grid">
+                        <span class="label">Name:</span> <span class="value">{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</span>
+                        <span class="label">Address:</span> <span class="value">{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</span>
+                        <span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span>
+                        <span class="label">State:</span> <span class="value">{{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</span>
+                        <span class="label">Code:</span> <span class="value">{{{deliveryStateCode}}}</span>
+                        <span class="label">GSTIN:</span> <span class="value">{{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}{{/if}}</span>
                     </div>
                 </div>
-            </div>
+            </section>
             
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th style="width: 5%;" class="text-center">#</th>
-                        <th style="width: 40%;">Item Description</th>
-                        <th class="text-center">HSN/SAC</th>
-                        <th class="text-right">Qty</th>
-                        <th class="text-center">Unit</th>
-                        <th class="text-right">Rate</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each items}}
-                    <tr>
-                        <td class="text-center">{{addOne @index}}</td>
-                        <td>{{{name}}}</td>
-                        <td class="text-center">{{{hsnCode}}}</td>
-                        <td class="text-right">{{{quantity}}}</td>
-                        <td class="text-center">{{{unit}}}</td>
-                        <td class="text-right">{{{../currency}}}{{{price}}}</td>
-                        <td class="text-right">{{{../currency}}}{{{itemTotal}}}</td>
-                    </tr>
-                    {{/each}}
-                    {{#if (shouldAddEmptyRows items)}}
-                        {{#each (getEmptyRows items)}}
+            <section class="items-section">
+                <table class="items-table">
+                    <thead>
                         <tr>
-                            <td>&nbsp;</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
+                            <th style="width: 5%;" class="text-center">#</th>
+                            <th style="width: 40%;">Item Description</th>
+                            <th class="text-center">HSN/SAC</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-center">Unit</th>
+                            <th class="text-right">Rate</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each items}}
+                        <tr>
+                            <td class="text-center">{{addOne @index}}</td>
+                            <td>{{{name}}}</td>
+                            <td class="text-center">{{{hsnCode}}}</td>
+                            <td class="text-right">{{{quantity}}}</td>
+                            <td class="text-center">{{{unit}}}</td>
+                            <td class="text-right">{{{../currency}}}{{{price}}}</td>
+                            <td class="text-right">{{{../currency}}}{{{itemTotal}}}</td>
                         </tr>
                         {{/each}}
-                    {{/if}}
-                </tbody>
-            </table>
+                        {{#if (shouldAddEmptyRows items)}}
+                            {{#each (getEmptyRows items)}}
+                            <tr>
+                                <td>&nbsp;</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {{/each}}
+                        {{/if}}
+                    </tbody>
+                </table>
+            </section>
 
-            <div class="summary-section">
+            <section class="invoice-summary">
                 <div class="summary-left">
-                    <div class="rupees-in-words">
+                    <div class="summary-box amount-in-words">
                         <h4>Amount in Words</h4>
                         <span>{{{totalInWords}}}</span>
                     </div>
-                     <div class="bank-details">
+                     <div class="summary-box bank-details">
                         <h4>Bank Details</h4>
                         <p><strong>Bank:</strong> IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
-                        <p style="margin-top:0;"><strong>A/c No.:</strong> 10067934008 | <strong>IFSC Code:</strong> IDFB0021293</p>
+                        <p><strong>A/c No.:</strong> 10067934008 | <strong>IFSC Code:</strong> IDFB0021293</p>
                     </div>
                 </div>
                 <div class="summary-right">
@@ -420,31 +400,30 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                             <tr>
                               <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
                             </tr>
-                            <tr class="grand-total">
+                            <tr class="grand-total-row">
                                 <td>
-                                    <div class="total-flex-container">
-                                        <span>Grand Total</span>
-                                        <span>{{{currency}}}{{{total}}}</span>
-                                    </div>
+                                    <span>Grand Total</span>
+                                    <span>{{{currency}}}{{{total}}}</span>
                                 </td>
                             </tr>
                         </table>
                     </div>
                 </div>
-            </div>
-             <div class="terms">
-                <h4>Terms &amp; Conditions</h4>
-                <p>1. Goods once sold will not be taken back or exchanged.</p>
-                <p>2. Subject to Agra Jurisdiction only. E. &amp; O. E.</p>
-            </div>
+            </section>
 
-
-            <div class="signature-section">
-                <div class="signature-area">
-                    <div class="for-company">For Adhunik Marbles</div>
-                    <div>Authorised Signature</div>
+            <footer class="invoice-footer">
+                 <div class="terms-box">
+                    <h4>Terms &amp; Conditions</h4>
+                    <p>1. Goods once sold will not be taken back or exchanged.</p>
+                    <p>2. Subject to Agra Jurisdiction only. E. &amp; O. E.</p>
                 </div>
-            </div>
+                <div class="signature-section">
+                    <div class="signature-area">
+                        <div class="for-company">For Adhunik Marbles</div>
+                        <div>Authorised Signature</div>
+                    </div>
+                </div>
+            </footer>
 
         </div>
     </body>
