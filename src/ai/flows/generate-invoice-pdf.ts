@@ -100,7 +100,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 align-items: flex-start;
                 margin-bottom: 20px;
                 padding: 15px;
-                padding-bottom: 30px;
+                padding-bottom: 15px;
                 border-bottom: 2px solid #000;
                 background-color: #f0f8ff;
                 border-radius: 8px 8px 0 0;
