@@ -229,9 +229,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
             .totals-table tr td {
                 padding: 4px 10px;
+                font-weight: bold;
+            }
+             .totals-table tr td > div {
                 display: flex;
                 justify-content: space-between;
-                font-weight: bold;
+                width: 100%;
             }
             .totals-table .grand-total-row td {
                 font-weight: bold;
@@ -239,7 +242,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #0052A3;
                 color: #fff;
                 padding: 4px 12px;
-                align-items: center;
             }
             
             /* --- Footer --- */
@@ -263,9 +265,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-weight: bold;
              }
             .signature-section {
-                display: flex;
-                justify-content: flex-end;
-                margin-top: 10px;
+                margin-top: 0px;
                 font-size: 11px;
                 color: #000;
                 font-weight: bold;
@@ -381,30 +381,32 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <div class="totals-table-wrapper">
                         <table class="totals-table">
                              <tr>
-                                <td><span>Subtotal</span> <span>{{{currency}}}{{{subtotal}}}</span></td>
+                                <td><div><span>Subtotal</span> <span>{{{currency}}}{{{subtotal}}}</span></div></td>
                             </tr>
                             {{#if sgst}}
                             <tr>
-                                <td><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></td>
+                                <td><div><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             {{#if cgst}}
                             <tr>
-                                <td><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></td>
+                                <td><div><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             {{#if igst}}
                             <tr>
-                                <td><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></td>
+                                <td><div><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             <tr>
-                              <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
+                              <td><div><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></div></td>
                             </tr>
                             <tr class="grand-total-row">
                                 <td>
-                                    <span>Grand Total</span>
-                                    <span>{{{currency}}}{{{total}}}</span>
+                                    <div>
+                                        <span>Grand Total</span>
+                                        <span>{{{currency}}}{{{total}}}</span>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
