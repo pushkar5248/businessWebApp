@@ -617,11 +617,11 @@ const handleSaveChanges = async () => {
     handleDeleteItems(itemIds);
   };
   
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, columnKey: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
     dragItem.current = columnKey;
   };
   
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, columnKey: string) => {
+  const handleDragEnter = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
     dragOverItem.current = columnKey;
   };
   
@@ -803,24 +803,20 @@ const handleSaveChanges = async () => {
                       className="p-0 h-12 relative select-none"
                       style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : '150px' }}
                       data-column-key={key}
+                      draggable={!isEditMode}
+                      onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
+                      onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
+                      onDragEnd={!isEditMode ? handleDragEnd : undefined}
+                      onDragOver={(e) => e.preventDefault()}
                     >
                       <div 
                         className="flex items-center justify-between px-4 h-full"
                       >
                          <div 
-                           className="flex items-center gap-2"
+                           className={cn("flex items-center gap-2", isEditMode ? "cursor-not-allowed" : "cursor-grab")}
                          >
-                             <div
-                                draggable={!isEditMode}
-                                onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
-                                onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
-                                onDragEnd={!isEditMode ? handleDragEnd : undefined}
-                                onDragOver={(e) => e.preventDefault()}
-                                className={cn("cursor-grab", isEditMode && "cursor-not-allowed")}
-                              >
-                               <GripVertical className="h-4 w-4 text-muted-foreground" />
-                             </div>
-                             <span className="font-medium">{allPossibleColumns[key] || key}</span>
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{allPossibleColumns[key] || key}</span>
                          </div>
                         <Button
                           variant="ghost"
