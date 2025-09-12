@@ -574,6 +574,7 @@ export function InvoiceForm() {
               size="sm"
               className="mt-4"
               onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" })}
+              disabled={fields.length >= 6}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -651,4 +652,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
