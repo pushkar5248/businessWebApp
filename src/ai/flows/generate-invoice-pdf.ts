@@ -85,7 +85,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #fff;
                 font-size: 12px;
                 line-height: 1.6;
-                font-weight: bold;
             }
             .invoice-container {
                 width: 800px;
@@ -114,6 +113,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 margin: 0;
                 font-size: 12px;
                 color: #000;
+                font-weight: bold;
             }
             .header-right {
                 text-align: left;
@@ -132,7 +132,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 12px;
              }
              .meta-grid .label { font-weight: bold; color: #000; text-align: left; }
-             .meta-grid .value { text-align: left; color: #000; }
+             .meta-grid .value { text-align: left; color: #000; font-weight: bold; }
 
             .details-section {
                 display: grid;
@@ -279,8 +279,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .signature-section {
                 display: flex;
                 justify-content: flex-end;
-                margin-top: 30px;
-                padding-top: 10px;
+                margin-top: 10px;
                 font-size: 11px;
                 color: #374151;
                 font-weight: bold;
@@ -288,7 +287,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .signature-line {
                 border-top: 1px solid #6B7280;
                 width: 150px;
-                margin-top: 20px;
+                margin-top: 5px;
                 margin-bottom: 5px;
             }
         </style>
