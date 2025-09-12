@@ -158,6 +158,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .info-block .field-grid {
                  display: flex;
                  flex-direction: column;
+                 font-weight: bold;
             }
             .field-grid .field-row {
                  display: grid;
@@ -166,7 +167,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                  margin-bottom: 2px;
             }
             .field-grid .label { font-weight: bold; color: #000; }
-            .field-grid .value { color: #000; font-weight: normal; }
+            .field-grid .value { color: #000; font-weight: bold; }
             
             .items-table {
                 width: 100%;
