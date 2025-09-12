@@ -99,6 +99,7 @@ export function InvoiceForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       invoiceDate: new Date().toISOString().split("T")[0],
+      transportDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
       cgstRate: settings?.billing.defaultCgstRate ?? 9,
@@ -140,6 +141,7 @@ export function InvoiceForm() {
       if (settings) {
           reset({
               invoiceDate: new Date().toISOString().split("T")[0],
+              transportDate: new Date().toISOString().split("T")[0],
               invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
               items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
               cgstRate: settings.billing.defaultCgstRate,
