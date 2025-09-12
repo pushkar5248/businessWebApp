@@ -786,7 +786,7 @@ const handleSaveChanges = async () => {
                 </AlertDialog>
             </div>
           )}
-          <div className="overflow-x-auto border-2 rounded-lg">
+          <div className="overflow-x-auto border rounded-lg">
             <Table style={{ tableLayout: 'fixed', minWidth: '100%' }}>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
