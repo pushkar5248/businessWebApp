@@ -790,7 +790,7 @@ const handleSaveChanges = async () => {
             <Table style={{ tableLayout: 'fixed', minWidth: '100%' }}>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-12 px-4">
+                  <TableHead className="w-12 px-4" style={{width: '48px'}}>
                        <Checkbox
                           checked={selectedRows.length > 0 && sortedItems.length > 0 && selectedRows.length === sortedItems.length}
                           onCheckedChange={handleSelectAll}
@@ -801,7 +801,7 @@ const handleSaveChanges = async () => {
                     <TableHead
                       key={key}
                       className="p-0 h-12 relative select-none"
-                      style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : 'auto' }}
+                      style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : '150px' }}
                       data-column-key={key}
                     >
                       <div 
@@ -838,7 +838,7 @@ const handleSaveChanges = async () => {
                         />
                     </TableHead>
                   ))}
-                  <TableHead className="w-12 px-4"/>
+                  <TableHead className="w-12 px-4" style={{width: '48px'}}/>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -945,3 +945,4 @@ const handleSaveChanges = async () => {
     </>
   );
 }
+
