@@ -330,7 +330,12 @@ export function InvoiceForm() {
               <Input
                 id="customerPhone"
                 {...methods.register("customerPhone")}
-                placeholder="e.g. 999-999-9999"
+                placeholder="e.g. 9999999999"
+                type="text"
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  input.value = input.value.replace(/[^0-9]/g, '');
+                }}
               />
               {errors.customerPhone && (
                 <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
@@ -361,6 +366,10 @@ export function InvoiceForm() {
                 id="customerGstin"
                 {...methods.register("customerGstin")}
                 placeholder="e.g. 27ABCDE1234F1Z5"
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  input.value = input.value.toUpperCase();
+                }}
               />
             </div>
           </CardContent>
@@ -429,6 +438,10 @@ export function InvoiceForm() {
               <Input
                 id="transporterVehicleNumber"
                 {...methods.register("transporterVehicleNumber")}
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  input.value = input.value.toUpperCase();
+                }}
               />
             </div>
              <div className="space-y-2">
@@ -451,6 +464,11 @@ export function InvoiceForm() {
                 <Input
                     id="eWayBillNumber"
                     {...methods.register("eWayBillNumber")}
+                    type="text"
+                    onInput={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      input.value = input.value.replace(/[^0-9]/g, '');
+                    }}
                 />
             </div>
           </CardContent>

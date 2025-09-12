@@ -221,6 +221,10 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                   id="vendorGstin"
                   {...methods.register("vendorGstin")}
                   placeholder="e.g. 27ABCDE1234F1Z5"
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    input.value = input.value.toUpperCase();
+                  }}
                 />
                 <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isFetchingGstin}>
                   {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
@@ -263,6 +267,11 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                     id="eWayBillNumber"
                     {...methods.register("eWayBillNumber")}
                     placeholder="e.g. 123456789012"
+                    type="text"
+                    onInput={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      input.value = input.value.replace(/[^0-9]/g, '');
+                    }}
                 />
              </div>
           </CardContent>
