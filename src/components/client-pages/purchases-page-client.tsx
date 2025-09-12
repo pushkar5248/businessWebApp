@@ -429,6 +429,8 @@ export default function PurchasesPageClient() {
                 <TableRow 
                   key={purchase.id} 
                   data-state={selectedRows.includes(purchase.id) && "selected"}
+                  onClick={() => !isEditMode && router.push(`/purchases/${purchase.id}`)}
+                  className={cn(!isEditMode && "cursor-pointer")}
                 >
                    <TableCell onClick={(e) => e.stopPropagation()}>
                        <Checkbox
@@ -439,7 +441,11 @@ export default function PurchasesPageClient() {
                         />
                     </TableCell>
                   {visibleColumns.map(key => (
-                      <TableCell key={key} onClick={(e) => { if (isEditMode) e.stopPropagation(); }}>
+                      <TableCell 
+                        key={key} 
+                        onClick={(e) => { if (isEditMode || key === 'id') e.stopPropagation(); }}
+                        className={cn(key === 'id' && !isEditMode && 'hover:bg-transparent')}
+                      >
                            {key === 'status' ? (
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <Select
