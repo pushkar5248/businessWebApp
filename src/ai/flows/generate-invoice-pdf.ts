@@ -35,7 +35,7 @@ const GenerateInvoicePdfInputSchema = z.object({
   transporterName: z.string().optional().describe('The name of the transporter.'),
   transporterVehicleNumber: z.string().optional().describe('The vehicle number of the transporter.'),
   placeOfSupply: z.string().optional().describe('The place of supply.'),
-  transportDate: z_string().optional().describe('The date of transport.'),
+  transportDate: z.string().optional().describe('The date of transport.'),
   eWayBillNumber: z.string().optional().describe('The e-way bill number.'),
   items: z.array(
     z.object({
@@ -424,10 +424,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
 
             <div class="signature-section">
-                <div style="text-align: right;">
-                    <div style="padding-bottom: 20px;">For Adhunik Marbles</div>
-                    <div>Authorised Signature</div>
-                </div>
+                <div style="text-align: right; padding-bottom: 20px;">For Adhunik Marbles</div>
+                <div>Authorised Signature</div>
             </div>
 
         </div>
@@ -517,9 +515,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-  
-
-    
 
     
