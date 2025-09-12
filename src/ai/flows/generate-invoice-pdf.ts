@@ -207,7 +207,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 100%;
             }
             .totals-table td {
-                padding: 8px 10px;
+                padding: 4px 10px;
                 display: flex;
                 justify-content: space-between;
             }
@@ -261,6 +261,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #0052A3;
                 text-decoration: underline;
             }
+            .bank-details p { margin: 0; }
              .terms {
                 border: 2px solid #000;
                 margin-top: 10px;
