@@ -377,7 +377,7 @@ export default function PurchasesPageClient() {
           )}
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow>
                  <TableHead className="p-0 h-12">
                   <div className="flex items-center justify-center h-full px-4" suppressHydrationWarning>
                      <Checkbox
@@ -444,7 +444,7 @@ export default function PurchasesPageClient() {
                       <TableCell 
                         key={key} 
                         onClick={(e) => { if (isEditMode || key === 'id') e.stopPropagation(); }}
-                        className={cn(key === 'id' && !isEditMode && 'hover:bg-transparent')}
+                        className={cn(key === 'id' && !isEditMode && 'hover:bg-transparent', !isEditMode && key !== 'id' && 'cursor-text')}
                       >
                            {key === 'status' ? (
                                 <div onClick={(e) => e.stopPropagation()}>
