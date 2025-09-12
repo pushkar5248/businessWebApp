@@ -166,7 +166,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                  margin-bottom: 2px;
             }
             .field-grid .label { font-weight: bold; color: #000; }
-            .field-grid span { color: #000; font-weight: normal; }
+            .field-grid .value { color: #000; font-weight: normal; }
             
             .items-table {
                 width: 100%;
@@ -249,7 +249,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 text-decoration: underline;
             }
             .rupees-in-words span {
-                font-weight: normal;
+                font-weight: bold;
             }
             .bank-details, .terms {
                 padding: 10px;
@@ -317,23 +317,23 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 <div class="info-block">
                     <h3>Details of Receiver (Billed To)</h3>
                      <div class="field-grid">
-                        <div class="field-row"><span class="label">Name:</span> <b>{{{customerName}}}</b></div>
-                        <div class="field-row"><span class="label">Address:</span> <b>{{{customerAddress}}}</b></div>
-                        <div class="field-row"><span class="label">Phone:</span> <b>{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</b></div>
-                        <div class="field-row"><span class="label">State:</span> <b>{{#if customerState}}{{{customerState}}}{{else}}____________________{{/if}}</b></div>
-                        <div class="field-row"><span class="label">Code:</span> <b>{{{customerStateCode}}}</b></div>
-                        <div class="field-row"><span class="label">GSTIN:</span> <b>{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</b></div>
+                        <div class="field-row"><span class="label">Name:</span> <span class="value">{{{customerName}}}</span></div>
+                        <div class="field-row"><span class="label">Address:</span> <span class="value">{{{customerAddress}}}</span></div>
+                        <div class="field-row"><span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span></div>
+                        <div class="field-row"><span class="label">State:</span> <span class="value">{{#if customerState}}{{{customerState}}}{{else}}____________________{{/if}}</span></div>
+                        <div class="field-row"><span class="label">Code:</span> <span class="value">{{{customerStateCode}}}</span></div>
+                        <div class="field-row"><span class="label">GSTIN:</span> <span class="value">{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}</span></div>
                      </div>
                 </div>
                 <div class="info-block">
                     <h3>Details of Consignee (Shipped To)</h3>
                      <div class="field-grid">
-                        <div class="field-row"><span class="label">Name:</span> <b>{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</b></div>
-                        <div class="field-row"><span class="label">Address:</span> <b>{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</b></div>
-                        <div class="field-row"><span class="label">Phone:</span> <b>{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</b></div>
-                        <div class="field-row"><span class="label">State:</span> <b>{{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</b></div>
-                        <div class="field-row"><span class="label">Code:</span> <b>{{{deliveryStateCode}}}</b></div>
-                        <div class="field-row"><span class="label">GSTIN:</span> <b>{{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}{{/if}}</b></div>
+                        <div class="field-row"><span class="label">Name:</span> <span class="value">{{#if deliveryPlaceName}}{{{deliveryPlaceName}}}{{else}}{{{customerName}}}{{/if}}</span></div>
+                        <div class="field-row"><span class="label">Address:</span> <span class="value">{{#if deliveryAddress}}{{{deliveryAddress}}}{{else}}{{{customerAddress}}}{{/if}}</span></div>
+                        <div class="field-row"><span class="label">Phone:</span> <span class="value">{{#if customerPhone}}{{{customerPhone}}}{{else}}____________________{{/if}}</span></div>
+                        <div class="field-row"><span class="label">State:</span> <span class="value">{{#if deliveryState}}{{{deliveryState}}}{{else}}{{{customerState}}}{{/if}}</span></div>
+                        <div class="field-row"><span class="label">Code:</span> <span class="value">{{{deliveryStateCode}}}</span></div>
+                        <div class="field-row"><span class="label">GSTIN:</span> <span class="value">{{#if deliveryGstin}}{{{deliveryGstin}}}{{else}}{{#if customerGstin}}{{{customerGstin}}}{{else}}____________________{{/if}}{{/if}}</span></div>
                     </div>
                 </div>
             </div>
@@ -525,3 +525,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 );
 
   
+
+    
