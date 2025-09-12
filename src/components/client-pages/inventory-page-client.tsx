@@ -838,7 +838,7 @@ const handleSaveChanges = async () => {
                         />
                     </TableHead>
                   ))}
-                  <TableHead className="text-right" style={{width: '60px'}}>Actions</TableHead>
+                  <TableHead className="text-center" style={{width: '80px'}}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -898,7 +898,7 @@ const handleSaveChanges = async () => {
                           )}
                         </TableCell>
                       ))}
-                        <TableCell>
+                        <TableCell className="text-center">
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon">
