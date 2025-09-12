@@ -163,7 +163,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                  display: grid;
                  grid-template-columns: 70px 1fr;
                  gap: 0 8px;
-                 margin-bottom: 4px;
+                 margin-bottom: 2px;
             }
             .field-grid .label { font-weight: bold; color: #000; }
             .field-grid span { color: #000; font-weight: normal; }
