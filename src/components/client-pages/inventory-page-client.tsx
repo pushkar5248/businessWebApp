@@ -617,7 +617,7 @@ const handleSaveChanges = async () => {
     handleDeleteItems(itemIds);
   };
   
-  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>, columnKey: string) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, columnKey: string) => {
     dragItem.current = columnKey;
   };
   
@@ -803,8 +803,6 @@ const handleSaveChanges = async () => {
                       className="p-0 h-12 relative select-none"
                       style={{ width: columnWidths[key] ? `${columnWidths[key]}px` : '150px' }}
                       data-column-key={key}
-                      draggable={!isEditMode}
-                      onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
                       onDragEnter={(e) => !isEditMode && handleDragEnter(e, key)}
                       onDragEnd={!isEditMode ? handleDragEnd : undefined}
                       onDragOver={(e) => e.preventDefault()}
@@ -814,6 +812,8 @@ const handleSaveChanges = async () => {
                       >
                          <div 
                            className={cn("flex items-center gap-2", isEditMode ? "cursor-not-allowed" : "cursor-grab")}
+                           draggable={!isEditMode}
+                           onDragStart={(e) => !isEditMode && handleDragStart(e, key)}
                          >
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{allPossibleColumns[key] || key}</span>
