@@ -204,8 +204,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .totals-table-wrapper {
                 border: 2px solid #000;
                 border-radius: 8px;
-                padding: 5px;
                 background-color: #F9FAFB;
+                overflow: hidden;
             }
 
             .totals-table {
@@ -228,8 +228,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 14px;
                 background-color: #0052A3;
                 color: #fff;
-                border-radius: 6px;
+                border-radius: 0 0 6px 6px;
                 padding: 12px;
+                padding-top: 10px;
             }
             .rupees-in-words {
                 font-size: 12px;
@@ -386,7 +387,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                      <div class="bank-details">
                         <h4>Bank Details</h4>
                         <p><strong>Bank:</strong> IDFC FIRST BANK, FATEHABAD ROAD, AGRA</p>
-                        <p><strong>A/c No.:</strong> 10067934008 | <strong>IFSC Code:</strong> IDFB0021293</p>
+                        <p style="margin-top:0;"><strong>A/c No.:</strong> 10067934008 | <strong>IFSC Code:</strong> IDFB0021293</p>
                     </div>
                 </div>
                 <div class="summary-right">
