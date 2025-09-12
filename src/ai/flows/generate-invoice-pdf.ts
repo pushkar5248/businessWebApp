@@ -214,14 +214,15 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             }
             .totals-table td {
                 padding: 4px 10px;
-                display: flex;
-                justify-content: space-between;
             }
-            .totals-table td span:first-child {
+            .totals-table td > span {
                 font-weight: bold;
             }
-             .totals-table td span {
-                font-weight: bold;
+            .totals-table td > span:first-child {
+                float: left;
+            }
+             .totals-table td > span:last-child {
+                float: right;
              }
             .totals-table tr:last-child td { border-bottom: none; }
             .totals-table .grand-total td {
@@ -231,8 +232,13 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 color: #fff;
                 border-radius: 0 0 6px 6px;
                 padding: 4px 12px;
-                align-items: center;
             }
+            .totals-table .grand-total td .total-label,
+            .totals-table .grand-total td .total-value {
+                display: inline-block;
+                vertical-align: middle;
+            }
+
             .rupees-in-words {
                 font-size: 12px;
                 margin-bottom: 15px;
@@ -283,6 +289,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 font-size: 11px;
                 color: #000;
                 font-weight: bold;
+            }
+            .signature-area {
+                text-align: right;
+            }
+            .signature-area .for-company {
+                padding-bottom: 40px;
             }
         </style>
     </head>
@@ -410,7 +422,10 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                               <td><span>Round Off</span> <span>{{{currency}}}{{{roundOff}}}</span></td>
                             </tr>
                             <tr class="grand-total">
-                                <td><span>Grand Total</span> <span>{{{currency}}}{{{total}}}</span></td>
+                                <td>
+                                    <span class="total-label">Grand Total</span>
+                                    <span class="total-value">{{{currency}}}{{{total}}}</span>
+                                </td>
                             </tr>
                         </table>
                     </div>
@@ -424,8 +439,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
 
 
             <div class="signature-section">
-                <div style="text-align: right;">
-                    <div style="padding-bottom: 40px;">For Adhunik Marbles</div>
+                <div class="signature-area">
+                    <div class="for-company">For Adhunik Marbles</div>
                     <div>Authorised Signature</div>
                 </div>
             </div>
