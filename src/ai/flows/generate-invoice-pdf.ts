@@ -233,12 +233,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border-radius: 0 0 6px 6px;
                 padding: 4px 12px;
             }
-            .totals-table .grand-total td .total-label,
-            .totals-table .grand-total td .total-value {
-                display: inline-block;
-                vertical-align: middle;
+            .totals-table .grand-total .total-flex-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
             }
-
             .rupees-in-words {
                 font-size: 12px;
                 margin-bottom: 15px;
@@ -293,7 +292,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .signature-area {
                 text-align: right;
             }
-            .signature-area .for-company {
+            .for-company {
                 padding-bottom: 40px;
             }
         </style>
@@ -423,8 +422,10 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                             </tr>
                             <tr class="grand-total">
                                 <td>
-                                    <span class="total-label">Grand Total</span>
-                                    <span class="total-value">{{{currency}}}{{{total}}}</span>
+                                    <div class="total-flex-container">
+                                        <span>Grand Total</span>
+                                        <span>{{{currency}}}{{{total}}}</span>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
