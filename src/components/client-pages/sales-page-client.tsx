@@ -433,10 +433,9 @@ export default function SalesPageClient() {
                 <TableRow 
                   key={sale.id} 
                   data-state={selectedRows.includes(sale.id) && "selected"}
-                  onClick={() => !isEditMode && router.push(`/sales/${sale.id}`)}
-                  className={cn(!isEditMode && "cursor-pointer")}
+                  className={cn(!isEditMode && "cursor-text")}
                 >
-                   <TableCell onClick={(e) => e.stopPropagation()}>
+                   <TableCell onClick={(e) => e.stopPropagation()} className="cursor-pointer">
                        <Checkbox
                           checked={selectedRows.includes(sale.id)}
                           onCheckedChange={(checked) => handleRowSelect(sale.id, !!checked)}
@@ -448,7 +447,7 @@ export default function SalesPageClient() {
                       <TableCell 
                         key={key} 
                         onClick={(e) => { if (isEditMode || key === 'id') e.stopPropagation(); }}
-                        className={cn(key === 'id' && !isEditMode && 'hover:bg-transparent', !isEditMode && key !== 'id' && 'cursor-text')}
+                        className={cn(key === 'id' && 'cursor-pointer hover:bg-transparent')}
                       >
                            {key === 'status' ? (
                                <div onClick={(e) => e.stopPropagation()}>
@@ -477,7 +476,7 @@ export default function SalesPageClient() {
                                 value={sale.date}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
                                 readOnly={!isEditMode}
                              />
                           ) : key === 'id' ? (
@@ -497,7 +496,7 @@ export default function SalesPageClient() {
                                 value={sale.customer}
                                 onChange={(e) => handleSaleUpdate(sale.id, 'customer', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
                                 readOnly={!isEditMode}
                              />
                           ) : (
@@ -505,7 +504,7 @@ export default function SalesPageClient() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="text-right cursor-pointer" onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" disabled={!user}>

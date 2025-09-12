@@ -429,10 +429,9 @@ export default function PurchasesPageClient() {
                 <TableRow 
                   key={purchase.id} 
                   data-state={selectedRows.includes(purchase.id) && "selected"}
-                  onClick={() => !isEditMode && router.push(`/purchases/${purchase.id}`)}
-                  className={cn(!isEditMode && "cursor-pointer")}
+                  className={cn(!isEditMode && "cursor-text")}
                 >
-                   <TableCell onClick={(e) => e.stopPropagation()}>
+                   <TableCell onClick={(e) => e.stopPropagation()} className="cursor-pointer">
                        <Checkbox
                           checked={selectedRows.includes(purchase.id)}
                           onCheckedChange={(checked) => handleRowSelect(purchase.id, !!checked)}
@@ -444,7 +443,7 @@ export default function PurchasesPageClient() {
                       <TableCell 
                         key={key} 
                         onClick={(e) => { if (isEditMode || key === 'id') e.stopPropagation(); }}
-                        className={cn(key === 'id' && !isEditMode && 'hover:bg-transparent', !isEditMode && key !== 'id' && 'cursor-text')}
+                        className={cn(key === 'id' && 'cursor-pointer hover:bg-transparent')}
                       >
                            {key === 'status' ? (
                                 <div onClick={(e) => e.stopPropagation()}>
@@ -472,7 +471,7 @@ export default function PurchasesPageClient() {
                                 value={purchase.date}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'date', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
                                 readOnly={!isEditMode}
                              />
                            ) : key === 'id' ? (
@@ -492,7 +491,7 @@ export default function PurchasesPageClient() {
                                 value={purchase.vendor}
                                 onChange={(e) => handlePurchaseUpdate(purchase.id, 'vendor', e.target.value)}
                                 disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-pointer disabled:cursor-pointer disabled:opacity-100")}
+                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
                                 readOnly={!isEditMode}
                              />
                           ) : (
@@ -500,7 +499,7 @@ export default function PurchasesPageClient() {
                           )}
                       </TableCell>
                   ))}
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="text-right cursor-pointer" onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" disabled={!user}>
