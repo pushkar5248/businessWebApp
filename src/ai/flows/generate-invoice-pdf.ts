@@ -228,7 +228,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 border-collapse: collapse;
             }
             .totals-table tr td {
-                padding: 8px 10px;
+                padding: 4px 10px;
                 display: flex;
                 justify-content: space-between;
                 font-weight: bold;
@@ -239,6 +239,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 background-color: #0052A3;
                 color: #fff;
                 padding: 4px 12px;
+                align-items: center;
             }
             
             /* --- Footer --- */
