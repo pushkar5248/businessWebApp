@@ -25,7 +25,7 @@ const GenerateInvoicePdfInputSchema = z.object({
   invoiceDate: z.string().describe('The invoice date.'),
   customerName: z.string().describe('The name of the customer.'),
   customerAddress: z.string().describe('The address of the customer.'),
-  customerPhone: z.string().describe('The phone number of the business.'),
+  customerPhone: z.string().optional().describe('The phone number of the business.'),
   customerState: z.string().optional().describe('The state of the customer.'),
   customerGstin: z.string().optional().describe('The GSTIN of the customer.'),
   deliveryPlaceName: z.string().optional().describe('The name for the delivery place, if different.'),
@@ -195,20 +195,19 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 justify-content: space-between;
                 align-items: flex-start;
                 margin-top: 10px;
-                padding-top: 15px;
             }
-            .summary-left { width: 60%; display: flex; flex-direction: column; gap: 10px; }
+            .summary-left { width: 60%; display: flex; flex-direction: column; gap: 5px; }
             .summary-right { width: 38%; }
 
             .summary-box {
-                padding: 10px;
+                padding: 8px;
                 border: 2px solid #000;
                 border-radius: 8px;
             }
             .summary-box h4 {
                 color: #0052A3;
                 font-weight: bold;
-                margin: 0 0 5px 0;
+                margin: 0 0 4px 0;
                 text-decoration: underline;
             }
             .amount-in-words { background-color: #F9FAFB; min-height: 40px; }
@@ -433,7 +432,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     `;
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
 
-    const MIN_ROWS = 6;
+    const MIN_ROWS = 4;
 
     Handlebars.registerHelper('shouldAddEmptyRows', function(items) {
         return items.length < MIN_ROWS;
@@ -514,5 +513,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
