@@ -30,6 +30,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
+import { updateStockOnSale } from '@/services/inventory-service';
 
 
 const getBadgeVariant = (status: string) => {
@@ -87,19 +88,32 @@ export default function InvoiceDetailsPage() {
     const handleStatusChange = async (newStatus: SaleStatus) => {
         if (!invoice || !user || newStatus === invoice.status) return;
 
+        const oldStatus = invoice.status;
+
         try {
             const invoiceRef = doc(db, "sales", invoice.id);
             await updateDoc(invoiceRef, { status: newStatus });
-            
-            setInvoice({ ...invoice, status: newStatus });
+
+            const updatedInvoice = { ...invoice, status: newStatus };
+            setInvoice(updatedInvoice);
             toast({
                 title: "Status Updated",
-                description: `Invoice status changed to ${newStatus}. Inventory will be updated separately from the sales list page.`
+                description: `Invoice status changed to ${newStatus}.`
             });
+
+            if (oldStatus !== 'Paid' && newStatus === 'Paid') {
+                if(updatedInvoice.items && updatedInvoice.items.every(item => item.inventoryId)){
+                    await updateStockOnSale(updatedInvoice.items);
+                    toast({ title: "Inventory Updated", description: `Stock levels have been successfully updated.` });
+                } else {
+                     toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${updatedInvoice.id} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
+                }
+            }
+
         } catch (error) {
             console.error("Error updating status or inventory:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
-            setInvoice({ ...invoice, status: invoice.status }); // Revert optimistic update on error
+            setInvoice({ ...invoice, status: oldStatus }); // Revert optimistic update on error
         }
     };
 

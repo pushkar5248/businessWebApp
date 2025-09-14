@@ -158,7 +158,9 @@ export default function SalesPageClient() {
         const batch = writeBatch(db);
         let changesCount = 0;
         
-        sales.forEach(async (currentSale) => {
+        const stockUpdatePromises: Promise<void>[] = [];
+
+        for (const currentSale of sales) {
             const originalSale = originalSales.find(s => s.id === currentSale.id);
             if (originalSale && JSON.stringify(currentSale) !== JSON.stringify(originalSale)) {
                 const { id, userId, ...saleData } = currentSale;
@@ -168,19 +170,23 @@ export default function SalesPageClient() {
 
                 if (originalSale.status !== 'Paid' && currentSale.status === 'Paid') {
                     if(currentSale.items && currentSale.items.every(item => item.inventoryId)){
-                        try {
-                            await updateStockOnSale(currentSale.items);
-                            toast({ title: "Inventory Updated", description: `Stock updated for sale #${currentSale.id}.` });
-                        } catch(e) {
-                            console.error(`Error updating stock for sale #${currentSale.id}:`, e);
-                            toast({ variant: "destructive", title: "Stock Update Error", description: `Could not update stock for sale #${currentSale.id}.` });
-                        }
+                        // Add the promise to the array to be awaited later
+                        stockUpdatePromises.push(
+                            updateStockOnSale(currentSale.items)
+                                .then(() => {
+                                    toast({ title: "Inventory Updated", description: `Stock updated for sale #${currentSale.id}.` });
+                                })
+                                .catch((e) => {
+                                    console.error(`Error updating stock for sale #${currentSale.id}:`, e);
+                                    toast({ variant: "destructive", title: "Stock Update Error", description: `Could not update stock for sale #${currentSale.id}.` });
+                                })
+                        );
                     } else {
                          toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${currentSale.id} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
                     }
                 }
             }
-        });
+        }
 
         if (changesCount === 0) {
             toast({ title: "No Changes", description: "No sales were modified." });
@@ -190,6 +196,7 @@ export default function SalesPageClient() {
 
         try {
             await batch.commit();
+            await Promise.all(stockUpdatePromises); // Wait for all stock updates to complete
             toast({ title: "Success", description: `${changesCount} sale(s) updated successfully.` });
         } catch (error) {
             console.error("Error updating sales:", error);
