@@ -61,6 +61,12 @@ export default function EditPurchasePage() {
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
     const total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
+    const sanitizedItems = data.items.map(item => ({
+        ...item,
+        hsnCode: item.hsnCode ?? '',
+        unit: item.unit ?? ''
+    }));
+
     const updatedPurchase = {
         id: data.poNumber,
         vendor: data.vendorName,
@@ -70,13 +76,14 @@ export default function EditPurchasePage() {
         date: data.poDate,
         amount: total,
         status: status,
-        items: data.items,
-        cgstRate: data.cgstRate,
-        sgstRate: data.sgstRate,
-        igstRate: data.igstRate,
-        insuranceAndOthersRate: data.insuranceAndOthersRate,
+        items: sanitizedItems,
+        cgstRate: data.cgstRate || 0,
+        sgstRate: data.sgstRate || 0,
+        igstRate: data.igstRate || 0,
+        insuranceAndOthersRate: data.insuranceAndOthersRate || 0,
         userId: user.uid,
         deletedAt: null,
+        eWayBillNumber: data.eWayBillNumber || '',
     };
 
     try {
