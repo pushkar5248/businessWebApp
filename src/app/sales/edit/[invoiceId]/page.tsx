@@ -61,10 +61,31 @@ export default function EditSalePage() {
     const total = subtotal + cgstAmount + sgstAmount + igstAmount;
 
     const updatedSaleData = {
-        ...data,
+        // We spread all of `data` to ensure all fields from the form are included.
+        // Then we overwrite/add specific fields.
+        customer: data.customerName,
+        date: data.invoiceDate,
         amount: total,
         status: status,
         userId: user.uid,
+        items: data.items,
+        customerAddress: data.customerAddress,
+        customerPhone: data.customerPhone,
+        customerState: data.customerState,
+        customerGstin: data.customerGstin,
+        deliveryPlaceName: data.deliveryPlaceName,
+        deliveryAddress: data.deliveryAddress,
+        deliveryState: data.deliveryState,
+        deliveryGstin: data.deliveryGstin,
+        transporterName: data.transporterName,
+        transporterVehicleNumber: data.transporterVehicleNumber,
+        placeOfSupply: data.placeOfSupply,
+        transportDate: data.transportDate,
+        eWayBillNumber: data.eWayBillNumber,
+        cgstRate: data.cgstRate,
+        sgstRate: data.sgstRate,
+        igstRate: data.igstRate,
+        deletedAt: null,
     };
 
     try {

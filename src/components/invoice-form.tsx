@@ -40,7 +40,7 @@ import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { useSettings } from "@/context/settings-context";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, query, where, updateDoc } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
 import { updateStockOnSale } from "@/services/inventory-service";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
@@ -81,7 +81,7 @@ const formSchema = z.object({
 
 export type InvoiceFormValues = z.infer<typeof formSchema>;
 
-type ActionType = "create" | "generate" | "create_and_generate" | "draft";
+type ActionType = "create" | "generate" | "create_and_generate" | "draft" | "update";
 
 interface InvoiceFormProps {
     onSubmit?: (data: InvoiceFormValues, status: SaleStatus) => Promise<void>;
@@ -163,7 +163,12 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
           });
       }
       if(initialData){
-          reset(initialData);
+          reset({
+            ...initialData,
+            invoiceNumber: initialData.id,
+            customerName: initialData.customer,
+            invoiceDate: initialData.date,
+          });
       }
   }, [settings, reset, initialData]);
 
@@ -296,12 +301,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const handleFormSubmit = async (data: InvoiceFormValues, action: ActionType) => {
     setIsActionLoading(true);
     try {
-      if(onSubmit){ // This means we are in edit mode
+       // This indicates we are in edit mode.
+      if (onSubmit) {
         if (action === 'draft') await onSubmit(data, 'Draft');
         else await onSubmit(data, 'Pending');
         return;
       }
-
+      
+      // This is for creating a new invoice.
        if (action === 'draft') {
         await handleCreateSale(data, 'Draft');
         router.push('/sales');
@@ -316,7 +323,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         router.push('/sales');
       }
     } catch (error) {
-      // Error is already toasted in handleCreateSale or handleGeneratePdf
+      // Error is already toasted in the respective handlers
     } finally {
       setIsActionLoading(false);
     }
@@ -747,17 +754,42 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             </div>
 
             <div className="flex justify-end gap-4">
-                 <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
-                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Save as Draft
-                 </Button>
                  {initialData ? (
-                    <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
+                   initialData.status === 'Draft' ? (
+                     <>
+                        <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
+                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save as Draft
+                        </Button>
+                         <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
+                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Create Sale
+                        </Button>
+                        <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'generate'))}>
+                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Generate Invoice PDF
+                        </Button>
+                        <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create_and_generate'))}>
+                            {isActionLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : "Create Sale and Generate PDF"}
+                        </Button>
+                     </>
+                   ) : (
+                    <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'update'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Update Invoice
                     </Button>
+                   )
                  ) : (
                     <>
+                    <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
+                        {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save as Draft
+                    </Button>
                     <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Create Sale
