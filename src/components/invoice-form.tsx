@@ -61,7 +61,7 @@ const formSchema = z.object({
   invoiceDate: z.string().min(1, "Invoice date is required."),
   customerName: z.string().min(1, "Customer name is required."),
   customerAddress: z.string().min(1, "Customer address is required."),
-  customerPhone: z.string().min(1, "Customer phone is required."),
+  customerPhone: z.string().optional(),
   customerState: z.string().optional(),
   customerGstin: z.string().optional(),
   deliveryPlaceName: z.string().optional(),
