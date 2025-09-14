@@ -691,7 +691,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                             <Input
                                 {...field}
                                 placeholder="HSN Code"
-                                readOnly={!!watchedFormValues.items?.[index]?.inventoryId}
                             />
                         )}
                       />
@@ -704,7 +703,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                             <Input
                                 {...field}
                                 placeholder="Unit"
-                                readOnly={!!watchedFormValues.items?.[index]?.inventoryId}
                             />
                         )}
                       />
