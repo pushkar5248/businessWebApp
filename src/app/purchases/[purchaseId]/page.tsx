@@ -206,6 +206,8 @@ export default function PurchaseDetailsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Item</TableHead>
+                                <TableHead>HSN</TableHead>
+                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-center">Quantity</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
@@ -215,6 +217,8 @@ export default function PurchaseDetailsPage() {
                             {purchase.items.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.name}</TableCell>
+                                    <TableCell>{item.hsnCode}</TableCell>
+                                    <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
