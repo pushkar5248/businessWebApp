@@ -393,19 +393,19 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     <TableCell>
                        <Controller
                           control={control}
-                          name={`items.${index}.inventoryId`}
+                          name={`items.${index}.name`}
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={getValues(`items.${index}.name`)}
+                                value={field.value}
                                 onValueChange={(newValue) => {
                                     const selectedItem = inventoryItems.find(item => item.id === newValue || item.name.toLowerCase() === newValue.toLowerCase());
                                     if(selectedItem) {
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
                                         setValue(`items.${index}.name`, selectedItem.name);
                                         setValue(`items.${index}.price`, selectedItem.price);
-                                        setValue(`items.${index}.hsnCode`, selectedItem.hsnCode);
-                                        setValue(`items.${index}.unit`, selectedItem.unit);
+                                        setValue(`items.${index}.hsnCode`, selectedItem.hsnCode ?? '');
+                                        setValue(`items.${index}.unit`, selectedItem.unit ?? '');
                                     } else {
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, newValue);
@@ -427,6 +427,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         render={({ field }) => (
                             <Input
                                 {...field}
+                                value={field.value ?? ''}
                                 placeholder="HSN Code"
                             />
                         )}
@@ -439,6 +440,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         render={({ field }) => (
                             <Input
                                 {...field}
+                                value={field.value ?? ''}
                                 placeholder="Unit"
                             />
                         )}

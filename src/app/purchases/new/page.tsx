@@ -36,7 +36,10 @@ export default function NewPurchasePage() {
     const total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
     const sanitizedItems = data.items.map(item => ({
-        ...item,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        inventoryId: item.inventoryId ?? '',
         hsnCode: item.hsnCode ?? '',
         unit: item.unit ?? ''
     }));
@@ -69,9 +72,9 @@ export default function NewPurchasePage() {
 
         if (newItemsToCreate.length > 0) {
             const inventoryColRef = collection(db, "inventory");
+            const existingItemsSnapshot = await getDocs(query(inventoryColRef, where("userId", "==", user.uid)));
             const existingNames = new Set(
-                (await getDocs(query(inventoryColRef, where("userId", "==", user.uid))))
-                    .docs.map(d => d.data().name.toLowerCase())
+                existingItemsSnapshot.docs.map(d => d.data().name.toLowerCase())
             );
 
             for (const item of newItemsToCreate) {
