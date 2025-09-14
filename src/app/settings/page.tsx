@@ -14,7 +14,7 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
-import { Loader2, Trash2, Upload } from 'lucide-react';
+import { Loader2, Trash2, Upload, Search } from 'lucide-react';
 import { updateProfile, updateEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
@@ -34,6 +34,7 @@ import { db, storage } from '@/lib/firebase';
 import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { fetchGstinDetails } from '@/ai/flows/fetch-gstin-details';
 
 
 const currencies = [
@@ -163,6 +164,8 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
 
 function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings, onSave: (data: Partial<UserSettings>) => void, isGuest: boolean }) {
     const [localSettings, setLocalSettings] = useState(settings.general);
+    const [isFetchingGstin, setIsFetchingGstin] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         setLocalSettings(settings.general);
@@ -175,6 +178,50 @@ function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings
     const handleSave = () => {
         onSave({ general: localSettings });
     };
+
+    const handleGstinFetch = async () => {
+        const gstin = localSettings.businessGstin;
+        if (!gstin || gstin.length !== 15) {
+            toast({
+                variant: "destructive",
+                title: "Invalid GSTIN",
+                description: "Please enter a valid 15-character GSTIN.",
+            });
+            return;
+        }
+
+        setIsFetchingGstin(true);
+        try {
+            const result = await fetchGstinDetails({ gstin });
+            if (result) {
+                setLocalSettings(prev => ({
+                    ...prev,
+                    businessName: result.businessName,
+                    businessAddress: result.businessAddress,
+                }));
+                toast({
+                    title: "Details Fetched",
+                    description: `Successfully fetched details for ${result.businessName}.`,
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Not Found",
+                    description: "No details found for the provided GSTIN.",
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching GSTIN details:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not fetch GSTIN details. Please try again.",
+            });
+        } finally {
+            setIsFetchingGstin(false);
+        }
+    };
+
 
     return (
         <Card>
@@ -189,7 +236,17 @@ function GeneralSettings({ settings, onSave, isGuest }: { settings: UserSettings
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="business-gstin">Business GSTIN</Label>
-                    <Input id="business-gstin" value={localSettings.businessGstin} onChange={e => handleChange('businessGstin', e.target.value)} disabled={isGuest} />
+                     <div className="flex items-center gap-2">
+                        <Input
+                            id="business-gstin"
+                            value={localSettings.businessGstin}
+                            onChange={e => handleChange('businessGstin', e.target.value.toUpperCase())}
+                            disabled={isGuest}
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isGuest || isFetchingGstin}>
+                            {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
+                        </Button>
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="business-address">Business Address</Label>
