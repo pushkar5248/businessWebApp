@@ -760,7 +760,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
           </CardFooter>
         </Card>
         
-        <div className="flex justify-end items-center gap-4">
+        <div className="flex justify-end items-center gap-4 flex-wrap">
              {initialData ? (
                initialData.status === 'Draft' ? (
                  <>

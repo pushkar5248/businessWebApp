@@ -457,7 +457,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
           </CardFooter>
         </Card>
         
-        <div className="flex justify-end items-center gap-4">
+        <div className="flex justify-end items-center gap-4 flex-wrap">
             <Button type="button" variant="outline" size="lg" disabled={isDraftLoading || isLoading} onClick={handleSubmit(handleSaveDraft)}>
                 {isDraftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save as Draft
