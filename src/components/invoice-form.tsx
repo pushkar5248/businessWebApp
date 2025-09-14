@@ -322,23 +322,28 @@ export function InvoiceForm() {
         setValue("customerName", result.businessName, { shouldValidate: true });
         setValue("customerAddress", result.businessAddress, { shouldValidate: true });
 
-        // Extract state from address
-        const addressParts = result.businessAddress.split(',').map(part => part.trim());
+        const normalizedAddress = result.businessAddress.toLowerCase();
         let foundState = '';
-        for (const part of addressParts) {
-            const normalizedPart = part.toLowerCase();
-            const stateKeys = Object.keys(stateCodeMap);
-            const matchedState = stateKeys.find(key => normalizedPart.includes(key));
-            if (matchedState) {
-                const stateName = Object.entries(stateCodeMap).find(([_, code]) => code === stateCodeMap[matchedState])?.[0] || matchedState;
-                const formattedStateName = stateName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                foundState = formattedStateName;
-                break;
+
+        // Sort state keys by length descending to match longer names first
+        const sortedStateKeys = Object.keys(stateCodeMap).sort((a, b) => b.length - a.length);
+
+        for (const stateKey of sortedStateKeys) {
+            if (normalizedAddress.includes(stateKey)) {
+                // Find the canonical state name from the code
+                const stateCode = stateCodeMap[stateKey];
+                const canonicalState = Object.keys(stateCodeMap).find(key => stateCodeMap[key] === stateCode && key.length > 2); // Find full name
+                if (canonicalState) {
+                    foundState = canonicalState.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    break;
+                }
             }
         }
         
         if (foundState) {
             setValue("customerState", foundState, { shouldValidate: true });
+        } else {
+             setValue("customerState", "", { shouldValidate: true });
         }
 
 
