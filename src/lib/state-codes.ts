@@ -55,6 +55,7 @@ export const stateCodeMap: { [key: string]: string } = {
   'dd': '26',
   'dadra and nagar haveli': '26',
   'dnh': '26',
+  'dadra and nagar haveli and daman and diu': '26',
   'maharashtra': '27',
   'mh': '27',
   'karnataka': '29',
@@ -86,3 +87,5 @@ export function getStateCode(stateName?: string): string {
   const normalizedState = stateName.toLowerCase().trim();
   return stateCodeMap[normalizedState] || '__';
 }
+
+    

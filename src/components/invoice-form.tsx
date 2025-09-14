@@ -44,6 +44,7 @@ import { collection, doc, setDoc, getDocs, query, where } from "firebase/firesto
 import { Combobox } from "@/components/ui/combobox";
 import { updateStockOnSale } from "@/services/inventory-service";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
+import { stateCodeMap } from "@/lib/state-codes";
 
 
 const lineItemSchema = z.object({
@@ -316,6 +317,23 @@ export function InvoiceForm() {
       if (result) {
         setValue("customerName", result.businessName, { shouldValidate: true });
         setValue("customerAddress", result.businessAddress, { shouldValidate: true });
+
+        // Extract state from address
+        const addressParts = result.businessAddress.split(',').map(part => part.trim());
+        let foundState = '';
+        for (const part of addressParts) {
+            const normalizedPart = part.toLowerCase();
+            if (stateCodeMap[normalizedPart]) {
+                foundState = part;
+                break;
+            }
+        }
+
+        if (foundState) {
+            setValue("customerState", foundState, { shouldValidate: true });
+        }
+
+
         toast({
           title: "Details Fetched",
           description: `Successfully fetched details for ${result.businessName}.`,
@@ -359,6 +377,23 @@ export function InvoiceForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
+             <div className="space-y-2">
+              <Label htmlFor="customerGstin">GSTIN/UIN</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="customerGstin"
+                  {...methods.register("customerGstin")}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    input.value = input.value.toUpperCase();
+                  }}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isFetchingGstin}>
+                  {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
+                </Button>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="customerName">Name</Label>
               <Input
@@ -368,6 +403,17 @@ export function InvoiceForm() {
               />
               {errors.customerName && (
                 <p className="text-sm text-destructive">{errors.customerName.message}</p>
+              )}
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="customerAddress">Address</Label>
+              <Textarea
+                id="customerAddress"
+                {...methods.register("customerAddress")}
+                placeholder="123 Main St, Anytown, USA"
+              />
+               {errors.customerAddress && (
+                <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
               )}
             </div>
              <div className="space-y-2">
@@ -386,17 +432,6 @@ export function InvoiceForm() {
                 <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
               )}
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="customerAddress">Address</Label>
-              <Textarea
-                id="customerAddress"
-                {...methods.register("customerAddress")}
-                placeholder="123 Main St, Anytown, USA"
-              />
-               {errors.customerAddress && (
-                <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
-              )}
-            </div>
             <div className="space-y-2">
               <Label htmlFor="customerState">State</Label>
               <Input
@@ -404,23 +439,6 @@ export function InvoiceForm() {
                 {...methods.register("customerState")}
                 placeholder="e.g. California"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerGstin">GSTIN/UIN</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="customerGstin"
-                  {...methods.register("customerGstin")}
-                  placeholder="e.g. 27ABCDE1234F1Z5"
-                  onInput={(e) => {
-                    const input = e.target as HTMLInputElement;
-                    input.value = input.value.toUpperCase();
-                  }}
-                />
-                <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isFetchingGstin}>
-                  {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -720,3 +738,5 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
+
+    
