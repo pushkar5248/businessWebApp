@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +81,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
   const [totalTaxes, setTotalTaxes] = useState(0);
+  const router = useRouter();
+
 
   const methods = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(formSchema),
@@ -460,9 +463,14 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         </>
                     ) : initialData ? 'Update Purchase Order' : 'Create Purchase Order'}
                 </Button>
+                 <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isLoading || isDraftLoading}>
+                    Cancel
+                </Button>
              </div>
         </div>
       </form>
     </FormProvider>
   );
 }
+
+    

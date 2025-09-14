@@ -455,7 +455,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
               )}
             </div>
              <div className="space-y-2">
-              <Label htmlFor="customerPhone">Phone</Label>
+              <Label htmlFor="customerPhone">Phone (optional)</Label>
               <Input
                 id="customerPhone"
                 {...methods.register("customerPhone")}
@@ -808,9 +808,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     </Button>
                     </>
                  )}
+                  <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isActionLoading}>
+                    Cancel
+                </Button>
             </div>
         </div>
       </form>
     </FormProvider>
   );
 }
+
+    
