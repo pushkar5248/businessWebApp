@@ -61,6 +61,8 @@ const getBadgeVariant = (status: string) => {
       return 'default';
     case 'pending':
       return 'secondary';
+    case 'draft':
+        return 'outline';
     default:
       return 'outline';
   }
@@ -164,7 +166,7 @@ export default function PurchasesPageClient() {
                 batch.update(purchaseRef, purchaseData as { [x: string]: any; });
                 changesCount++;
 
-                if (originalPurchase.status === 'Pending' && currentPurchase.status === 'Received') {
+                if (originalPurchase.status !== 'Received' && currentPurchase.status === 'Received') {
                     try {
                         await updateStockOnPurchase(currentPurchase.items, user.uid);
                         toast({ title: "Inventory Updated", description: `Stock updated for PO #${currentPurchase.id}.` });
@@ -458,6 +460,7 @@ export default function PurchasesPageClient() {
                                             </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="Draft">Draft</SelectItem>
                                             <SelectItem value="Pending">Pending</SelectItem>
                                             <SelectItem value="Received">Received</SelectItem>
                                         </SelectContent>

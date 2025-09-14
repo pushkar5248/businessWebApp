@@ -10,7 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { updateStockOnPurchase } from "@/services/inventory-service";
+import { PurchaseStatus } from "@/lib/types";
 
 
 export default function NewPurchasePage() {
@@ -18,7 +18,7 @@ export default function NewPurchasePage() {
   const { user } = useAuth();
   const router = useRouter();
   
-  const handleCreatePurchase = async (data: PurchaseOrderFormValues) => {
+  const handleCreatePurchase = async (data: PurchaseOrderFormValues, status: PurchaseStatus) => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -44,7 +44,7 @@ export default function NewPurchasePage() {
         shippingAddress: data.shippingAddress,
         date: data.poDate,
         amount: total,
-        status: 'Pending',
+        status: status,
         items: data.items,
         cgstRate: data.cgstRate,
         sgstRate: data.sgstRate,
@@ -59,8 +59,8 @@ export default function NewPurchasePage() {
         await setDoc(docRef, newPurchase);
         
         toast({
-            title: "Purchase Order Created",
-            description: `PO #${data.poNumber} has been created. Inventory will be updated when status is 'Received'.`,
+            title: `Purchase Order ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,
+            description: `PO #${data.poNumber} has been saved.`,
         });
         router.push('/purchases');
 

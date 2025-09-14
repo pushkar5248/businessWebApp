@@ -63,6 +63,8 @@ const getBadgeVariant = (status: string) => {
       return 'secondary';
     case 'overdue':
       return 'destructive';
+    case 'draft':
+      return 'outline';
     default:
       return 'outline';
   }
@@ -164,7 +166,7 @@ export default function SalesPageClient() {
                 batch.update(saleRef, saleData as { [x: string]: any; });
                 changesCount++;
 
-                if (originalSale.status === 'Pending' && currentSale.status === 'Paid') {
+                if (originalSale.status !== 'Paid' && currentSale.status === 'Paid') {
                     if(currentSale.items && currentSale.items.every(item => item.inventoryId)){
                         try {
                             await updateStockOnSale(currentSale.items);
@@ -462,6 +464,7 @@ export default function SalesPageClient() {
                                         </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Draft">Draft</SelectItem>
                                         <SelectItem value="Pending">Pending</SelectItem>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Overdue">Overdue</SelectItem>

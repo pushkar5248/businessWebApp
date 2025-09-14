@@ -26,7 +26,7 @@ import {
   type GenerateInvoicePdfInput,
 } from "@/ai/flows/generate-invoice-pdf";
 import { useToast } from "@/hooks/use-toast";
-import { db } from '@/lib/firebase';
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
@@ -40,12 +40,14 @@ const getBadgeVariant = (status: string) => {
       return 'secondary';
     case 'overdue':
       return 'destructive';
+    case 'draft':
+      return 'outline';
     default:
       return 'outline';
   }
 };
 
-const saleStatuses: SaleStatus[] = ['Paid', 'Pending', 'Overdue'];
+const saleStatuses: SaleStatus[] = ['Draft', 'Pending', 'Paid', 'Overdue'];
 
 export default function InvoiceDetailsPage() {
     const params = useParams();
@@ -340,5 +342,3 @@ export default function InvoiceDetailsPage() {
         </MainLayout>
     );
 }
-
-    

@@ -32,12 +32,14 @@ const getBadgeVariant = (status: string) => {
       return 'default';
     case 'pending':
       return 'secondary';
+    case 'draft':
+      return 'outline';
     default:
       return 'outline';
   }
 };
 
-const purchaseStatuses: PurchaseStatus[] = ['Received', 'Pending'];
+const purchaseStatuses: PurchaseStatus[] = ['Draft', 'Pending', 'Received'];
 
 export default function PurchaseDetailsPage() {
     const params = useParams();
@@ -87,8 +89,8 @@ export default function PurchaseDetailsPage() {
                 description: `Purchase order status changed to ${newStatus}.`
             });
 
-            // If status changes from Pending to Received, update inventory
-            if (oldStatus === 'Pending' && newStatus === 'Received') {
+            // If status changes from something else to Received, update inventory
+            if (oldStatus !== 'Received' && newStatus === 'Received') {
                 const updatedPurchaseDoc = await getDoc(purchaseRef);
                 const updatedPurchaseData = updatedPurchaseDoc.data() as Purchase;
                 

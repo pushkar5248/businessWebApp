@@ -35,7 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { type Sale, type InventoryItem } from "@/lib/types";
+import { type Sale, type SaleStatus, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { useSettings } from "@/context/settings-context";
@@ -81,7 +81,7 @@ const formSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
 
-type ActionType = "create" | "generate" | "create_and_generate";
+type ActionType = "create" | "generate" | "create_and_generate" | "draft";
 
 export function InvoiceForm() {
   const { user } = useAuth();
@@ -179,7 +179,7 @@ export function InvoiceForm() {
     setTotal(newSubtotal + newTotalTaxes);
   }, [watchedFormValues]);
 
-  const handleCreateSale = async (data: InvoiceFormValues) => {
+  const handleCreateSale = async (data: InvoiceFormValues, status: SaleStatus = 'Pending') => {
     if (!user) {
         toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a sale." });
         throw new Error("User not authenticated");
@@ -189,7 +189,7 @@ export function InvoiceForm() {
       customer: data.customerName,
       date: data.invoiceDate,
       amount: total,
-      status: "Pending", // Default status
+      status: status,
       items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId, hsnCode: i.hsnCode, unit: i.unit })),
       customerAddress: data.customerAddress,
       customerPhone: data.customerPhone,
@@ -216,8 +216,8 @@ export function InvoiceForm() {
         await setDoc(saleDocRef, newSale);
 
         toast({
-          title: "Sale Created",
-          description: `Invoice #${data.invoiceNumber} has been successfully created.`,
+          title: `Sale ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,
+          description: `Invoice #${data.invoiceNumber} has been successfully saved.`,
         });
     } catch (error) {
         console.error("Error creating sale:", error);
@@ -284,13 +284,17 @@ export function InvoiceForm() {
   const onSubmit = async (data: InvoiceFormValues, action: ActionType) => {
     setIsActionLoading(true);
     try {
-      if (action === 'create' || action === 'create_and_generate') {
-        await handleCreateSale(data);
-      }
-      if (action === 'generate' || action === 'create_and_generate') {
+       if (action === 'draft') {
+        await handleCreateSale(data, 'Draft');
+        router.push('/sales');
+      } else if (action === 'create') {
+        await handleCreateSale(data, 'Pending');
+        router.push('/sales');
+      } else if (action === 'generate') {
         await handleGeneratePdf(data);
-      }
-      if (action !== 'generate') {
+      } else if (action === 'create_and_generate') {
+        await handleCreateSale(data, 'Pending');
+        await handleGeneratePdf(data);
         router.push('/sales');
       }
     } catch (error) {
@@ -323,12 +327,16 @@ export function InvoiceForm() {
         let foundState = '';
         for (const part of addressParts) {
             const normalizedPart = part.toLowerCase();
-            if (stateCodeMap[normalizedPart]) {
-                foundState = part;
+            const stateKeys = Object.keys(stateCodeMap);
+            const matchedState = stateKeys.find(key => normalizedPart.includes(key));
+            if (matchedState) {
+                const stateName = Object.entries(stateCodeMap).find(([_, code]) => code === stateCodeMap[matchedState])?.[0] || matchedState;
+                const formattedStateName = stateName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                foundState = formattedStateName;
                 break;
             }
         }
-
+        
         if (foundState) {
             setValue("customerState", foundState, { shouldValidate: true });
         }
@@ -716,6 +724,10 @@ export function InvoiceForm() {
             </div>
 
             <div className="flex justify-end gap-4">
+                 <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => onSubmit(data, 'draft'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save as Draft
+                 </Button>
                  <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => onSubmit(data, 'create'))}>
                     {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Create Sale
@@ -738,5 +750,3 @@ export function InvoiceForm() {
     </FormProvider>
   );
 }
-
-    

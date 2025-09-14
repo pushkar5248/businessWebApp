@@ -29,11 +29,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { InventoryItem } from "@/lib/types";
+import { InventoryItem, PurchaseStatus } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
 import { useSettings } from "@/context/settings-context";
@@ -63,8 +62,9 @@ const formSchema = z.object({
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
 
-export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrderFormValues) => void; }) {
+export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: PurchaseOrderFormValues, status: PurchaseStatus) => void; onSaveDraft?: (data: PurchaseOrderFormValues) => void; }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isDraftLoading, setIsDraftLoading] = useState(false);
   const [isFetchingGstin, setIsFetchingGstin] = useState(false);
   const { user } = useAuth();
   const { settings } = useSettings();
@@ -155,11 +155,22 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
     try {
-      await onSubmit(data);
+      await onSubmit(data, 'Pending');
     } catch (error) {
       console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const handleSaveDraft = async (data: PurchaseOrderFormValues) => {
+    setIsDraftLoading(true);
+    try {
+      await onSubmit(data, 'Draft');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsDraftLoading(false);
     }
   };
 
@@ -205,7 +216,7 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+      <form className="space-y-8">
         <Card>
           <CardHeader>
             <CardTitle>Vendor Details</CardTitle>
@@ -418,14 +429,20 @@ export function PurchaseOrderForm({ onSubmit }: { onSubmit: (data: PurchaseOrder
                     {errors.poDate && <p className="text-sm text-destructive">{errors.poDate.message}</p>}
                 </div>
             </div>
-             <Button type="submit" size="lg" disabled={isLoading}>
-                {isLoading ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                    </>
-                ) : "Create Purchase Order"}
-             </Button>
+            <div className="flex items-center gap-4">
+                <Button type="button" variant="outline" size="lg" disabled={isDraftLoading || isLoading} onClick={handleSubmit(handleSaveDraft)}>
+                    {isDraftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save as Draft
+                </Button>
+                <Button type="button" size="lg" disabled={isLoading || isDraftLoading} onClick={handleSubmit(handleFormSubmit)}>
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                        </>
+                    ) : "Create Purchase Order"}
+                </Button>
+             </div>
         </div>
       </form>
     </FormProvider>

@@ -10,8 +10,8 @@ export type InventoryItem = {
   unit: string;
 };
 
-export type SaleStatus = 'Paid' | 'Pending' | 'Overdue';
-export type PurchaseStatus = 'Received' | 'Pending';
+export type SaleStatus = 'Paid' | 'Pending' | 'Overdue' | 'Draft';
+export type PurchaseStatus = 'Received' | 'Pending' | 'Draft';
 
 export type LineItem = {
   inventoryId?: string;
