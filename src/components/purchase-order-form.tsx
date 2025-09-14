@@ -239,6 +239,26 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     <FormProvider {...methods}>
       <form className="space-y-8">
         <Card>
+            <CardHeader>
+                <CardTitle>PO Details</CardTitle>
+                <CardDescription>
+                Enter the main details for your purchase order.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="poNumber">PO Number</Label>
+                    <Input id="poNumber" {...methods.register("poNumber")} readOnly={!!initialData} />
+                    {errors.poNumber && <p className="text-sm text-destructive">{errors.poNumber.message}</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="poDate">PO Date</Label>
+                    <Input id="poDate" type="date" {...methods.register("poDate")} />
+                    {errors.poDate && <p className="text-sm text-destructive">{errors.poDate.message}</p>}
+                </div>
+            </CardContent>
+        </Card>
+        <Card>
           <CardHeader>
             <CardTitle>Vendor Details</CardTitle>
             <CardDescription>
@@ -437,40 +457,24 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
           </CardFooter>
         </Card>
         
-        <div className="flex justify-between items-center">
-            <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <Label htmlFor="poNumber">PO Number</Label>
-                    <Input id="poNumber" {...methods.register("poNumber")} readOnly={!!initialData} />
-                    {errors.poNumber && <p className="text-sm text-destructive">{errors.poNumber.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="poDate">PO Date</Label>
-                    <Input id="poDate" type="date" {...methods.register("poDate")} />
-                    {errors.poDate && <p className="text-sm text-destructive">{errors.poDate.message}</p>}
-                </div>
-            </div>
-            <div className="flex items-center gap-4">
-                <Button type="button" variant="outline" size="lg" disabled={isDraftLoading || isLoading} onClick={handleSubmit(handleSaveDraft)}>
-                    {isDraftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Save as Draft
-                </Button>
-                <Button type="button" size="lg" disabled={isLoading || isDraftLoading} onClick={handleSubmit(handleFormSubmit)}>
-                    {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {initialData ? 'Updating...' : 'Creating...'}
-                        </>
-                    ) : initialData ? 'Update Purchase Order' : 'Create Purchase Order'}
-                </Button>
-                 <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isLoading || isDraftLoading}>
-                    Cancel
-                </Button>
-             </div>
+        <div className="flex justify-end items-center gap-4">
+            <Button type="button" variant="outline" size="lg" disabled={isDraftLoading || isLoading} onClick={handleSubmit(handleSaveDraft)}>
+                {isDraftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save as Draft
+            </Button>
+            <Button type="button" size="lg" disabled={isLoading || isDraftLoading} onClick={handleSubmit(handleFormSubmit)}>
+                {isLoading ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {initialData ? 'Updating...' : 'Creating...'}
+                    </>
+                ) : initialData ? 'Update Purchase Order' : 'Create Purchase Order'}
+            </Button>
+             <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isLoading || isDraftLoading}>
+                Cancel
+            </Button>
         </div>
       </form>
     </FormProvider>
   );
 }
-
-    

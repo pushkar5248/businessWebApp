@@ -408,6 +408,27 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     <FormProvider {...methods}>
       <form className="space-y-8">
         <Card>
+           <CardHeader>
+            <CardTitle>Invoice Details</CardTitle>
+            <CardDescription>
+              Enter the main details for your invoice.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                <Input id="invoiceNumber" {...methods.register("invoiceNumber")} readOnly={!!initialData} />
+                {errors.invoiceNumber && <p className="text-sm text-destructive">{errors.invoiceNumber.message}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="invoiceDate">Invoice Date</Label>
+                <Input id="invoiceDate" type="date" {...methods.register("invoiceDate")} />
+                {errors.invoiceDate && <p className="text-sm text-destructive">{errors.invoiceDate.message}</p>}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
           <CardHeader>
             <CardTitle>Recipient Details</CardTitle>
             <CardDescription>
@@ -739,58 +760,15 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
           </CardFooter>
         </Card>
         
-        <div className="flex justify-between items-center">
-            <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <Label htmlFor="invoiceNumber">Invoice Number</Label>
-                    <Input id="invoiceNumber" {...methods.register("invoiceNumber")} readOnly={!!initialData} />
-                    {errors.invoiceNumber && <p className="text-sm text-destructive">{errors.invoiceNumber.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="invoiceDate">Invoice Date</Label>
-                    <Input id="invoiceDate" type="date" {...methods.register("invoiceDate")} />
-                    {errors.invoiceDate && <p className="text-sm text-destructive">{errors.invoiceDate.message}</p>}
-                </div>
-            </div>
-
-            <div className="flex justify-end gap-4">
-                 {initialData ? (
-                   initialData.status === 'Draft' ? (
-                     <>
-                        <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
-                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save as Draft
-                        </Button>
-                         <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
-                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Create Sale
-                        </Button>
-                        <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'generate'))}>
-                            {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Generate Invoice PDF
-                        </Button>
-                        <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create_and_generate'))}>
-                            {isActionLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : "Create Sale and Generate PDF"}
-                        </Button>
-                     </>
-                   ) : (
-                    <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'update'))}>
-                        {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update Invoice
-                    </Button>
-                   )
-                 ) : (
-                    <>
+        <div className="flex justify-end items-center gap-4">
+             {initialData ? (
+               initialData.status === 'Draft' ? (
+                 <>
                     <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Save as Draft
                     </Button>
-                    <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
+                     <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Create Sale
                     </Button>
@@ -806,16 +784,42 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                             </>
                         ) : "Create Sale and Generate PDF"}
                     </Button>
-                    </>
-                 )}
-                  <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isActionLoading}>
-                    Cancel
+                 </>
+               ) : (
+                <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'update'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Update Invoice
                 </Button>
-            </div>
+               )
+             ) : (
+                <>
+                <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save as Draft
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Create Sale
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'generate'))}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Generate Invoice PDF
+                </Button>
+                <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create_and_generate'))}>
+                    {isActionLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                        </>
+                    ) : "Create Sale and Generate PDF"}
+                </Button>
+                </>
+             )}
+              <Button type="button" variant="ghost" size="lg" onClick={() => router.back()} disabled={isActionLoading}>
+                Cancel
+            </Button>
         </div>
       </form>
     </FormProvider>
   );
 }
-
-    
