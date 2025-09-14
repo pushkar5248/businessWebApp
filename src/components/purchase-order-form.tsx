@@ -44,6 +44,8 @@ const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
+  hsnCode: z.string().optional(),
+  unit: z.string().optional(),
 });
 
 const formSchema = z.object({
@@ -96,7 +98,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     } : {
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
-      items: [{ name: "", quantity: 1, price: 0 }],
+      items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
       cgstRate: settings?.billing.defaultCgstRate ?? 0,
       sgstRate: settings?.billing.defaultSgstRate ?? 0,
       igstRate: 0,
@@ -164,7 +166,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             ...getValues(),
             poDate: new Date().toISOString().split("T")[0],
             poNumber: `PO-${Date.now().toString().slice(-6)}`,
-            items: [{ name: "", quantity: 1, price: 0 }],
+            items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
             cgstRate: settings.billing.defaultCgstRate,
             sgstRate: settings.billing.defaultSgstRate,
             igstRate: 0,
@@ -376,7 +378,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50%] h-12 px-4">Item</TableHead>
+                  <TableHead className="w-[35%] h-12 px-4">Item</TableHead>
+                  <TableHead className="h-12 px-4">HSN</TableHead>
+                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Quantity</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
@@ -400,6 +404,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
                                         setValue(`items.${index}.name`, selectedItem.name);
                                         setValue(`items.${index}.price`, selectedItem.price);
+                                        setValue(`items.${index}.hsnCode`, selectedItem.hsnCode);
+                                        setValue(`items.${index}.unit`, selectedItem.unit);
                                     } else {
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, '');
@@ -413,6 +419,30 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       {errors.items?.[index]?.name && (
                         <p className="text-sm text-destructive">{errors.items[index].name.message}</p>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Controller
+                        control={control}
+                        name={`items.${index}.hsnCode`}
+                        render={({ field }) => (
+                            <Input
+                                {...field}
+                                placeholder="HSN Code"
+                            />
+                        )}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Controller
+                        control={control}
+                        name={`items.${index}.unit`}
+                        render={({ field }) => (
+                            <Input
+                                {...field}
+                                placeholder="Unit"
+                            />
+                        )}
+                      />
                     </TableCell>
                     <TableCell>
                       <Input
@@ -453,7 +483,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => append({ name: "", quantity: 1, price: 0 })}
+              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" })}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -525,3 +555,4 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
 }
 
     
+
