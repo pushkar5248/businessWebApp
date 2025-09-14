@@ -90,7 +90,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 width: 800px;
                 margin: 0 auto;
                 padding: 30px;
-                border: 3px solid #000;
             }
 
             /* --- Header --- */
@@ -215,6 +214,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .amount-in-words { background-color: #F9FAFB; min-height: 40px; }
             .amount-in-words span { font-weight: bold; }
             .bank-details { background-color: #F9FAFB; }
+            .bank-details h4 { margin-bottom: 2px; }
             .bank-details p { margin: 0; font-weight: bold; }
             
             .totals-table-wrapper {
