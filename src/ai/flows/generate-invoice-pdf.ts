@@ -196,7 +196,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 align-items: flex-start;
                 margin-top: 10px;
                 padding-top: 15px;
-                border-top: 2px solid #000;
             }
             .summary-left { width: 60%; display: flex; flex-direction: column; gap: 10px; }
             .summary-right { width: 38%; }
@@ -515,3 +514,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
