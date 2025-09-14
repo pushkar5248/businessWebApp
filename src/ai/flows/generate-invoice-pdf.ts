@@ -433,7 +433,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     `;
     Handlebars.registerHelper('addOne', (value: number) => value + 1);
 
-    const MIN_ROWS = 4;
+    const MIN_ROWS = 5;
 
     Handlebars.registerHelper('shouldAddEmptyRows', function(items) {
         return items.length < MIN_ROWS;
