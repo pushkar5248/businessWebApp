@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, useFieldArray, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -138,7 +138,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         // Defensive check: only include items that have a valid name.
         const items = inventorySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem)).filter(item => item && item.name);
         setInventoryItems(items);
-        setInventoryOptions(items.map(item => ({ value: item.id, label: item.name })));
 
     } catch (error) {
         console.error("Error fetching inventory", error);
@@ -149,6 +148,37 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
+  
+  const sortedInventoryItems = useMemo(() => {
+    const sortConfig = settings?.preferences?.inventorySort;
+    if (!sortConfig) {
+      return [...inventoryItems];
+    }
+    
+    const sorted = [...inventoryItems].sort((a, b) => {
+        let aValue, bValue;
+        if (sortConfig.key === 'value') {
+            aValue = a.price * a.stock;
+            bValue = b.price * b.stock;
+        } else {
+            aValue = a[sortConfig.key as keyof InventoryItem];
+            bValue = b[sortConfig.key as keyof InventoryItem];
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
+        }
+        return 0;
+    });
+    return sorted;
+  }, [inventoryItems, settings?.preferences?.inventorySort]);
+
+  useEffect(() => {
+    setInventoryOptions(sortedInventoryItems.map(item => ({ value: item.id, label: item.name })));
+  }, [sortedInventoryItems]);
 
   useEffect(() => {
       if (settings && !initialData) {
