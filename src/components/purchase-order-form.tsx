@@ -81,6 +81,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
   const [totalTaxes, setTotalTaxes] = useState(0);
+  const [roundOff, setRoundOff] = useState(0);
+  const [roundedTotal, setRoundedTotal] = useState(0);
   const router = useRouter();
 
 
@@ -198,10 +200,15 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     const insuranceAndOthers = newSubtotal * ((insuranceAndOthersRate || 0) / 100);
 
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
+    const newTotal = newSubtotal + newTotalTaxes;
+    const newRoundedTotal = Math.round(newTotal);
+    const newRoundOff = newRoundedTotal - newTotal;
 
     setSubtotal(newSubtotal);
     setTotalTaxes(newTotalTaxes);
-    setTotal(newSubtotal + newTotalTaxes);
+    setTotal(newTotal);
+    setRoundOff(newRoundOff);
+    setRoundedTotal(newRoundedTotal);
   }, [watchedFormValues]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
@@ -480,12 +487,16 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     <span>{currency}{formatCurrencyValue(subtotal).replace(currency, '')}</span>
                 </div>
                  <div className="flex justify-between">
-                    <span>Taxes</span>
+                    <span>Taxes &amp; Fees</span>
                     <span>{currency}{formatCurrencyValue(totalTaxes).replace(currency, '')}</span>
                 </div>
+                 <div className="flex justify-between">
+                    <span>Round Off</span>
+                    <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
+                </div>
                 <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>{currency}{formatCurrencyValue(total).replace(currency, '')}</span>
+                    <span>Grand Total</span>
+                    <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
                 </div>
             </div>
           </CardFooter>

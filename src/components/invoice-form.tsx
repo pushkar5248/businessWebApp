@@ -98,6 +98,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [totalTaxes, setTotalTaxes] = useState(0);
+  const [roundOff, setRoundOff] = useState(0);
+  const [roundedTotal, setRoundedTotal] = useState(0);
   const { currency, formatCurrencyValue } = useCurrency();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
@@ -220,10 +222,15 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     const igst = newSubtotal * ((igstRate || 0) / 100);
 
     const newTotalTaxes = cgst + sgst + igst;
-
+    const newTotal = newSubtotal + newTotalTaxes;
+    const newRoundedTotal = Math.round(newTotal);
+    const newRoundOff = newRoundedTotal - newTotal;
+    
     setSubtotal(newSubtotal);
     setTotalTaxes(newTotalTaxes);
-    setTotal(newSubtotal + newTotalTaxes);
+    setTotal(newTotal);
+    setRoundOff(newRoundOff);
+    setRoundedTotal(newRoundedTotal);
   }, [watchedFormValues]);
 
   const handleCreateSale = async (data: InvoiceFormValues, status: SaleStatus = 'Pending') => {
@@ -235,7 +242,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       id: data.invoiceNumber,
       customer: data.customerName,
       date: data.invoiceDate,
-      amount: total,
+      amount: roundedTotal,
       status: status,
       items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId, hsnCode: i.hsnCode, unit: i.unit })),
       customerAddress: data.customerAddress,
@@ -287,7 +294,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         businessGstin: settings.general.businessGstin,
         ...data,
         items: data.items.map((item) => ({ ...item })),
-        total: total,
+        total: roundedTotal,
         currency: currency,
       };
 
@@ -780,9 +787,13 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     <span>Taxes</span>
                     <span>{currency}{formatCurrencyValue(totalTaxes).replace(currency, '')}</span>
                 </div>
+                <div className="flex justify-between">
+                    <span>Round Off</span>
+                    <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
+                </div>
                 <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>{currency}{formatCurrencyValue(total).replace(currency, '')}</span>
+                    <span>Grand Total</span>
+                    <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
                 </div>
             </div>
           </CardFooter>
