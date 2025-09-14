@@ -167,10 +167,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             .party-field-grid .label { font-weight: bold; }
             
             /* --- Items Table --- */
+            .items-section {
+                margin-bottom: 10px;
+            }
             .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 20px;
                 border: 2px solid #000;
             }
             .items-table th, .items-table td {
@@ -194,9 +196,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-top: 10px;
+                margin-bottom: 10px;
             }
-            .summary-left { width: 60%; display: flex; flex-direction: column; gap: 5px; }
+            .summary-left { width: 60%; display: flex; flex-direction: column; gap: 10px; }
             .summary-right { width: 38%; }
 
             .summary-box {
@@ -244,7 +246,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
             
             /* --- Footer --- */
             .invoice-footer {
-                margin-top: 10px;
             }
             .terms-box {
                 padding: 10px;
