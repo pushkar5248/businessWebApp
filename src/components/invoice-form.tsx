@@ -33,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { type Sale, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
@@ -43,6 +43,7 @@ import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { Combobox } from "@/components/ui/combobox";
 import { updateStockOnSale } from "@/services/inventory-service";
+import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
 
 
 const lineItemSchema = z.object({
@@ -85,6 +86,7 @@ export function InvoiceForm() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isFetchingGstin, setIsFetchingGstin] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
@@ -114,6 +116,7 @@ export function InvoiceForm() {
     watch,
     reset,
     setValue,
+    getValues,
     formState: { errors },
   } = methods;
   
@@ -295,6 +298,46 @@ export function InvoiceForm() {
       setIsActionLoading(false);
     }
   };
+
+  const handleGstinFetch = async () => {
+    const gstin = getValues("customerGstin");
+    if (!gstin || gstin.length !== 15) {
+      toast({
+        variant: "destructive",
+        title: "Invalid GSTIN",
+        description: "Please enter a valid 15-character GSTIN.",
+      });
+      return;
+    }
+
+    setIsFetchingGstin(true);
+    try {
+      const result = await fetchGstinDetails({ gstin });
+      if (result) {
+        setValue("customerName", result.businessName, { shouldValidate: true });
+        setValue("customerAddress", result.businessAddress, { shouldValidate: true });
+        toast({
+          title: "Details Fetched",
+          description: `Successfully fetched details for ${result.businessName}.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Not Found",
+          description: "No details found for the provided GSTIN.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching GSTIN details:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not fetch GSTIN details. Please try again.",
+      });
+    } finally {
+      setIsFetchingGstin(false);
+    }
+  };
   
    if (!settings) {
     return (
@@ -364,15 +407,20 @@ export function InvoiceForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="customerGstin">GSTIN/UIN</Label>
-              <Input
-                id="customerGstin"
-                {...methods.register("customerGstin")}
-                placeholder="e.g. 27ABCDE1234F1Z5"
-                onInput={(e) => {
-                  const input = e.target as HTMLInputElement;
-                  input.value = input.value.toUpperCase();
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="customerGstin"
+                  {...methods.register("customerGstin")}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    input.value = input.value.toUpperCase();
+                  }}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={handleGstinFetch} disabled={isFetchingGstin}>
+                  {isFetchingGstin ? <Loader2 className="animate-spin" /> : <Search />}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
