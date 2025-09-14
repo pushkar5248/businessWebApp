@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrderFormValues } from "@/components/purchase-order-form";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, writeBatch, query, where, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PurchaseStatus } from "@/lib/types";
@@ -55,8 +55,36 @@ export default function NewPurchasePage() {
     };
     
     try {
-        const docRef = doc(db, "purchases", newPurchase.id);
-        await setDoc(docRef, newPurchase);
+        const batch = writeBatch(db);
+        const purchaseDocRef = doc(db, "purchases", newPurchase.id);
+        batch.set(purchaseDocRef, newPurchase);
+        
+        const newItemsToCreate = data.items.filter(item => !item.inventoryId);
+
+        if (newItemsToCreate.length > 0) {
+            const inventoryColRef = collection(db, "inventory");
+            const existingNames = new Set(
+                (await getDocs(query(inventoryColRef, where("userId", "==", user.uid))))
+                    .docs.map(d => d.data().name.toLowerCase())
+            );
+
+            for (const item of newItemsToCreate) {
+                if (!existingNames.has(item.name.toLowerCase())) {
+                    const newItemRef = doc(inventoryColRef);
+                    batch.set(newItemRef, {
+                        name: item.name,
+                        price: item.price,
+                        stock: 0, // Stock will be updated when PO is marked as 'Received'
+                        hsnCode: item.hsnCode || '',
+                        unit: item.unit || '',
+                        userId: user.uid,
+                    });
+                    existingNames.add(item.name.toLowerCase());
+                }
+            }
+        }
+        
+        await batch.commit();
         
         toast({
             title: `Purchase Order ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,

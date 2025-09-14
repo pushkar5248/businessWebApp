@@ -397,9 +397,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={field.value}
-                                onChange={(value) => {
-                                    const selectedItem = inventoryItems.find(item => item.id === value);
+                                value={getValues(`items.${index}.name`)}
+                                onValueChange={(newValue) => {
+                                    const selectedItem = inventoryItems.find(item => item.id === newValue || item.name.toLowerCase() === newValue.toLowerCase());
                                     if(selectedItem) {
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
                                         setValue(`items.${index}.name`, selectedItem.name);
@@ -408,11 +408,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                         setValue(`items.${index}.unit`, selectedItem.unit);
                                     } else {
                                       setValue(`items.${index}.inventoryId`, undefined);
-                                      setValue(`items.${index}.name`, '');
+                                      setValue(`items.${index}.name`, newValue);
                                     }
                                 }}
-                                placeholder="Select item..."
-                                emptyText="No items found in inventory."
+                                placeholder="Select or type new item..."
+                                emptyText="No items found. Type to add."
                             />
                           )}
                         />
@@ -553,6 +553,3 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
-
-    
-
