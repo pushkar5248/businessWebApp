@@ -32,7 +32,7 @@ import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { InventoryItem, PurchaseStatus } from "@/lib/types";
+import { InventoryItem, Purchase, PurchaseStatus } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
 import { useSettings } from "@/context/settings-context";
@@ -62,7 +62,12 @@ const formSchema = z.object({
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
 
-export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: PurchaseOrderFormValues, status: PurchaseStatus) => void; onSaveDraft?: (data: PurchaseOrderFormValues) => void; }) {
+interface PurchaseOrderFormProps {
+    onSubmit: (data: PurchaseOrderFormValues, status: PurchaseStatus) => void;
+    initialData?: Purchase;
+}
+
+export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDraftLoading, setIsDraftLoading] = useState(false);
   const [isFetchingGstin, setIsFetchingGstin] = useState(false);
@@ -78,7 +83,12 @@ export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: 
 
   const methods = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+        ...initialData,
+        poNumber: initialData.id,
+        vendorName: initialData.vendor,
+        poDate: initialData.date,
+    } : {
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0 }],
@@ -113,7 +123,7 @@ export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: 
   } = methods;
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !initialData) {
         reset({
             ...getValues(),
             poDate: new Date().toISOString().split("T")[0],
@@ -125,7 +135,15 @@ export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: 
             insuranceAndOthersRate: 0,
         });
     }
-  }, [settings, reset, getValues]);
+     if (initialData) {
+        reset({
+            ...initialData,
+            poNumber: initialData.id,
+            poDate: initialData.date,
+            vendorName: initialData.vendor,
+        });
+    }
+  }, [settings, reset, getValues, initialData]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -420,7 +438,7 @@ export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: 
             <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                     <Label htmlFor="poNumber">PO Number</Label>
-                    <Input id="poNumber" {...methods.register("poNumber")} />
+                    <Input id="poNumber" {...methods.register("poNumber")} readOnly={!!initialData} />
                     {errors.poNumber && <p className="text-sm text-destructive">{errors.poNumber.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -438,9 +456,9 @@ export function PurchaseOrderForm({ onSubmit, onSaveDraft }: { onSubmit: (data: 
                     {isLoading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating...
+                            {initialData ? 'Updating...' : 'Creating...'}
                         </>
-                    ) : "Create Purchase Order"}
+                    ) : initialData ? 'Update Purchase Order' : 'Create Purchase Order'}
                 </Button>
              </div>
         </div>

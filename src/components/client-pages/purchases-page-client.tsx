@@ -485,7 +485,11 @@ export default function PurchasesPageClient() {
                                     className="font-medium"
                                 />
                             ) : (
-                                <Link href={`/purchases/${purchase.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                <Link 
+                                    href={purchase.status === 'Draft' ? `/purchases/edit/${purchase.id}` : `/purchases/${purchase.id}`} 
+                                    className="font-medium text-primary hover:underline" 
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     {purchase.id}
                                 </Link>
                             )

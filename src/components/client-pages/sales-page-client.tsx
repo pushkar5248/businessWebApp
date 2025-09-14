@@ -490,7 +490,11 @@ export default function SalesPageClient() {
                                     className="font-medium"
                                 />
                             ) : (
-                                <Link href={`/sales/${sale.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                <Link
+                                    href={sale.status === 'Draft' ? `/sales/edit/${sale.id}` : `/sales/${sale.id}`}
+                                    className="font-medium text-primary hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     {sale.id}
                                 </Link>
                             )
