@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, useFieldArray, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -108,12 +108,43 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     const querySnapshot = await getDocs(q);
     const items = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id} as InventoryItem)).filter(item => item && item.name);
     setInventoryItems(items);
-    setInventoryOptions(items.map(item => ({ value: item.id, label: item.name })));
   }, [user]);
 
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
+  
+  const sortedInventoryItems = useMemo(() => {
+    const sortConfig = settings?.preferences?.inventorySort;
+    if (!sortConfig) {
+      return [...inventoryItems];
+    }
+    
+    const sorted = [...inventoryItems].sort((a, b) => {
+        let aValue, bValue;
+        if (sortConfig.key === 'value') {
+            aValue = a.price * a.stock;
+            bValue = b.price * b.stock;
+        } else {
+            aValue = a[sortConfig.key as keyof InventoryItem];
+            bValue = b[sortConfig.key as keyof InventoryItem];
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
+        }
+        return 0;
+    });
+    return sorted;
+  }, [inventoryItems, settings?.preferences?.inventorySort]);
+
+  useEffect(() => {
+    setInventoryOptions(sortedInventoryItems.map(item => ({ value: item.id, label: item.name })));
+  }, [sortedInventoryItems]);
+
 
   const {
     control,
@@ -351,17 +382,20 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     <TableCell>
                        <Controller
                           control={control}
-                          name={`items.${index}.name`}
+                          name={`items.${index}.inventoryId`}
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={watchedFormValues.items?.[index]?.inventoryId || ''}
+                                value={field.value}
                                 onChange={(value) => {
                                     const selectedItem = inventoryItems.find(item => item.id === value);
                                     if(selectedItem) {
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
                                         setValue(`items.${index}.name`, selectedItem.name);
                                         setValue(`items.${index}.price`, selectedItem.price);
+                                    } else {
+                                      setValue(`items.${index}.inventoryId`, undefined);
+                                      setValue(`items.${index}.name`, '');
                                     }
                                 }}
                                 placeholder="Select item..."
@@ -478,3 +512,5 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
+
+    
