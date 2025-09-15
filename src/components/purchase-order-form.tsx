@@ -44,6 +44,8 @@ const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   price: z.coerce.number().min(0, "Price cannot be negative."),
+  discount: z.coerce.number().min(0).max(100).optional().default(0),
+  total: z.coerce.number().min(0),
   hsnCode: z.string().optional(),
   unit: z.string().optional(),
 });
@@ -98,7 +100,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     } : {
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
-      items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
+      items: [{ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" }],
       cgstRate: settings?.billing.defaultCgstRate ?? 0,
       sgstRate: settings?.billing.defaultSgstRate ?? 0,
       igstRate: 0,
@@ -166,7 +168,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             ...getValues(),
             poDate: new Date().toISOString().split("T")[0],
             poNumber: `PO-${Date.now().toString().slice(-6)}`,
-            items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" }],
+            items: [{ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" }],
             cgstRate: settings.billing.defaultCgstRate,
             sgstRate: settings.billing.defaultSgstRate,
             igstRate: 0,
@@ -193,7 +195,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   useEffect(() => {
     const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = watchedFormValues;
     const newSubtotal = (items || []).reduce(
-      (acc, item) => acc + (item.quantity || 0) * (item.price || 0),
+      (acc, item) => acc + (item.total || 0),
       0
     );
     const igst = newSubtotal * ((igstRate || 0) / 100);
@@ -274,6 +276,15 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
       setIsFetchingGstin(false);
     }
   };
+
+  const handleLineItemChange = (index: number) => {
+    const item = getValues(`items.${index}`);
+    const quantity = item.quantity || 0;
+    const price = item.price || 0;
+    const discount = item.discount || 0;
+    const newTotal = (quantity * price) * (1 - discount / 100);
+    setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
+  }
 
   return (
     <FormProvider {...methods}>
@@ -378,11 +389,12 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[35%] h-12 px-4">Item</TableHead>
+                  <TableHead className="w-[30%] h-12 px-4">Item</TableHead>
                   <TableHead className="h-12 px-4">HSN</TableHead>
                   <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Quantity</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
+                  <TableHead className="h-12 px-4 w-24">Discount %</TableHead>
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
                   <TableHead className="h-12 px-4"></TableHead>
                 </TableRow>
@@ -394,10 +406,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                        <Controller
                           control={control}
                           name={`items.${index}.name`}
-                          render={({ field }) => (
+                          render={({ field: controllerField }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={field.value}
+                                value={controllerField.value}
                                 onValueChange={(newValue) => {
                                     const selectedItem = inventoryItems.find(item => item.id === newValue || item.name.toLowerCase() === newValue.toLowerCase());
                                     if(selectedItem) {
@@ -410,6 +422,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, newValue);
                                     }
+                                    handleLineItemChange(index);
                                 }}
                                 placeholder="Select or type new item..."
                                 emptyText="No items found. Type to add."
@@ -424,10 +437,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       <Controller
                         control={control}
                         name={`items.${index}.hsnCode`}
-                        render={({ field }) => (
+                        render={({ field: controllerField }) => (
                             <Input
-                                {...field}
-                                value={field.value ?? ''}
+                                {...controllerField}
+                                value={controllerField.value ?? ''}
                                 placeholder="HSN Code"
                             />
                         )}
@@ -437,10 +450,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       <Controller
                         control={control}
                         name={`items.${index}.unit`}
-                        render={({ field }) => (
+                        render={({ field: controllerField }) => (
                             <Input
-                                {...field}
-                                value={field.value ?? ''}
+                                {...controllerField}
+                                value={controllerField.value ?? ''}
                                 placeholder="Unit"
                             />
                         )}
@@ -451,6 +464,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.quantity`)}
+                        onChange={(e) => {
+                            methods.handleChange(e);
+                            handleLineItemChange(index);
+                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -458,13 +475,29 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
+                         onChange={(e) => {
+                            methods.handleChange(e);
+                            handleLineItemChange(index);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                       <Input
+                        type="number"
+                        step="any"
+                        {...methods.register(`items.${index}.discount`)}
+                        onChange={(e) => {
+                            methods.handleChange(e);
+                            handleLineItemChange(index);
+                        }}
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {currency}{formatCurrencyValue(
-                        (watchedFormValues.items?.[index]?.quantity || 0) *
-                        (watchedFormValues.items?.[index]?.price || 0)
-                      ).replace(currency, '')}
+                       <Input
+                        type="number"
+                        step="any"
+                        {...methods.register(`items.${index}.total`)}
+                      />
                     </TableCell>
                     <TableCell>
                       <Button
@@ -485,7 +518,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "" })}
+              onClick={() => append({ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" })}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -555,5 +588,3 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
-
-    
