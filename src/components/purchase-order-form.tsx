@@ -57,6 +57,7 @@ const formSchema = z.object({
   poNumber: z.string().min(1, "PO number is required."),
   poDate: z.string().min(1, "PO date is required."),
   eWayBillNumber: z.string().optional(),
+  transporterVehicleNumber: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required."),
   cgstRate: z.coerce.number().min(0).optional(),
   sgstRate: z.coerce.number().min(0).optional(),
@@ -369,6 +370,19 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     onInput={(e) => {
                       const input = e.target as HTMLInputElement;
                       input.value = input.value.replace(/[^0-9]/g, '');
+                    }}
+                />
+             </div>
+             <div className="space-y-2">
+                <Label htmlFor="transporterVehicleNumber">Transporter Vehicle No. (optional)</Label>
+                <Input
+                    id="transporterVehicleNumber"
+                    {...methods.register("transporterVehicleNumber")}
+                    placeholder="e.g. UP80EJ1234"
+                    type="text"
+                     onInput={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      input.value = input.value.toUpperCase();
                     }}
                 />
              </div>

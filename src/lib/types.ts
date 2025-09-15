@@ -61,6 +61,7 @@ export type Purchase = {
     amount: number;
     status: PurchaseStatus;
     items: LineItem[];
+    transporterVehicleNumber?: string;
     cgstRate?: number;
     sgstRate?: number;
     igstRate?: number;

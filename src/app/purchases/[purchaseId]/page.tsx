@@ -188,10 +188,13 @@ export default function PurchaseDetailsPage() {
                             <p>{purchase.shippingAddress}</p>
                         </div>
                     )}
-                    {purchase.eWayBillNumber && (
+                    {(purchase.eWayBillNumber || purchase.transporterVehicleNumber) && (
                          <div className="md:col-span-2">
                             <h3 className="font-semibold mb-2">Logistics</h3>
-                            <p><strong>E-Way Bill No:</strong> {purchase.eWayBillNumber}</p>
+                            <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+                                {purchase.eWayBillNumber && <p><strong>E-Way Bill No:</strong> {purchase.eWayBillNumber}</p>}
+                                {purchase.transporterVehicleNumber && <p><strong>Vehicle No:</strong> {purchase.transporterVehicleNumber}</p>}
+                            </div>
                         </div>
                     )}
                 </CardContent>

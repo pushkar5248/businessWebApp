@@ -77,6 +77,7 @@ export default function EditPurchasePage() {
         amount: total,
         status: status,
         items: sanitizedItems,
+        transporterVehicleNumber: data.transporterVehicleNumber || '',
         cgstRate: data.cgstRate || 0,
         sgstRate: data.sgstRate || 0,
         igstRate: data.igstRate || 0,
