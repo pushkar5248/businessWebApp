@@ -60,6 +60,10 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'SHREE DHAR INDUSTRIES',
     businessAddress: 'GA-109,, OLD INDUSTRIAL AREA,, MADANGANJ-KISHANGARH, Ajmer, Rajasthan, 305801',
   },
+  '09AYZPP3998D1ZD': {
+    businessName: 'VED BUILDERS',
+    businessAddress: '26, VILL PACHGAI KHEDA POST KAKUA, AGRA, Agra, Uttar Pradesh, 282009',
+  },
 };
 
 
