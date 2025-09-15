@@ -191,11 +191,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     name: "items",
   });
 
-<<<<<<< HEAD
-  const calculateTotal = useCallback(() => {
-    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = getValues();
-    const newSubtotal = items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
-=======
   const watchedFormValues = watch();
 
   useEffect(() => {
@@ -204,7 +199,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
       (acc, item) => acc + (item.total || 0),
       0
     );
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
     const igst = newSubtotal * ((igstRate || 0) / 100);
     const cgst = newSubtotal * ((cgstRate || 0) / 100);
     const sgst = newSubtotal * ((sgstRate || 0) / 100);
@@ -218,20 +212,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues]);
-  
-  useEffect(() => {
-    const subscription = watch((value, { name, type }) => {
-      if (name && (name.startsWith('items') || name.endsWith('Rate'))) {
-        calculateTotal();
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [watch, calculateTotal]);
-
-  useEffect(() => {
-    calculateTotal();
-  }, []);
+  }, [watchedFormValues]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues, status: PurchaseStatus = 'Pending') => {
     setIsLoading(true);
@@ -454,17 +435,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       )}
                     </TableCell>
                     <TableCell>
-<<<<<<< HEAD
-                      <Input
-                        {...methods.register(`items.${index}.hsnCode`)}
-                        placeholder="HSN Code"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        {...methods.register(`items.${index}.unit`)}
-                        placeholder="Unit"
-=======
                       <Controller
                         control={control}
                         name={`items.${index}.hsnCode`}
@@ -488,7 +458,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                 placeholder="Unit"
                             />
                         )}
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                       />
                     </TableCell>
                     <TableCell>
@@ -522,19 +491,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-<<<<<<< HEAD
-                      {currency}
-                      {(
-                        (watch(`items.${index}.quantity`) || 0) *
-                        (watch(`items.${index}.price`) || 0)
-                      ).toFixed(2)}
-=======
                        <Input
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.total`)}
                       />
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                     </TableCell>
                     <TableCell>
                       <Button

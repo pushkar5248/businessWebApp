@@ -22,8 +22,6 @@ export type LineItem = {
   total?: number;
   hsnCode?: string;
   unit?: string;
-  discount?: number;
-  total?: number;
 }
 
 export type Sale = {

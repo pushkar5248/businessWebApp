@@ -57,8 +57,6 @@ const lineItemSchema = z.object({
   total: z.coerce.number().min(0),
   hsnCode: z.string().optional(),
   unit: z.string().optional(),
-  discount: z.coerce.number().min(0).max(100).optional(),
-  total: z.coerce.number().optional(),
 });
 
 const formSchema = z.object({
@@ -117,15 +115,9 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       invoiceDate: new Date().toISOString().split("T")[0],
       transportDate: new Date().toISOString().split("T")[0],
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-<<<<<<< HEAD
-      items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0 }],
-      cgstRate: 9,
-      sgstRate: 9,
-=======
       items: [{ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" }],
       cgstRate: settings?.billing.defaultCgstRate ?? 9,
       sgstRate: settings?.billing.defaultSgstRate ?? 9,
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
       igstRate: 0,
     },
   });
@@ -140,7 +132,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     formState: { errors },
   } = methods;
   
-    if (settingsLoading) {
+  if (settingsLoading) {
     return (
         <div className="flex h-[80vh] items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -197,31 +189,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     setInventoryOptions(sortedInventoryItems.map(item => ({ value: item.id, label: item.name })));
   }, [sortedInventoryItems]);
 
-<<<<<<< HEAD
-=======
-  useEffect(() => {
-      if (settings && !initialData) {
-          reset({
-              invoiceDate: new Date().toISOString().split("T")[0],
-              transportDate: new Date().toISOString().split("T")[0],
-              invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-              items: [{ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" }],
-              cgstRate: settings.billing.defaultCgstRate,
-              sgstRate: settings.billing.defaultSgstRate,
-              igstRate: 0,
-          });
-      }
-      if(initialData){
-          reset({
-            ...initialData,
-            invoiceNumber: initialData.id,
-            customerName: initialData.customer,
-            invoiceDate: initialData.date,
-          });
-      }
-  }, [settings, reset, initialData]);
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
-
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
@@ -235,15 +202,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       return acc + itemTotal;
     }, 0);
 
-<<<<<<< HEAD
-=======
-  useEffect(() => {
-    const { items, cgstRate, sgstRate, igstRate } = watchedFormValues;
-    const newSubtotal = (items || []).reduce(
-      (acc, item) => acc + (item.total || 0),
-      0
-    );
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
     const cgst = newSubtotal * ((cgstRate || 0) / 100);
     const sgst = newSubtotal * ((sgstRate || 0) / 100);
     const igst = newSubtotal * ((igstRate || 0) / 100);
@@ -302,11 +260,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       date: data.invoiceDate,
       amount: roundedTotal,
       status: status,
-<<<<<<< HEAD
       items: finalItems,
-=======
-      items: data.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, inventoryId: i.inventoryId, hsnCode: i.hsnCode, unit: i.unit, discount: i.discount, total: i.total })),
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
       customerAddress: data.customerAddress,
       customerPhone: data.customerPhone,
       customerState: data.customerState,
@@ -451,11 +405,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         for (const stateKey of sortedStateKeys) {
             if (normalizedAddress.includes(stateKey)) {
                 const stateCode = stateCodeMap[stateKey];
-<<<<<<< HEAD
                 const canonicalState = Object.keys(stateCodeMap).find(key => stateCodeMap[key] === stateCode && !/^[a-z]{2}$/.test(key));
-=======
-                const canonicalState = Object.keys(stateCodeMap).find(key => stateCodeMap[key] === stateCode && !/^[a-z]{2}$/.test(key)); 
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                 if (canonicalState) {
                     foundState = canonicalState.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     break;
@@ -517,7 +467,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             }))
         });
     }
-  }, [settings, reset, initialData, setValue]);
+  }, [settings, reset, initialData]);
   
 
   useEffect(() => {
@@ -527,15 +477,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         handleLineItemChange(0);
      }
   }, [initialData, handleLineItemChange]);
-
-  const handleLineItemChange = (index: number) => {
-    const item = getValues(`items.${index}`);
-    const quantity = item.quantity || 0;
-    const price = item.price || 0;
-    const discount = item.discount || 0;
-    const newTotal = (quantity * price) * (1 - discount / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
-  }
 
   return (
     <FormProvider {...methods}>
@@ -748,11 +689,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                   <TableHead className="h-12 px-4">Quantity</TableHead>
                   <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
-<<<<<<< HEAD
-                  <TableHead className="h-12 px-4">Discount (%)</TableHead>
-=======
                   <TableHead className="h-12 px-4 w-24">Discount %</TableHead>
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
                   <TableHead className="h-12 px-4"></TableHead>
                 </TableRow>
@@ -792,11 +729,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                       )}
                     </TableCell>
                      <TableCell>
-<<<<<<< HEAD
-                       <Input
-                        {...methods.register(`items.${index}.hsnCode`)}
-                        placeholder="HSN Code"
-=======
                       <Controller
                         control={control}
                         name={`items.${index}.hsnCode`}
@@ -807,6 +739,16 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                 placeholder="HSN Code"
                             />
                         )}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="any"
+                        {...methods.register(`items.${index}.quantity`)}
+                        onChange={() => {
+                            handleLineItemChange(index);
+                        }}
                       />
                     </TableCell>
                      <TableCell>
@@ -820,30 +762,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                 placeholder="Unit"
                             />
                         )}
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="any"
-                        {...methods.register(`items.${index}.quantity`)}
-<<<<<<< HEAD
-                        onChange={(e) => {
-                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
-                      />
-                    </TableCell>
-                     <TableCell>
-                      <Input
-                        {...methods.register(`items.${index}.unit`)}
-                        placeholder="Unit"
-=======
-                         onChange={() => {
-                            handleLineItemChange(index);
-                        }}
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                       />
                     </TableCell>
                     <TableCell>
@@ -851,37 +769,22 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
-<<<<<<< HEAD
-                         onChange={(e) => {
-                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
-=======
                          onChange={() => {
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                             handleLineItemChange(index);
                         }}
                       />
                     </TableCell>
                     <TableCell>
-<<<<<<< HEAD
-                       <Input
-                        type="number"
-                        step="any"
-                        {...methods.register(`items.${index}.discount`)}
-                         onChange={(e) => {
-                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
-=======
                       <Input
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
                         onChange={() => {
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                             handleLineItemChange(index);
                         }}
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-<<<<<<< HEAD
                        <div className="flex items-center justify-end gap-1">
                           <Controller
                             control={control}
@@ -919,13 +822,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                 {manualOverrideIndex === index ? <Check className="h-4 w-4 text-green-600" /> : <Edit2 className="h-4 w-4" />}
                             </Button>
                         </div>
-=======
-                      <Input
-                        type="number"
-                        step="any"
-                        {...methods.register(`items.${index}.total`)}
-                      />
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
                     </TableCell>
                     <TableCell>
                       <Button
@@ -946,11 +842,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
               variant="outline"
               size="sm"
               className="mt-4"
-<<<<<<< HEAD
-              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0, total: 0 })}
-=======
               onClick={() => append({ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" })}
->>>>>>> 93d529b545a8cf18b0132867918f807122526dd2
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
