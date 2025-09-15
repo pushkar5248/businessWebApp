@@ -31,6 +31,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { updateStockOnSale } from '@/services/inventory-service';
+import { formatDate } from '@/lib/utils';
 
 
 const getBadgeVariant = (status: string) => {
@@ -261,7 +262,7 @@ export default function InvoiceDetailsPage() {
                 <CardHeader>
                     <CardTitle>Invoice Details</CardTitle>
                     <CardDescription>
-                        Date: {new Date(invoice.date).toLocaleDateString()}
+                        Date: {formatDate(invoice.date)}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-8">
@@ -289,7 +290,7 @@ export default function InvoiceDetailsPage() {
                                 {invoice.transporterName && <p><strong>Name:</strong> {invoice.transporterName}</p>}
                                 {invoice.transporterVehicleNumber && <p><strong>Vehicle No:</strong> {invoice.transporterVehicleNumber}</p>}
                                 {invoice.placeOfSupply && <p><strong>Place of Supply:</strong> {invoice.placeOfSupply}</p>}
-                                {invoice.transportDate && <p><strong>Date:</strong> {new Date(invoice.transportDate).toLocaleDateString()}</p>}
+                                {invoice.transportDate && <p><strong>Date:</strong> {formatDate(invoice.transportDate)}</p>}
                                 {invoice.eWayBillNumber && <p><strong>E-Way Bill No:</strong> {invoice.eWayBillNumber}</p>}
                             </div>
                         </div>

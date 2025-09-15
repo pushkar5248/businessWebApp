@@ -18,6 +18,8 @@ export type LineItem = {
   name: string;
   quantity: number;
   price: number;
+  discount?: number;
+  total?: number;
   hsnCode?: string;
   unit?: string;
   discount?: number;

@@ -24,6 +24,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-context';
 import { updateStockOnPurchase } from '@/services/inventory-service';
+import { formatDate } from '@/lib/utils';
 
 
 const getBadgeVariant = (status: string) => {
@@ -172,7 +173,7 @@ export default function PurchaseDetailsPage() {
                 <CardHeader>
                     <CardTitle>PO Details</CardTitle>
                     <CardDescription>
-                        Date: {new Date(purchase.date).toLocaleDateString()}
+                        Date: {formatDate(purchase.date)}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-8">

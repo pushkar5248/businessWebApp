@@ -14,6 +14,7 @@ import {z} from 'zod';
 import Handlebars from 'handlebars';
 import { getStateCode } from '@/lib/state-codes';
 import { logoDataUri } from '@/lib/logo-data';
+import { formatDate } from '@/lib/utils';
 
 const GenerateInvoicePdfInputSchema = z.object({
   businessName: z.string().describe('The name of the business.'),
@@ -467,18 +468,6 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         str += (Number(n[4]) != 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'hundred ' : '';
         str += (Number(n[5]) != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) + 'only ' : '';
         return str.trim().replace(/\s+/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    }
-
-    function formatDate(dateStr: string) {
-        const date = new Date(dateStr);
-        // Adjust for timezone offset to prevent off-by-one day errors
-        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-
-        const day = String(adjustedDate.getDate()).padStart(2, '0');
-        const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
-        const year = String(adjustedDate.getFullYear());
-        return `${day}-${month}-${year}`;
     }
 
     const templateData = {

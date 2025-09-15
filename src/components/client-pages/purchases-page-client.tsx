@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateStockOnPurchase } from '@/services/inventory-service';
+import { formatDate } from '@/lib/utils';
 
 
 const getBadgeVariant = (status: string) => {
@@ -469,14 +470,7 @@ export default function PurchasesPageClient() {
                           ) : key === 'amount' ? (
                             formatCurrency(purchase.amount)
                            ) : key === 'date' ? (
-                             <Input 
-                                type="date"
-                                value={purchase.date}
-                                onChange={(e) => handlePurchaseUpdate(purchase.id, 'date', e.target.value)}
-                                disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
-                                readOnly={!isEditMode}
-                             />
+                             formatDate(purchase.date)
                            ) : key === 'id' ? (
                             isEditMode ? (
                                 <Input 

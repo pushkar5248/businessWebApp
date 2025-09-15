@@ -33,6 +33,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDate } from "@/lib/utils";
 
 type LedgerEntry = {
   date: string;
@@ -230,13 +231,13 @@ export default function CustomerLedgerPage() {
         const result = await generateLedgerPdf({
             businessName: settings.general.businessName,
             businessAddress: settings.general.businessAddress,
-            reportDate: new Date().toLocaleDateString(),
+            reportDate: formatDate(new Date()),
             personName: selectedPerson,
-            fromDate: startDate ? new Date(startDate).toLocaleDateString() : undefined,
-            toDate: endDate ? new Date(endDate).toLocaleDateString() : undefined,
+            fromDate: startDate ? formatDate(startDate) : undefined,
+            toDate: endDate ? formatDate(endDate) : undefined,
             entries: processedLedger.map(e => ({
                 ...e,
-                date: new Date(e.date).toLocaleDateString(),
+                date: formatDate(e.date),
                 debit: e.debit > 0 ? formatCurrency(e.debit) : '-',
                 credit: e.credit > 0 ? formatCurrency(e.credit) : '-',
                 balance: formatCurrency(e.balance) + (e.balance >= 0 ? ' Dr' : ' Cr')
@@ -339,7 +340,7 @@ export default function CustomerLedgerPage() {
                         <SelectContent>
                             {uniqueDates.map(date => (
                                 <SelectItem key={`start-${date}`} value={date}>
-                                    {new Date(date).toLocaleDateString()}
+                                    {formatDate(date)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -354,7 +355,7 @@ export default function CustomerLedgerPage() {
                         <SelectContent>
                             {uniqueDates.map(date => (
                                 <SelectItem key={`end-${date}`} value={date}>
-                                    {new Date(date).toLocaleDateString()}
+                                    {formatDate(date)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -376,7 +377,7 @@ export default function CustomerLedgerPage() {
                  <div>
                     <h3 className="font-semibold text-lg">{selectedPerson}'s Ledger</h3>
                     <p className="text-sm text-muted-foreground">
-                        {startDate || endDate ? `From ${startDate ? new Date(startDate).toLocaleDateString() : 'start'} to ${endDate ? new Date(endDate).toLocaleDateString() : 'end'}` : "For all dates"}
+                        {startDate || endDate ? `From ${startDate ? formatDate(startDate) : 'start'} to ${endDate ? formatDate(endDate) : 'end'}` : "For all dates"}
                     </p>
                  </div>
                  <div className="text-right">
@@ -404,7 +405,7 @@ export default function CustomerLedgerPage() {
                   )}
                   {processedLedger.map((entry, index) => (
                     <TableRow key={index}>
-                      <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(entry.date)}</TableCell>
                       <TableCell>{entry.particulars}</TableCell>
                       <TableCell>{entry.voucherType}</TableCell>
                       <TableCell>{entry.voucherNumber}</TableCell>

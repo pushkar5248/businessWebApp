@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateStockOnSale } from '@/services/inventory-service';
+import { formatDate } from '@/lib/utils';
 
 
 const getBadgeVariant = (status: string) => {
@@ -481,15 +482,8 @@ export default function SalesPageClient() {
                           ) : key === 'amount' ? (
                             formatCurrency(sale.amount)
                            ) : key === 'date' ? (
-                             <Input 
-                                type="date"
-                                value={sale.date}
-                                onChange={(e) => handleSaleUpdate(sale.id, 'date', e.target.value)}
-                                disabled={!isEditMode || !user}
-                                className={cn(!isEditMode && "border-none bg-transparent read-only:cursor-text disabled:cursor-text disabled:opacity-100")}
-                                readOnly={!isEditMode}
-                             />
-                          ) : key === 'id' ? (
+                             formatDate(sale.date)
+                           ) : key === 'id' ? (
                             isEditMode ? (
                                 <Input 
                                     value={sale.id}

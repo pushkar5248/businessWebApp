@@ -8,6 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import Handlebars from 'handlebars';
+import { formatDate } from '@/lib/utils';
 
 const LedgerEntrySchema = z.object({
   date: z.string(),
@@ -153,9 +154,20 @@ const generateLedgerHtmlFlow = ai.defineFlow(
     </html>
     `;
 
+    const templateData = {
+        ...input,
+        reportDate: formatDate(input.reportDate),
+        fromDate: input.fromDate ? formatDate(input.fromDate) : undefined,
+        toDate: input.toDate ? formatDate(input.toDate) : undefined,
+        entries: input.entries.map(e => ({
+            ...e,
+            date: formatDate(e.date),
+        }))
+    };
+
     try {
       const template = Handlebars.compile(handlebarsTemplate);
-      const htmlContent = template(input);
+      const htmlContent = template(templateData);
       
       return {
         html: htmlContent,
