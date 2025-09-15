@@ -210,8 +210,8 @@ export default function PurchaseDetailsPage() {
                             <TableRow>
                                 <TableHead>Item</TableHead>
                                 <TableHead>HSN</TableHead>
-                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-center">Quantity</TableHead>
+                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                             </TableRow>
@@ -221,10 +221,10 @@ export default function PurchaseDetailsPage() {
                                 <TableRow key={index}>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{item.hsnCode}</TableCell>
-                                    <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
+                                    <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency((item.total ?? (item.quantity * item.price * (1-(item.discount||0)/100)) ))}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

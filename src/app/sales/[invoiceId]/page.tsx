@@ -131,7 +131,7 @@ export default function InvoiceDetailsPage() {
         notFound();
     }
 
-    const subtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+    const subtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price * (1 - (item.discount || 0)/100)), 0);
     const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
@@ -307,8 +307,8 @@ export default function InvoiceDetailsPage() {
                             <TableRow>
                                 <TableHead>Item</TableHead>
                                 <TableHead>HSN</TableHead>
-                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-center">Quantity</TableHead>
+                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                             </TableRow>
@@ -318,10 +318,10 @@ export default function InvoiceDetailsPage() {
                                 <TableRow key={index}>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{item.hsnCode}</TableCell>
-                                    <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
+                                    <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency((item.total ?? (item.quantity * item.price * (1-(item.discount||0)/100)) ))}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

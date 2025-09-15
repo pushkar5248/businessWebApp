@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm, useFieldArray, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search, Edit2, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
@@ -88,6 +88,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [roundOff, setRoundOff] = useState(0);
   const [roundedTotal, setRoundedTotal] = useState(0);
   const router = useRouter();
+  const [manualOverrideIndex, setManualOverrideIndex] = useState<number | null>(null);
+  const manualTotalRef = useRef<HTMLInputElement | null>(null);
 
 
   const methods = useForm<PurchaseOrderFormValues>({
@@ -182,23 +184,24 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             poDate: initialData.date,
             vendorName: initialData.vendor,
         });
+         initialData.items.forEach((item, index) => {
+          setValue(`items.${index}.total` as any, item.total ?? ((item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100)));
+        });
     }
-  }, [settings, reset, getValues, initialData]);
+  }, [settings, reset, getValues, initialData, setValue]);
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
 
-  const watchedItems = watch("items");
-  const watchedRates = watch(["cgstRate", "sgstRate", "igstRate", "insuranceAndOthersRate"]);
-
-  const calculateTotals = useCallback(() => {
+  const calculateGrandTotal = useCallback(() => {
     const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = getValues();
-    const newSubtotal = (items || []).reduce(
-      (acc, item) => acc + (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0)/100),
-      0
-    );
+    const newSubtotal = (items || []).reduce((acc, item) => {
+        const itemTotal = (item as any).total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
+        return acc + itemTotal;
+    }, 0);
+
     const igst = newSubtotal * ((igstRate || 0) / 100);
     const cgst = newSubtotal * ((cgstRate || 0) / 100);
     const sgst = newSubtotal * ((sgstRate || 0) / 100);
@@ -216,9 +219,23 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setRoundedTotal(newRoundedTotal);
   }, [getValues]);
 
+
+  const handleLineItemChange = useCallback((index: number) => {
+    if (manualOverrideIndex === index) {
+      calculateGrandTotal();
+      return;
+    }
+    const item = getValues(`items.${index}`);
+    const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
+    setValue(`items.${index}.total` as any, newTotal, { shouldDirty: true });
+    calculateGrandTotal();
+  }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
+
   useEffect(() => {
-    calculateTotals();
-  }, [watchedItems, watchedRates, calculateTotals]);
+    // Initial calculation
+    const items = getValues('items');
+    items.forEach((_, index) => handleLineItemChange(index));
+  }, []);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
@@ -400,8 +417,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                 <TableRow>
                   <TableHead className="w-[30%] h-12 px-4">Item</TableHead>
                   <TableHead className="h-12 px-4">HSN</TableHead>
-                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Quantity</TableHead>
+                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
                   <TableHead className="h-12 px-4">Discount (%)</TableHead>
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
@@ -415,10 +432,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                        <Controller
                           control={control}
                           name={`items.${index}.name`}
-                          render={({ field }) => (
+                          render={({ field: controllerField }) => (
                             <Combobox
                                 options={inventoryOptions}
-                                value={field.value}
+                                value={controllerField.value}
                                 onValueChange={(newValue) => {
                                     const selectedItem = inventoryItems.find(item => item.id === newValue || item.name.toLowerCase() === newValue.toLowerCase());
                                     if(selectedItem) {
@@ -431,7 +448,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, newValue);
                                     }
-                                    calculateTotals();
+                                    handleLineItemChange(index);
                                 }}
                                 placeholder="Select or type new item..."
                                 emptyText="No items found. Type to add."
@@ -450,6 +467,17 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     </TableCell>
                     <TableCell>
                       <Input
+                        type="number"
+                        step="any"
+                        {...methods.register(`items.${index}.quantity`)}
+                        onChange={(e) => {
+                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
+                            handleLineItemChange(index);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
                         {...methods.register(`items.${index}.unit`)}
                         placeholder="Unit"
                       />
@@ -458,14 +486,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       <Input
                         type="number"
                         step="any"
-                        {...methods.register(`items.${index}.quantity`)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="any"
                         {...methods.register(`items.${index}.price`)}
+                         onChange={(e) => {
+                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
+                            handleLineItemChange(index);
+                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -474,14 +499,50 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         step="any"
                         defaultValue={0}
                         {...methods.register(`items.${index}.discount`)}
+                         onChange={(e) => {
+                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
+                            handleLineItemChange(index);
+                        }}
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {currency}{formatCurrencyValue(
-                        (watchedItems[index]?.quantity || 0) *
-                        (watchedItems[index]?.price || 0) *
-                        (1 - (watchedItems[index]?.discount || 0) / 100)
-                      ).replace(currency, '')}
+                       <div className="flex items-center justify-end gap-1">
+                          <Controller
+                            control={control}
+                            name={`items.${index}.total` as any}
+                            render={({ field }) => (
+                                <Input
+                                    {...field}
+                                    type="number"
+                                    step="any"
+                                    className="w-28 text-right border-none read-only:bg-transparent"
+                                    readOnly={manualOverrideIndex !== index}
+                                    onChange={(e) => {
+                                        field.onChange(parseFloat(e.target.value));
+                                        calculateGrandTotal();
+                                    }}
+                                    ref={manualOverrideIndex === index ? manualTotalRef : null}
+                                />
+                            )}
+                          />
+                           <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => {
+                                    if (manualOverrideIndex === index) {
+                                        setManualOverrideIndex(null);
+                                        handleLineItemChange(index); // Recalculate
+                                    } else {
+                                        setManualOverrideIndex(index);
+                                        setTimeout(() => manualTotalRef.current?.focus(), 0);
+                                    }
+                                }}
+                            >
+                                {manualOverrideIndex === index ? <Check className="h-4 w-4 text-green-600" /> : <Edit2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
                     </TableCell>
                     <TableCell>
                       <Button
@@ -515,19 +576,19 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl ml-auto">
                 <div className="space-y-2">
                     <Label htmlFor="cgstRate">CGST (%)</Label>
-                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} />
+                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} onChange={(e) => { methods.setValue('cgstRate', parseFloat(e.target.value)); calculateGrandTotal()}}/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="sgstRate">SGST (%)</Label>
-                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} />
+                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} onChange={(e) => { methods.setValue('sgstRate', parseFloat(e.target.value)); calculateGrandTotal()}} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="igstRate">IGST (%)</Label>
-                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} />
+                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} onChange={(e) => { methods.setValue('igstRate', parseFloat(e.target.value)); calculateGrandTotal()}} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="insuranceAndOthersRate">Insurance & Others (%)</Label>
-                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} />
+                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} onChange={(e) => { methods.setValue('insuranceAndOthersRate', parseFloat(e.target.value)); calculateGrandTotal()}} />
                 </div>
             </div>
             <div className="w-full max-w-sm space-y-2">
