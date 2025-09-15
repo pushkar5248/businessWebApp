@@ -214,6 +214,7 @@ export default function PurchaseDetailsPage() {
                                 <TableHead className="text-center">Quantity</TableHead>
                                 <TableHead>Unit</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
+                                <TableHead className="text-right">Discount (%)</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -225,6 +226,7 @@ export default function PurchaseDetailsPage() {
                                     <TableCell className="text-center">{item.quantity}</TableCell>
                                     <TableCell>{item.unit}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                                    <TableCell className="text-right">{item.discount || 0}%</TableCell>
                                     <TableCell className="text-right">{formatCurrency((item.total ?? (item.quantity * item.price * (1-(item.discount||0)/100)) ))}</TableCell>
                                 </TableRow>
                             ))}
