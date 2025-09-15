@@ -727,8 +727,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.quantity`)}
-                         onChange={(e) => {
-                            methods.handleChange(e);
+                         onChange={() => {
                             handleLineItemChange(index);
                         }}
                       />
@@ -738,8 +737,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
-                         onChange={(e) => {
-                            methods.handleChange(e);
+                         onChange={() => {
                             handleLineItemChange(index);
                         }}
                       />
@@ -749,8 +747,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
-                        onChange={(e) => {
-                            methods.handleChange(e);
+                        onChange={() => {
                             handleLineItemChange(index);
                         }}
                       />
@@ -889,3 +886,5 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
+
+    
