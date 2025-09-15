@@ -20,6 +20,8 @@ export type LineItem = {
   price: number;
   hsnCode?: string;
   unit?: string;
+  discount?: number;
+  total?: number;
 }
 
 export type Sale = {
@@ -98,5 +100,3 @@ export type UserSettings = {
     }
   }
 }
-
-    
