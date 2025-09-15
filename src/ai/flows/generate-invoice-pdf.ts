@@ -43,6 +43,7 @@ const GenerateInvoicePdfInputSchema = z.object({
       name: z.string().describe('The name of the item.'),
       quantity: z.number().describe('The quantity of the item.'),
       price: z.number().describe('The price of the item.'),
+      discount: z.number().optional().describe('The discount percentage for the item.'),
       hsnCode: z.string().optional().describe('The HSN code of the item.'),
       unit: z.string().optional().describe('The unit of the item (e.g., pcs, sqft).'),
     })
@@ -328,11 +329,12 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                     <thead>
                         <tr>
                             <th style="width: 5%;" class="text-center">#</th>
-                            <th style="width: 40%;">Item Description</th>
+                            <th style="width: 35%;">Item Description</th>
                             <th class="text-center">HSN/SAC</th>
                             <th class="text-right">Qty</th>
                             <th class="text-center">Unit</th>
                             <th class="text-right">Rate</th>
+                            <th class="text-right">Discount (%)</th>
                             <th class="text-right">Amount</th>
                         </tr>
                     </thead>
@@ -345,6 +347,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                             <td class="text-right">{{{quantity}}}</td>
                             <td class="text-center">{{{unit}}}</td>
                             <td class="text-right">{{{../currency}}}{{{price}}}</td>
+                            <td class="text-right">{{{discount}}}%</td>
                             <td class="text-right">{{{../currency}}}{{{itemTotal}}}</td>
                         </tr>
                         {{/each}}
@@ -352,6 +355,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                             {{#each (getEmptyRows items)}}
                             <tr>
                                 <td>&nbsp;</td>
+                                <td></td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
@@ -446,7 +450,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     });
 
 
-    const subtotal = input.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
+    const subtotal = input.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100), 0);
     const cgstAmount = subtotal * ((input.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((input.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((input.igstRate || 0) / 100);
@@ -481,7 +485,8 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         igst: igstAmount > 0 ? igstAmount.toFixed(2) : null,
         items: input.items.map(item => ({
             ...item,
-            itemTotal: ((item.quantity || 0) * (item.price || 0)).toFixed(2)
+            discount: item.discount || 0,
+            itemTotal: ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100)).toFixed(2)
         })),
         total: input.total.toFixed(2),
         roundOff: roundOffAmount.toFixed(2),
