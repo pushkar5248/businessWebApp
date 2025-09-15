@@ -662,12 +662,12 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     <TableCell>
                       <Controller
                           control={control}
-                          name={`items.${index}.inventoryId`}
+                          name={`items.${index}.name`}
                           render={({ field }) => (
                             <Combobox
                                 options={inventoryOptions}
                                 value={field.value}
-                                onChange={(value) => {
+                                onValueChange={(value) => {
                                     const selectedItem = inventoryItems.find(item => item.id === value);
                                     if (selectedItem) {
                                         setValue(`items.${index}.inventoryId`, selectedItem.id);
@@ -678,7 +678,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                     } else {
                                         // Handle manual entry or clearing the selection
                                         setValue(`items.${index}.inventoryId`, undefined);
-                                        setValue(`items.${index}.name`, '');
+                                        setValue(`items.${index}.name`, value);
                                     }
                                 }}
                                 placeholder="Select item..."
@@ -697,6 +697,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         render={({ field }) => (
                             <Input
                                 {...field}
+                                value={field.value || ''}
                                 placeholder="HSN Code"
                             />
                         )}
@@ -709,6 +710,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         render={({ field }) => (
                             <Input
                                 {...field}
+                                value={field.value || ''}
                                 placeholder="Unit"
                             />
                         )}
@@ -862,3 +864,5 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
+
+    
