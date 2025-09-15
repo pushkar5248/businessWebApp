@@ -56,6 +56,7 @@ const lineItemSchema = z.object({
   hsnCode: z.string().optional(),
   unit: z.string().optional(),
   discount: z.coerce.number().min(0).max(100).optional(),
+  total: z.coerce.number().optional(),
 });
 
 const formSchema = z.object({
@@ -83,7 +84,7 @@ const formSchema = z.object({
 
 export type InvoiceFormValues = z.infer<typeof formSchema>;
 
-type ActionType = "create" | "generate" | "create_and_generate" | "draft" | "update";
+type ActionType = "create" | "generate" | "create_and_generate" | "draft" | "update" | "update_draft";
 
 interface InvoiceFormProps {
     onSubmit?: (data: InvoiceFormValues, status: SaleStatus) => Promise<void>;
@@ -131,6 +132,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     formState: { errors },
   } = methods;
   
+    if (settingsLoading) {
+    return (
+        <div className="flex h-[80vh] items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+   }
+
   const fetchInventory = useCallback(async () => {
     if (!user) return;
     try {
@@ -190,7 +199,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     const { items, cgstRate, sgstRate, igstRate } = getValues();
     
     const newSubtotal = (items || []).reduce((acc, item) => {
-      const itemTotal = (item as any).total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
+      const itemTotal = item.total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
       return acc + itemTotal;
     }, 0);
 
@@ -219,7 +228,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     }
     const item = getValues(`items.${index}`);
     const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
-    setValue(`items.${index}.total` as any, newTotal, { shouldDirty: true });
+    setValue(`items.${index}.total`, newTotal, { shouldDirty: true });
     calculateGrandTotal();
   }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
   
@@ -243,7 +252,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         hsnCode: i.hsnCode,
         unit: i.unit,
         discount: i.discount || 0,
-        total: (getValues(`items.${index}`) as any).total
+        total: getValues(`items.${index}`).total
     }));
 
     const newSale: Omit<Sale, 'id'> & { id: string } = {
@@ -301,7 +310,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         businessEmail: settings.general.businessEmail,
         businessGstin: settings.general.businessGstin,
         ...data,
-        items: data.items.map((item, index) => ({ ...item, total: (getValues(`items.${index}`) as any).total })),
+        items: data.items.map((item, index) => ({ ...item, total: getValues(`items.${index}`).total })),
         total: roundedTotal,
         currency: currency,
       };
@@ -347,7 +356,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     setIsActionLoading(true);
     try {
       if (onSubmit) {
-        if (action === 'draft') await onSubmit(data, 'Draft');
+        if (action === 'draft' || action === 'update_draft') await onSubmit(data, 'Draft');
         else await onSubmit(data, 'Pending');
         return;
       }
@@ -441,7 +450,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             invoiceDate: new Date().toISOString().split("T")[0],
             transportDate: new Date().toISOString().split("T")[0],
             invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-            items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0 }],
+            items: [{ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0, total: 0 }],
             cgstRate: settings.billing.defaultCgstRate,
             sgstRate: settings.billing.defaultSgstRate,
             igstRate: 0,
@@ -453,20 +462,23 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             invoiceNumber: initialData.id,
             customerName: initialData.customer,
             invoiceDate: initialData.date,
-        });
-        initialData.items.forEach((item, index) => {
-          setValue(`items.${index}.total` as any, item.total ?? ((item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100)));
+            items: initialData.items.map(item => ({
+              ...item,
+              total: item.total ?? ((item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100))
+            }))
         });
     }
   }, [settings, reset, initialData, setValue]);
   
-   if (settingsLoading) {
-    return (
-        <div className="flex h-[80vh] items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-   }
+
+  useEffect(() => {
+     if (initialData) {
+        initialData.items.forEach((_, index) => handleLineItemChange(index));
+     } else {
+        handleLineItemChange(0);
+     }
+  }, [initialData, handleLineItemChange]);
+
 
   return (
     <FormProvider {...methods}>
@@ -767,7 +779,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                        <div className="flex items-center justify-end gap-1">
                           <Controller
                             control={control}
-                            name={`items.${index}.total` as any}
+                            name={`items.${index}.total`}
                             render={({ field }) => (
                                 <Input
                                     {...field}
@@ -821,7 +833,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0 })}
+              onClick={() => append({ name: "", quantity: 1, price: 0, hsnCode: "", unit: "", discount: 0, total: 0 })}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Item
@@ -870,25 +882,13 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
              {initialData ? (
                initialData.status === 'Draft' ? (
                  <>
-                    <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'draft'))}>
+                    <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'update_draft'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Save as Draft
+                        Update Draft
                     </Button>
-                     <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
+                     <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create'))}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Create Sale
-                    </Button>
-                    <Button type="button" size="lg" variant="outline" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'generate'))}>
-                        {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Generate Invoice PDF
-                    </Button>
-                    <Button type="button" size="lg" disabled={isActionLoading} onClick={handleSubmit(data => handleFormSubmit(data, 'create_and_generate'))}>
-                        {isActionLoading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Processing...
-                            </>
-                        ) : "Create Sale and Generate PDF"}
                     </Button>
                  </>
                ) : (
@@ -929,5 +929,3 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
-
-    
