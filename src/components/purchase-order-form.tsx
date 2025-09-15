@@ -189,10 +189,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     name: "items",
   });
 
-  const watchedFormValues = watch();
+  const watchedItems = watch("items");
+  const watchedRates = watch(["cgstRate", "sgstRate", "igstRate", "insuranceAndOthersRate"]);
 
-  useEffect(() => {
-    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = watchedFormValues;
+  const calculateTotals = useCallback(() => {
+    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = getValues();
     const newSubtotal = (items || []).reduce(
       (acc, item) => acc + (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0)/100),
       0
@@ -212,7 +213,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [watchedFormValues]);
+  }, [getValues]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [watchedItems, watchedRates, calculateTotals]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues) => {
     setIsLoading(true);
@@ -412,6 +417,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, newValue);
                                     }
+                                    calculateTotals();
                                 }}
                                 placeholder="Select or type new item..."
                                 emptyText="No items found. Type to add."
@@ -458,9 +464,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {currency}{formatCurrencyValue(
-                        (watchedFormValues.items?.[index]?.quantity || 0) *
-                        (watchedFormValues.items?.[index]?.price || 0) *
-                        (1 - (watchedFormValues.items?.[index]?.discount || 0) / 100)
+                        (watchedItems[index]?.quantity || 0) *
+                        (watchedItems[index]?.price || 0) *
+                        (1 - (watchedItems[index]?.discount || 0) / 100)
                       ).replace(currency, '')}
                     </TableCell>
                     <TableCell>
@@ -552,3 +558,5 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
+
+    
