@@ -126,20 +126,52 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const {
     control,
     handleSubmit,
-    watch,
     reset,
     setValue,
     getValues,
     formState: { errors },
   } = methods;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
   
-  if (settingsLoading) {
-    return (
-        <div className="flex h-[80vh] items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-   }
+  const calculateGrandTotal = useCallback(() => {
+    const { items, cgstRate, sgstRate, igstRate } = getValues();
+    
+    const newSubtotal = (items || []).reduce((acc, item) => {
+      const itemTotal = item.total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
+      return acc + itemTotal;
+    }, 0);
+
+    const cgst = newSubtotal * ((cgstRate || 0) / 100);
+    const sgst = newSubtotal * ((sgstRate || 0) / 100);
+    const igst = newSubtotal * ((igstRate || 0) / 100);
+
+    const newTotalTaxes = cgst + sgst + igst;
+    const newTotal = newSubtotal + newTotalTaxes;
+    const newRoundedTotal = Math.round(newTotal);
+    const newRoundOff = newRoundedTotal - newTotal;
+    
+    setSubtotal(newSubtotal);
+    setTotalTaxes(newTotalTaxes);
+    setTotal(newTotal);
+    setRoundOff(newRoundOff);
+    setRoundedTotal(newRoundedTotal);
+  }, [getValues]);
+
+  const handleLineItemChange = useCallback((index: number) => {
+    if (manualOverrideIndex === index) {
+      // If a manual override is active for this row, don't recalculate its total
+      calculateGrandTotal();
+      return;
+    }
+    const item = getValues(`items.${index}`);
+    const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
+    setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
+    calculateGrandTotal();
+  }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
 
   const fetchInventory = useCallback(async () => {
     if (!user) return;
@@ -154,10 +186,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load inventory items.'})
     }
   }, [user, toast]);
-  
-  useEffect(() => {
-    fetchInventory();
-  }, [fetchInventory]);
   
   const sortedInventoryItems = useMemo(() => {
     const sortConfig = settings?.preferences?.inventorySort;
@@ -186,58 +214,28 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     return sorted;
   }, [inventoryItems, settings?.preferences?.inventorySort]);
 
+  // All hooks must be called before this conditional return.
+  if (settingsLoading) {
+    return (
+        <div className="flex h-[80vh] items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
+  
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
+  
   useEffect(() => {
     setInventoryOptions(sortedInventoryItems.map(item => ({ value: item.id, label: item.name })));
   }, [sortedInventoryItems]);
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "items",
-  });
-
-  const calculateGrandTotal = useCallback(() => {
-    const { items, cgstRate, sgstRate, igstRate } = getValues();
-    
-    const newSubtotal = (items || []).reduce((acc, item) => {
-      const itemTotal = item.total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
-      return acc + itemTotal;
-    }, 0);
-
-    const cgst = newSubtotal * ((cgstRate || 0) / 100);
-    const sgst = newSubtotal * ((sgstRate || 0) / 100);
-    const igst = newSubtotal * ((igstRate || 0) / 100);
-
-    const newTotalTaxes = cgst + sgst + igst;
-    const newTotal = newSubtotal + newTotalTaxes;
-    const newRoundedTotal = Math.round(newTotal);
-    const newRoundOff = newRoundedTotal - newTotal;
-    
-    setSubtotal(newSubtotal);
-    setTotalTaxes(newTotalTaxes);
-    setTotal(newTotal);
-    setRoundOff(newRoundOff);
-    setRoundedTotal(newRoundedTotal);
-}, [getValues]);
-
-
-  const handleLineItemChange = useCallback((index: number) => {
-    if (manualOverrideIndex === index) {
-      // If a manual override is active for this row, don't recalculate its total
-      calculateGrandTotal();
-      return;
-    }
-    const item = getValues(`items.${index}`);
-    const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
-    calculateGrandTotal();
-  }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
-  
   useEffect(() => {
     // Initial calculation
     const items = getValues('items');
     items.forEach((_, index) => handleLineItemChange(index));
   }, []);
-
 
   const handleCreateSale = async (data: InvoiceFormValues, status: SaleStatus = 'Pending') => {
     if (!user) {
@@ -942,5 +940,3 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
-
-    
