@@ -214,15 +214,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     return sorted;
   }, [inventoryItems, settings?.preferences?.inventorySort]);
 
-  // All hooks must be called before this conditional return.
-  if (settingsLoading) {
-    return (
-        <div className="flex h-[80vh] items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-  }
-  
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
@@ -476,6 +467,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         handleLineItemChange(0);
      }
   }, [initialData, handleLineItemChange]);
+
+  if (settingsLoading) {
+    return (
+        <div className="flex h-[80vh] items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <FormProvider {...methods}>
@@ -940,3 +939,5 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
+
+    
