@@ -163,6 +163,38 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     formState: { errors },
   } = methods;
 
+  const calculateTotals = useCallback(() => {
+    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = getValues();
+    const newSubtotal = (items || []).reduce(
+      (acc, item) => acc + (item.total || 0),
+      0
+    );
+    const igst = newSubtotal * ((igstRate || 0) / 100);
+    const cgst = newSubtotal * ((cgstRate || 0) / 100);
+    const sgst = newSubtotal * ((sgstRate || 0) / 100);
+    const insuranceAndOthers = newSubtotal * ((insuranceAndOthersRate || 0) / 100);
+    const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
+    const newTotal = newSubtotal + newTotalTaxes;
+    const newRoundedTotal = Math.round(newTotal);
+    const newRoundOff = newRoundedTotal - newTotal;
+    setSubtotal(newSubtotal);
+    setTotalTaxes(newTotalTaxes);
+    setTotal(newTotal);
+    setRoundOff(newRoundOff);
+    setRoundedTotal(newRoundedTotal);
+  }, [getValues]);
+  
+  const handleLineItemChange = useCallback((index: number) => {
+    const item = getValues(`items.${index}`);
+    const quantity = item.quantity || 0;
+    const price = item.price || 0;
+    const discount = item.discount || 0;
+    const newTotal = (quantity * price) * (1 - discount / 100);
+    setValue(`items.${index}.total`, newTotal, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    calculateTotals();
+  }, [getValues, setValue, calculateTotals]);
+
+
   useEffect(() => {
     if (settings && !initialData) {
         reset({
@@ -190,29 +222,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     control,
     name: "items",
   });
-
-  const watchedFormValues = watch();
-
-  useEffect(() => {
-    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = watchedFormValues;
-    const newSubtotal = (items || []).reduce(
-      (acc, item) => acc + (item.total || 0),
-      0
-    );
-    const igst = newSubtotal * ((igstRate || 0) / 100);
-    const cgst = newSubtotal * ((cgstRate || 0) / 100);
-    const sgst = newSubtotal * ((sgstRate || 0) / 100);
-    const insuranceAndOthers = newSubtotal * ((insuranceAndOthersRate || 0) / 100);
-    const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
-    const newTotal = newSubtotal + newTotalTaxes;
-    const newRoundedTotal = Math.round(newTotal);
-    const newRoundOff = newRoundedTotal - newTotal;
-    setSubtotal(newSubtotal);
-    setTotalTaxes(newTotalTaxes);
-    setTotal(newTotal);
-    setRoundOff(newRoundOff);
-    setRoundedTotal(newRoundedTotal);
-  }, [watchedFormValues]);
 
   const handleFormSubmit = async (data: PurchaseOrderFormValues, status: PurchaseStatus = 'Pending') => {
     setIsLoading(true);
@@ -265,14 +274,13 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     }
   };
 
-  const handleLineItemChange = (index: number) => {
-    const item = getValues(`items.${index}`);
-    const quantity = item.quantity || 0;
-    const price = item.price || 0;
-    const discount = item.discount || 0;
-    const newTotal = (quantity * price) * (1 - discount / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
-  }
+  useEffect(() => {
+    if(initialData?.items) {
+        initialData.items.forEach((_, index) => handleLineItemChange(index))
+    } else {
+        handleLineItemChange(0)
+    }
+}, [initialData, handleLineItemChange])
 
   return (
     <FormProvider {...methods}>
@@ -392,8 +400,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                 <TableRow>
                   <TableHead className="w-[30%] h-12 px-4">Item</TableHead>
                   <TableHead className="h-12 px-4">HSN</TableHead>
-                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Quantity</TableHead>
+                  <TableHead className="h-12 px-4">Unit</TableHead>
                   <TableHead className="h-12 px-4">Price</TableHead>
                   <TableHead className="h-12 px-4 w-24">Discount %</TableHead>
                   <TableHead className="text-right h-12 px-4">Total</TableHead>
@@ -448,6 +456,17 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       />
                     </TableCell>
                     <TableCell>
+                      <Input
+                        type="number"
+                        step="any"
+                        {...methods.register(`items.${index}.quantity`)}
+                        onChange={(e) => {
+                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
+                            handleLineItemChange(index);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <Controller
                         control={control}
                         name={`items.${index}.unit`}
@@ -464,18 +483,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       <Input
                         type="number"
                         step="any"
-                        {...methods.register(`items.${index}.quantity`)}
-                        onChange={() => {
-                            handleLineItemChange(index);
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="any"
                         {...methods.register(`items.${index}.price`)}
-                         onChange={() => {
+                         onChange={(e) => {
+                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
                             handleLineItemChange(index);
                         }}
                       />
@@ -485,7 +495,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
-                        onChange={() => {
+                        onChange={(e) => {
+                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
                             handleLineItemChange(index);
                         }}
                       />
@@ -494,6 +505,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                        <Input
                         type="number"
                         step="any"
+                        readOnly
                         {...methods.register(`items.${index}.total`)}
                       />
                     </TableCell>
@@ -529,19 +541,19 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl ml-auto">
                 <div className="space-y-2">
                     <Label htmlFor="cgstRate">CGST (%)</Label>
-                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} />
+                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} onChange={(e) => { methods.setValue('cgstRate', parseFloat(e.target.value)); calculateTotals()}} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="sgstRate">SGST (%)</Label>
-                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} />
+                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} onChange={(e) => { methods.setValue('sgstRate', parseFloat(e.target.value)); calculateTotals()}} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="igstRate">IGST (%)</Label>
-                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} />
+                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} onChange={(e) => { methods.setValue('igstRate', parseFloat(e.target.value)); calculateTotals()}} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="insuranceAndOthersRate">Insurance & Others (%)</Label>
-                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} />
+                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} onChange={(e) => { methods.setValue('insuranceAndOthersRate', parseFloat(e.target.value)); calculateTotals()}} />
                 </div>
             </div>
             <div className="w-full max-w-sm space-y-2">
@@ -603,3 +615,5 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
+
+    

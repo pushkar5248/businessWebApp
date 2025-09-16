@@ -46,6 +46,7 @@ import { updateStockOnSale } from "@/services/inventory-service";
 import { fetchGstinDetails } from "@/ai/flows/fetch-gstin-details";
 import { stateCodeMap } from "@/lib/state-codes";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 
 const lineItemSchema = z.object({
@@ -227,7 +228,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     }
     const item = getValues(`items.${index}`);
     const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldDirty: true });
+    setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
     calculateGrandTotal();
   }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
   
@@ -309,7 +310,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         businessEmail: settings.general.businessEmail,
         businessGstin: settings.general.businessGstin,
         ...data,
-        items: data.items.map((item, index) => ({ ...item, total: getValues(`items.${index}`).total })),
+        items: data.items.map((item, index) => ({ ...item, discount: item.discount || 0 })),
         total: roundedTotal,
         currency: currency,
       };
@@ -746,7 +747,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.quantity`)}
-                        onChange={() => {
+                        onChange={(e) => {
+                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
                             handleLineItemChange(index);
                         }}
                       />
@@ -769,7 +771,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
-                         onChange={() => {
+                         onChange={(e) => {
+                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
                             handleLineItemChange(index);
                         }}
                       />
@@ -779,7 +782,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
-                        onChange={() => {
+                        onChange={(e) => {
+                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
                             handleLineItemChange(index);
                         }}
                       />
@@ -938,3 +942,5 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
+
+    
