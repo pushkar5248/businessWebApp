@@ -64,6 +64,10 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'VED BUILDERS',
     businessAddress: '26, VILL PACHGAI KHEDA POST KAKUA, AGRA, Agra, Uttar Pradesh, 282009',
   },
+  '09AABCA7687D1ZI': {
+    businessName: 'M/S ASOPA HOSPITAL PVT. LTD.(DRUG STORE)',
+    businessAddress: 'GAILANA ROAD, BYPASS, GAILANA ROAD, Agra, Uttar Pradesh, 282007',
+  },
 };
 
 
