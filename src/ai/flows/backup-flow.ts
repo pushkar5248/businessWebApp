@@ -36,23 +36,25 @@ const backupFlow = ai.defineFlow(
       const backupData: Record<string, any[]> = {};
 
       for (const collectionName of collectionsToBackup) {
-        const collRef = collection(db, collectionName);
-        let q;
         if (collectionName === 'users') {
-            // For 'users', we only back up the specific user's settings document
+            // Special case for the 'users' collection to back up the specific user's settings document
             const userDocRef = doc(db, 'users', userId);
             const docSnap = await getDoc(userDocRef);
             if (docSnap.exists()) {
                 backupData[collectionName] = [{ id: docSnap.id, ...docSnap.data() }];
+                 console.log(`[Backup Flow] Backed up 1 document from '${collectionName}'.`);
             } else {
                 backupData[collectionName] = [];
+                 console.log(`[Backup Flow] No document found for user in '${collectionName}'.`);
             }
-            continue;
-        } else {
-           q = query(collRef, where('userId', '==', userId));
-        }
-
+            continue; // Skip to the next collection
+        } 
+        
+        // For all other collections, query by userId
+        const collRef = collection(db, collectionName);
+        const q = query(collRef, where('userId', '==', userId));
         const snapshot = await getDocs(q);
+
         backupData[collectionName] = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
