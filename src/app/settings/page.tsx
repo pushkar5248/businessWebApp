@@ -120,12 +120,13 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
             
+            // Update auth profile immediately
             await updateProfile(user, { photoURL: downloadURL });
+            
+            // Update local state to reflect change in UI
             setPhotoURL(downloadURL);
 
-            await onSave({ profile: { ...settings.profile, photoURL: downloadURL }});
-            
-            toast({ title: 'Upload successful', description: 'Your profile picture has been updated.' });
+            toast({ title: 'Upload successful', description: 'Your profile picture has been updated. Click "Save Changes" to persist it.' });
         } catch (error) {
             console.error('Error uploading file:', error);
             toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload your profile picture.' });
@@ -697,3 +698,5 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
+    
