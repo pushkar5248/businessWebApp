@@ -120,11 +120,9 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
             
-            // Immediately update Firebase Auth profile and UI
             await updateProfile(user, { photoURL: downloadURL });
             setPhotoURL(downloadURL);
 
-            // Save to settings document in Firestore
             await onSave({ profile: { ...settings.profile, photoURL: downloadURL }});
             
             toast({ title: 'Upload successful', description: 'Your profile picture has been updated.' });
