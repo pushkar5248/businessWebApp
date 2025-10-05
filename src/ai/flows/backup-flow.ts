@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 
 const BackupInputSchema = z.object({
   userId: z.string().describe('The ID of the user whose data to back up.'),
@@ -69,6 +69,3 @@ const backupFlow = ai.defineFlow(
     }
   }
 );
-// This is a workaround because the above flow is not picking up the import for doc and getDoc
-import { doc, getDoc } from 'firebase/firestore';
-
