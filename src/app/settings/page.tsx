@@ -14,12 +14,12 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings } from '@/lib/types';
-import { Loader2, Trash2, Upload, Search } from 'lucide-react';
+import { Loader2, Trash2, Upload, Search, Download, UploadCloud } from 'lucide-react';
 import { updateProfile, updateEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/context/currency-context';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,9 @@ import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'fire
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { fetchGstinDetails } from '@/ai/flows/fetch-gstin-details';
+import { backupUserData } from '@/ai/flows/backup-flow';
+import { restoreUserData } from '@/ai/flows/restore-flow';
+import { saveAs } from 'file-saver';
 
 
 const currencies = [
@@ -376,8 +379,70 @@ function BillingSettings({ settings, onSave, isGuest }: { settings: UserSettings
     );
 }
 
-function AdvancedSettings({ onReset, isResetting, isGuest }: { onReset: () => void, isResetting: boolean, isGuest: boolean }) {
+function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: () => void, isResetting: boolean, isGuest: boolean, user: any }) {
     const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const [isRestoreAlertOpen, setIsRestoreAlertOpen] = useState(false);
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const restoreFileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
+    const handleBackup = async () => {
+        if (!user) return;
+        setIsBackingUp(true);
+        try {
+            const result = await backupUserData(user.uid);
+            const blob = new Blob([JSON.stringify(result.backupData, null, 2)], { type: "application/json" });
+            const date = new Date().toISOString().split('T')[0];
+            saveAs(blob, `adhunik-minerals-backup-${date}.json`);
+            toast({ title: 'Backup Successful', description: 'Your data has been downloaded.' });
+        } catch (error) {
+            console.error("Error backing up data:", error);
+            toast({ variant: 'destructive', title: 'Backup Failed', description: 'Could not back up your data.' });
+        } finally {
+            setIsBackingUp(false);
+        }
+    };
+    
+    const handleRestoreFileSelect = () => {
+        restoreFileInputRef.current?.click();
+    };
+
+    const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !user) return;
+
+        setIsRestoring(true);
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const backupData = JSON.parse(e.target?.result as string);
+                // Simple validation
+                if (!backupData.users || !backupData.inventory) {
+                    throw new Error("Invalid backup file structure.");
+                }
+
+                const result = await restoreUserData({ userId: user.uid, backupData });
+                if (result.success) {
+                    toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    throw new Error(result.message);
+                }
+
+            } catch (error: any) {
+                console.error("Error restoring data:", error);
+                toast({ variant: 'destructive', title: 'Restore Failed', description: error.message || 'Could not restore data from file.' });
+            } finally {
+                setIsRestoring(false);
+                setIsRestoreAlertOpen(false);
+                if (restoreFileInputRef.current) {
+                    restoreFileInputRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
 
     return (
         <>
@@ -398,12 +463,48 @@ function AdvancedSettings({ onReset, isResetting, isGuest }: { onReset: () => vo
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={isRestoreAlertOpen} onOpenChange={setIsRestoreAlertOpen}>
+                 <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. Restoring from a backup will permanently delete all current data and replace it with the data from the backup file.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRestoreFileSelect} disabled={isRestoring}>
+                            {isRestoring ? <Loader2 className="mr-2 animate-spin" /> : null}
+                            Yes, restore data
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <Card>
                 <CardHeader>
                     <CardTitle>Advanced</CardTitle>
-                    <CardDescription>Perform destructive actions. Please be careful.</CardDescription>
+                    <CardDescription>Perform potentially destructive actions. Please be careful.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                     <Card className="border-border">
+                        <CardHeader>
+                            <CardTitle>Backup & Restore</CardTitle>
+                            <CardDescription>
+                                Download a backup of all your data or restore from a previously downloaded backup file.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardFooter className="flex gap-4">
+                             <Button variant="outline" onClick={handleBackup} disabled={isGuest || isBackingUp}>
+                                {isBackingUp ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                                Backup Data
+                            </Button>
+                            <Button variant="secondary" onClick={() => setIsRestoreAlertOpen(true)} disabled={isGuest || isRestoring}>
+                                {isRestoring ? <Loader2 className="mr-2 animate-spin" /> : <UploadCloud className="mr-2" />}
+                                Restore Data
+                            </Button>
+                             <input type="file" ref={restoreFileInputRef} onChange={handleRestore} className="hidden" accept="application/json" />
+                        </CardFooter>
+                    </Card>
                     <Card className="border-destructive">
                         <CardHeader>
                              <CardTitle>Reset Application Data</CardTitle>
@@ -541,7 +642,7 @@ export default function SettingsPage() {
           <BillingSettings settings={settings} onSave={handleSaveSettings} isGuest={isGuest} />
         </TabsContent>
         <TabsContent value="advanced">
-            <AdvancedSettings onReset={handleResetData} isResetting={isResetting} isGuest={isGuest} />
+            <AdvancedSettings onReset={handleResetData} isResetting={isResetting} isGuest={isGuest} user={user} />
         </TabsContent>
       </Tabs>
     </MainLayout>
