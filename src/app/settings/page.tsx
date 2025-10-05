@@ -62,6 +62,7 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
     const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
     const [email, setEmail] = useState(settings.profile.email);
     const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -75,6 +76,7 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
     const handleSave = async () => {
         if (!user) return;
         
+        setIsSaving(true);
         try {
             const updates: { displayName?: string, photoURL?: string } = {};
             if(user.displayName !== displayName) updates.displayName = displayName;
@@ -89,7 +91,8 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                 toast({ title: 'Email Verification Sent', description: 'Please check your new email address to verify the change.' });
             }
 
-            onSave({ profile: { displayName, email, photoURL } });
+            await onSave({ profile: { displayName, email, photoURL } });
+            toast({ title: 'Success', description: 'Your profile has been updated.'})
 
         } catch (error: any) {
             console.error("Error updating profile:", error);
@@ -98,6 +101,8 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
             } else {
                  toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not update your profile.' });
             }
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -114,8 +119,15 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
             const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
+            
+            // Immediately update Firebase Auth profile and UI
+            await updateProfile(user, { photoURL: downloadURL });
             setPhotoURL(downloadURL);
-            toast({ title: 'Upload successful', description: 'Click "Save Changes" to apply your new picture.' });
+
+            // Save to settings document in Firestore
+            await onSave({ profile: { ...settings.profile, photoURL: downloadURL }});
+            
+            toast({ title: 'Upload successful', description: 'Your profile picture has been updated.' });
         } catch (error) {
             console.error('Error uploading file:', error);
             toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload your profile picture.' });
@@ -139,8 +151,8 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                      <div className="space-y-2 flex-1">
                         <Label htmlFor="photo-url">Photo URL</Label>
                         <div className="flex gap-2">
-                             <Input id="photo-url" value={photoURL} onChange={e => setPhotoURL(e.target.value)} disabled={isGuest || isUploading} placeholder="https://example.com/photo.jpg" />
-                             <Button onClick={handleFileSelect} disabled={isGuest || isUploading} variant="outline">
+                             <Input id="photo-url" value={photoURL} onChange={e => setPhotoURL(e.target.value)} disabled={isGuest || isUploading || isSaving} placeholder="https://example.com/photo.jpg" />
+                             <Button onClick={handleFileSelect} disabled={isGuest || isUploading || isSaving} variant="outline">
                                 {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Upload className="mr-2" />}
                                  Upload
                              </Button>
@@ -150,13 +162,16 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="display-name">Display Name</Label>
-                    <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} disabled={isGuest} />
+                    <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} disabled={isGuest || isSaving} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={isGuest} />
+                    <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={isGuest || isSaving} />
                 </div>
-                <Button onClick={handleSave} disabled={isGuest}>Save Changes</Button>
+                <Button onClick={handleSave} disabled={isGuest || isSaving || isUploading}>
+                    {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
+                    Save Changes
+                </Button>
             </CardContent>
         </Card>
     );
@@ -684,5 +699,3 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
-
-    
