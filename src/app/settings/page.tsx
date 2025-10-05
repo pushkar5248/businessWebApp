@@ -31,12 +31,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { db, storage } from '@/lib/firebase';
-import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where, writeBatch, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { fetchGstinDetails } from '@/ai/flows/fetch-gstin-details';
-import { backupUserData } from '@/ai/flows/backup-flow';
-import { restoreUserData } from '@/ai/flows/restore-flow';
 import { saveAs } from 'file-saver';
 
 
@@ -391,8 +389,30 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
         if (!user) return;
         setIsBackingUp(true);
         try {
-            const result = await backupUserData(user.uid);
-            const blob = new Blob([JSON.stringify(result.backupData, null, 2)], { type: "application/json" });
+            const collectionsToBackup = ['inventory', 'sales', 'purchases', 'users'];
+            const backupData: Record<string, any[]> = {};
+
+            for (const collectionName of collectionsToBackup) {
+                if (collectionName === 'users') {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const docSnap = await getDoc(userDocRef);
+                    if (docSnap.exists()) {
+                        backupData[collectionName] = [{ id: docSnap.id, ...docSnap.data() }];
+                    } else {
+                         backupData[collectionName] = [];
+                    }
+                    continue;
+                }
+                const collRef = collection(db, collectionName);
+                const q = query(collRef, where('userId', '==', user.uid));
+                const snapshot = await getDocs(q);
+                backupData[collectionName] = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
+            }
+
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
             const date = new Date().toISOString().split('T')[0];
             saveAs(blob, `adhunik-minerals-backup-${date}.json`);
             toast({ title: 'Backup Successful', description: 'Your data has been downloaded.' });
@@ -417,18 +437,34 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
         reader.onload = async (e) => {
             try {
                 const backupData = JSON.parse(e.target?.result as string);
-                // Simple validation
+                
                 if (!backupData.users || !backupData.inventory) {
                     throw new Error("Invalid backup file structure.");
                 }
 
-                const result = await restoreUserData({ userId: user.uid, backupData });
-                if (result.success) {
-                    toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    throw new Error(result.message);
+                const batch = writeBatch(db);
+                const collectionsToDelete = ['inventory', 'sales', 'purchases'];
+                for (const collectionName of collectionsToDelete) {
+                    const q = query(collection(db, collectionName), where("userId", "==", user.uid));
+                    const snapshot = await getDocs(q);
+                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
                 }
+
+                for (const collectionName in backupData) {
+                    if (Object.prototype.hasOwnProperty.call(backupData, collectionName)) {
+                        const documents = backupData[collectionName];
+                        for (const docData of documents) {
+                            const { id, ...data } = docData;
+                            const docRef = doc(db, collectionName, id);
+                            batch.set(docRef, data);
+                        }
+                    }
+                }
+                
+                await batch.commit();
+                
+                toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
+                setTimeout(() => window.location.reload(), 2000);
 
             } catch (error: any) {
                 console.error("Error restoring data:", error);
@@ -648,7 +684,5 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
-
-    
 
     
