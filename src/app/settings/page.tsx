@@ -111,29 +111,47 @@ function ProfileSettings({ settings, onSave, isGuest }: { settings: UserSettings
     };
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        console.log('[DIAGNOSTIC] handleFileUpload triggered.');
         const file = event.target.files?.[0];
-        if (!file || !user) return;
+        if (!file || !user) {
+            console.log('[DIAGNOSTIC] No file selected or user not logged in. Aborting.');
+            return;
+        }
 
+        console.log(`[DIAGNOSTIC] File selected: ${file.name}. User: ${user.uid}. Setting loading state.`);
         setIsUploading(true);
+
         try {
             const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+            console.log('[DIAGNOSTIC] Created storage reference. Starting upload...');
+            
             const snapshot = await uploadBytes(storageRef, file);
+            console.log('[DIAGNOSTIC] uploadBytes successful. Getting download URL...');
+            
             const downloadURL = await getDownloadURL(snapshot.ref);
+            console.log(`[DIAGNOSTIC] Got download URL: ${downloadURL}. Updating Firebase Auth profile...`);
             
-            // Update auth profile immediately
             await updateProfile(user, { photoURL: downloadURL });
-            
-            // Update local state to reflect change in UI
+            console.log('[DIAGNOSTIC] Firebase Auth profile updated successfully. Updating local state...');
+
             setPhotoURL(downloadURL);
+            console.log('[DIAGNOSTIC] Local photoURL state updated.');
 
             toast({ title: 'Upload successful', description: 'Your profile picture has been updated. Click "Save Changes" to persist it.' });
-        } catch (error) {
-            console.error('Error uploading file:', error);
-            toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload your profile picture.' });
+
+        } catch (error: any) {
+            console.error('[DIAGNOSTIC] An error occurred during upload:', error);
+            toast({ 
+                variant: 'destructive', 
+                title: 'Upload Failed', 
+                description: `Error: ${error.message || 'An unknown error occurred.'}` 
+            });
         } finally {
+            console.log('[DIAGNOSTIC] Upload process finished. Resetting loading state.');
             setIsUploading(false);
         }
     };
+
 
     return (
         <Card>
@@ -698,5 +716,3 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
-
-    
