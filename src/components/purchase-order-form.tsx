@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
@@ -64,6 +64,9 @@ const formSchema = z.object({
   sgstRate: z.coerce.number().min(0).optional(),
   igstRate: z.coerce.number().min(0).optional(),
   insuranceAndOthersRate: z.coerce.number().min(0).optional(),
+  cgstAmount: z.coerce.number().min(0).optional(),
+  sgstAmount: z.coerce.number().min(0).optional(),
+  igstAmount: z.coerce.number().min(0).optional(),
 });
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
@@ -89,6 +92,12 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [roundOff, setRoundOff] = useState(0);
   const [roundedTotal, setRoundedTotal] = useState(0);
   const router = useRouter();
+
+   const [gstInputModes, setGstInputModes] = useState({
+    cgst: 'percentage',
+    sgst: 'percentage',
+    igst: 'percentage',
+  });
 
 
   const methods = useForm<PurchaseOrderFormValues>({
@@ -164,25 +173,52 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   } = methods;
 
   const calculateTotals = useCallback(() => {
-    const { items, igstRate, cgstRate, sgstRate, insuranceAndOthersRate } = getValues();
-    const newSubtotal = (items || []).reduce(
+    const values = getValues();
+    const currentSubtotal = (values.items || []).reduce(
       (acc, item) => acc + (item.total || 0),
       0
     );
-    const igst = newSubtotal * ((igstRate || 0) / 100);
-    const cgst = newSubtotal * ((cgstRate || 0) / 100);
-    const sgst = newSubtotal * ((sgstRate || 0) / 100);
-    const insuranceAndOthers = newSubtotal * ((insuranceAndOthersRate || 0) / 100);
+    
+    let cgst = 0, sgst = 0, igst = 0;
+    
+    if (gstInputModes.cgst === 'percentage') {
+        cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
+        setValue('cgstAmount', cgst, { shouldValidate: true });
+    } else {
+        cgst = values.cgstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
+        setValue('cgstRate', newRate, { shouldValidate: true });
+    }
+    
+    if (gstInputModes.sgst === 'percentage') {
+        sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
+        setValue('sgstAmount', sgst, { shouldValidate: true });
+    } else {
+        sgst = values.sgstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
+        setValue('sgstRate', newRate, { shouldValidate: true });
+    }
+
+    if (gstInputModes.igst === 'percentage') {
+        igst = currentSubtotal * ((values.igstRate || 0) / 100);
+        setValue('igstAmount', igst, { shouldValidate: true });
+    } else {
+        igst = values.igstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
+        setValue('igstRate', newRate, { shouldValidate: true });
+    }
+    
+    const insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
-    const newTotal = newSubtotal + newTotalTaxes;
+    const newTotal = currentSubtotal + newTotalTaxes;
     const newRoundedTotal = Math.round(newTotal);
     const newRoundOff = newRoundedTotal - newTotal;
-    setSubtotal(newSubtotal);
+    setSubtotal(currentSubtotal);
     setTotalTaxes(newTotalTaxes);
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues]);
+  }, [getValues, setValue, gstInputModes]);
   
   const handleLineItemChange = useCallback((index: number) => {
     const item = getValues(`items.${index}`);
@@ -280,7 +316,47 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     } else {
         handleLineItemChange(0)
     }
-}, [initialData, handleLineItemChange])
+}, [initialData, handleLineItemChange]);
+
+ const GstInput = ({ name, label }: { name: 'cgst' | 'sgst' | 'igst', label: string}) => {
+    const rateName = `${name}Rate` as keyof PurchaseOrderFormValues;
+    const amountName = `${name}Amount` as keyof PurchaseOrderFormValues;
+    const mode = gstInputModes[name];
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={rateName}>{label}</Label>
+            <div className="flex items-center gap-1">
+                <Input
+                    id={rateName}
+                    type="number"
+                    step="any"
+                    {...methods.register(mode === 'percentage' ? rateName : amountName)}
+                    onChange={(e) => {
+                        methods.setValue(mode === 'percentage' ? rateName : amountName, parseFloat(e.target.value));
+                        calculateTotals();
+                    }}
+                    placeholder={mode === 'percentage' ? 'Rate %' : `Amount ${currency}`}
+                />
+                 <Button
+                    type="button"
+                    variant="outline"
+                    className="p-2 h-10"
+                    onClick={() => {
+                        setGstInputModes(prev => ({
+                            ...prev,
+                            [name]: prev[name] === 'percentage' ? 'amount' : 'percentage'
+                        }));
+                        setTimeout(calculateTotals, 0);
+                    }}
+                >
+                    {mode === 'percentage' ? <Percent className="h-4 w-4" /> : <span className="font-bold">{currency}</span>}
+                </Button>
+            </div>
+        </div>
+    );
+  };
+
 
   return (
     <FormProvider {...methods}>
@@ -538,21 +614,12 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
               )}
           </CardContent>
           <CardFooter className="flex flex-col items-end space-y-4">
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl ml-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full max-w-3xl ml-auto">
+                <GstInput name="cgst" label="CGST" />
+                <GstInput name="sgst" label="SGST" />
+                <GstInput name="igst" label="IGST" />
                 <div className="space-y-2">
-                    <Label htmlFor="cgstRate">CGST (%)</Label>
-                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} onChange={(e) => { methods.setValue('cgstRate', parseFloat(e.target.value)); calculateTotals()}} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="sgstRate">SGST (%)</Label>
-                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} onChange={(e) => { methods.setValue('sgstRate', parseFloat(e.target.value)); calculateTotals()}} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="igstRate">IGST (%)</Label>
-                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} onChange={(e) => { methods.setValue('igstRate', parseFloat(e.target.value)); calculateTotals()}} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="insuranceAndOthersRate">Insurance & Others (%)</Label>
+                    <Label htmlFor="insuranceAndOthersRate">Insurance &amp; Others (%)</Label>
                     <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} onChange={(e) => { methods.setValue('insuranceAndOthersRate', parseFloat(e.target.value)); calculateTotals()}} />
                 </div>
             </div>
@@ -615,5 +682,3 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
-
-    

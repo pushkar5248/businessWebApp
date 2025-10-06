@@ -33,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search, Edit2, Check } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search, Edit2, Check, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { type Sale, type SaleStatus, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
@@ -81,6 +81,9 @@ const formSchema = z.object({
   cgstRate: z.coerce.number().min(0).optional(),
   sgstRate: z.coerce.number().min(0).optional(),
   igstRate: z.coerce.number().min(0).optional(),
+  cgstAmount: z.coerce.number().min(0).optional(),
+  sgstAmount: z.coerce.number().min(0).optional(),
+  igstAmount: z.coerce.number().min(0).optional(),
 });
 
 export type InvoiceFormValues = z.infer<typeof formSchema>;
@@ -109,6 +112,13 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
   const [manualOverrideIndex, setManualOverrideIndex] = useState<number | null>(null);
   const manualTotalRef = useRef<HTMLInputElement | null>(null);
+  
+  const [gstInputModes, setGstInputModes] = useState({
+    cgst: 'percentage',
+    sgst: 'percentage',
+    igst: 'percentage',
+  });
+
 
   const methods = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
@@ -138,28 +148,52 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   });
   
   const calculateGrandTotal = useCallback(() => {
-    const { items, cgstRate, sgstRate, igstRate } = getValues();
-    
-    const newSubtotal = (items || []).reduce((acc, item) => {
+    const values = getValues();
+    const currentSubtotal = (values.items || []).reduce((acc, item) => {
       const itemTotal = item.total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
       return acc + itemTotal;
     }, 0);
 
-    const cgst = newSubtotal * ((cgstRate || 0) / 100);
-    const sgst = newSubtotal * ((sgstRate || 0) / 100);
-    const igst = newSubtotal * ((igstRate || 0) / 100);
+    let cgst = 0, sgst = 0, igst = 0;
+
+    if (gstInputModes.cgst === 'percentage') {
+        cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
+        setValue('cgstAmount', cgst, { shouldValidate: true });
+    } else {
+        cgst = values.cgstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
+        setValue('cgstRate', newRate, { shouldValidate: true });
+    }
+    
+    if (gstInputModes.sgst === 'percentage') {
+        sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
+        setValue('sgstAmount', sgst, { shouldValidate: true });
+    } else {
+        sgst = values.sgstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
+        setValue('sgstRate', newRate, { shouldValidate: true });
+    }
+    
+    if (gstInputModes.igst === 'percentage') {
+        igst = currentSubtotal * ((values.igstRate || 0) / 100);
+        setValue('igstAmount', igst, { shouldValidate: true });
+    } else {
+        igst = values.igstAmount || 0;
+        const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
+        setValue('igstRate', newRate, { shouldValidate: true });
+    }
 
     const newTotalTaxes = cgst + sgst + igst;
-    const newTotal = newSubtotal + newTotalTaxes;
+    const newTotal = currentSubtotal + newTotalTaxes;
     const newRoundedTotal = Math.round(newTotal);
     const newRoundOff = newRoundedTotal - newTotal;
     
-    setSubtotal(newSubtotal);
+    setSubtotal(currentSubtotal);
     setTotalTaxes(newTotalTaxes);
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues]);
+  }, [getValues, setValue, gstInputModes]);
 
   const handleLineItemChange = useCallback((index: number) => {
     if (manualOverrideIndex === index) {
@@ -475,6 +509,46 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         </div>
     );
   }
+  
+  const GstInput = ({ name, label }: { name: 'cgst' | 'sgst' | 'igst', label: string}) => {
+    const rateName = `${name}Rate` as keyof InvoiceFormValues;
+    const amountName = `${name}Amount` as keyof InvoiceFormValues;
+    const mode = gstInputModes[name];
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={rateName}>{label}</Label>
+            <div className="flex items-center gap-1">
+                <Input
+                    id={rateName}
+                    type="number"
+                    step="any"
+                    {...methods.register(mode === 'percentage' ? rateName : amountName)}
+                    onChange={(e) => {
+                        methods.setValue(mode === 'percentage' ? rateName : amountName, parseFloat(e.target.value));
+                        calculateGrandTotal();
+                    }}
+                    placeholder={mode === 'percentage' ? 'Rate %' : `Amount ${currency}`}
+                />
+                 <Button
+                    type="button"
+                    variant="outline"
+                    className="p-2 h-10"
+                    onClick={() => {
+                        setGstInputModes(prev => ({
+                            ...prev,
+                            [name]: prev[name] === 'percentage' ? 'amount' : 'percentage'
+                        }));
+                        setTimeout(calculateGrandTotal, 0);
+                    }}
+                >
+                    {mode === 'percentage' ? <Percent className="h-4 w-4" /> : <span className="font-bold">{currency}</span>}
+                </Button>
+            </div>
+        </div>
+    );
+  };
+
 
   return (
     <FormProvider {...methods}>
@@ -853,19 +927,10 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
               )}
           </CardContent>
           <CardFooter className="flex flex-col items-end space-y-4">
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-sm ml-auto">
-                <div className="space-y-2">
-                    <Label htmlFor="cgstRate">CGST (%)</Label>
-                    <Input id="cgstRate" type="number" step="any" {...methods.register("cgstRate")} onChange={(e) => { methods.setValue('cgstRate', parseFloat(e.target.value)); calculateGrandTotal()}}/>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="sgstRate">SGST (%)</Label>
-                    <Input id="sgstRate" type="number" step="any" {...methods.register("sgstRate")} onChange={(e) => { methods.setValue('sgstRate', parseFloat(e.target.value)); calculateGrandTotal()}} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="igstRate">IGST (%)</Label>
-                    <Input id="igstRate" type="number" step="any" {...methods.register("igstRate")} onChange={(e) => { methods.setValue('igstRate', parseFloat(e.target.value)); calculateGrandTotal()}} />
-                </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl ml-auto">
+                <GstInput name="cgst" label="CGST" />
+                <GstInput name="sgst" label="SGST" />
+                <GstInput name="igst" label="IGST" />
             </div>
             <div className="w-full max-w-sm space-y-2">
                 <div className="flex justify-between">
@@ -939,5 +1004,3 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
-
-    
