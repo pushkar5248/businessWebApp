@@ -145,8 +145,8 @@ export default function PurchaseDetailsPage() {
     const roundOff = roundedTotal - totalAmount;
     
     const wasEnteredAsAmount = (rate?: number) => {
-        if (rate === undefined || rate === 0) return false;
-        // If the rate is not a clean integer, it was likely calculated from an amount
+        if (rate === undefined) return false;
+        // If the rate has a fractional part, it was likely calculated from an amount
         return rate % 1 !== 0;
     };
 
