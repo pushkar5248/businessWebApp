@@ -389,17 +389,17 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
                             </tr>
                             {{#if sgst}}
                             <tr>
-                                <td><div><span>SGST @ {{sgstRate}}%</span> <span>{{{currency}}}{{{sgst}}}</span></div></td>
+                                <td><div><span>SGST {{#if wasSgstEnteredAsAmount}}(in {{{currency}}}){{else}}@ {{sgstRate}}%{{/if}}</span> <span>{{{currency}}}{{{sgst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             {{#if cgst}}
                             <tr>
-                                <td><div><span>CGST @ {{cgstRate}}%</span> <span>{{{currency}}}{{{cgst}}}</span></div></td>
+                                <td><div><span>CGST {{#if wasCgstEnteredAsAmount}}(in {{{currency}}}){{else}}@ {{cgstRate}}%{{/if}}</span> <span>{{{currency}}}{{{cgst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             {{#if igst}}
                             <tr>
-                                <td><div><span>IGST @ {{igstRate}}%</span> <span>{{{currency}}}{{{igst}}}</span></div></td>
+                                <td><div><span>IGST {{#if wasIgstEnteredAsAmount}}(in {{{currency}}}){{else}}@ {{igstRate}}%{{/if}}</span> <span>{{{currency}}}{{{igst}}}</span></div></td>
                             </tr>
                             {{/if}}
                             <tr>
@@ -474,6 +474,11 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         return str.trim().replace(/\s+/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     }
 
+    const wasEnteredAsAmount = (rate?: number) => {
+        if (rate === undefined || rate === 0) return false;
+        return rate % 1 !== 0;
+    };
+
     const templateData = {
         ...input,
         logoDataUri: logoDataUri,
@@ -483,6 +488,9 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
         cgst: cgstAmount > 0 ? cgstAmount.toFixed(2) : null,
         sgst: sgstAmount > 0 ? sgstAmount.toFixed(2) : null,
         igst: igstAmount > 0 ? igstAmount.toFixed(2) : null,
+        wasCgstEnteredAsAmount: wasEnteredAsAmount(input.cgstRate),
+        wasSgstEnteredAsAmount: wasEnteredAsAmount(input.sgstRate),
+        wasIgstEnteredAsAmount: wasEnteredAsAmount(input.igstRate),
         items: input.items.map(item => ({
             ...item,
             discount: item.discount || 0,
@@ -508,3 +516,5 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
+
+    
