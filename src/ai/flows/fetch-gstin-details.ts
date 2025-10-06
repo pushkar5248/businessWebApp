@@ -72,6 +72,10 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'M/S ASOPA HOSPITAL PVT. LTD.(DRUG STORE)',
     businessAddress: 'GAILANA ROAD, BYPASS, GAILANA ROAD, Agra, Uttar Pradesh, 282007',
   },
+  '24AABCI6559C1ZR': {
+    businessName: 'ISCON CERAMIC PRIVATE LIMITED',
+    businessAddress: 'PANELI ROAD, 8 A NATIONAL HIGHWAY, AT MORBI, TA MORBI, Morbi, Gujarat, 363642',
+  },
 };
 
 
