@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -67,6 +66,7 @@ const formSchema = z.object({
   cgstAmount: z.coerce.number().min(0).optional(),
   sgstAmount: z.coerce.number().min(0).optional(),
   igstAmount: z.coerce.number().min(0).optional(),
+  insuranceAndOthersAmount: z.coerce.number().min(0).optional(),
 });
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
@@ -93,10 +93,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [roundedTotal, setRoundedTotal] = useState(0);
   const router = useRouter();
 
-   const [gstInputModes, setGstInputModes] = useState({
+   const [inputModes, setInputModes] = useState({
     cgst: 'percentage',
     sgst: 'percentage',
     igst: 'percentage',
+    insuranceAndOthers: 'percentage',
   });
 
 
@@ -179,9 +180,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
       0
     );
     
-    let cgst = 0, sgst = 0, igst = 0;
+    let cgst = 0, sgst = 0, igst = 0, insuranceAndOthers = 0;
     
-    if (gstInputModes.cgst === 'percentage') {
+    if (inputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
         setValue('cgstAmount', cgst, { shouldValidate: true });
     } else {
@@ -190,7 +191,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         setValue('cgstRate', newRate, { shouldValidate: true });
     }
     
-    if (gstInputModes.sgst === 'percentage') {
+    if (inputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
         setValue('sgstAmount', sgst, { shouldValidate: true });
     } else {
@@ -199,7 +200,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         setValue('sgstRate', newRate, { shouldValidate: true });
     }
 
-    if (gstInputModes.igst === 'percentage') {
+    if (inputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
         setValue('igstAmount', igst, { shouldValidate: true });
     } else {
@@ -207,8 +208,16 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
         setValue('igstRate', newRate, { shouldValidate: true });
     }
+
+    if (inputModes.insuranceAndOthers === 'percentage') {
+        insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
+        setValue('insuranceAndOthersAmount', insuranceAndOthers, { shouldValidate: true });
+    } else {
+        insuranceAndOthers = values.insuranceAndOthersAmount || 0;
+        const newRate = currentSubtotal > 0 ? (insuranceAndOthers / currentSubtotal) * 100 : 0;
+        setValue('insuranceAndOthersRate', newRate, { shouldValidate: true });
+    }
     
-    const insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
     const newTotal = currentSubtotal + newTotalTaxes;
     const newRoundedTotal = Math.round(newTotal);
@@ -218,7 +227,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, gstInputModes]);
+  }, [getValues, setValue, inputModes]);
   
   const handleLineItemChange = useCallback((index: number) => {
     const item = getValues(`items.${index}`);
@@ -318,10 +327,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     }
 }, [initialData, handleLineItemChange]);
 
- const GstInput = ({ name, label }: { name: 'cgst' | 'sgst' | 'igst', label: string}) => {
+ const FeeInput = ({ name, label }: { name: 'cgst' | 'sgst' | 'igst' | 'insuranceAndOthers', label: string}) => {
     const rateName = `${name}Rate` as keyof PurchaseOrderFormValues;
     const amountName = `${name}Amount` as keyof PurchaseOrderFormValues;
-    const mode = gstInputModes[name];
+    const mode = inputModes[name];
 
     return (
         <div className="space-y-2">
@@ -343,7 +352,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     variant="outline"
                     className="p-2 h-10"
                     onClick={() => {
-                        setGstInputModes(prev => ({
+                        setInputModes(prev => ({
                             ...prev,
                             [name]: prev[name] === 'percentage' ? 'amount' : 'percentage'
                         }));
@@ -615,13 +624,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
           </CardContent>
           <CardFooter className="flex flex-col items-end space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full max-w-3xl ml-auto">
-                <GstInput name="cgst" label="CGST" />
-                <GstInput name="sgst" label="SGST" />
-                <GstInput name="igst" label="IGST" />
-                <div className="space-y-2">
-                    <Label htmlFor="insuranceAndOthersRate">Insurance &amp; Others (%)</Label>
-                    <Input id="insuranceAndOthersRate" type="number" step="any" {...methods.register("insuranceAndOthersRate")} onChange={(e) => { methods.setValue('insuranceAndOthersRate', parseFloat(e.target.value)); calculateTotals()}} />
-                </div>
+                <FeeInput name="cgst" label="CGST" />
+                <FeeInput name="sgst" label="SGST" />
+                <FeeInput name="igst" label="IGST" />
+                <FeeInput name="insuranceAndOthers" label="Insurance &amp; Others" />
             </div>
             <div className="w-full max-w-sm space-y-2">
                 <div className="flex justify-between">
