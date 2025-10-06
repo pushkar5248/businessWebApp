@@ -347,15 +347,15 @@ export default function InvoiceDetailsPage() {
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>CGST {wasEnteredAsAmount(invoice.cgstRate) ? '' : `(${invoice.cgstRate || 0}%)`}</span>
+                            <span>CGST {wasEnteredAsAmount(invoice.cgstRate) ? `(in ${currency})` : `(${invoice.cgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(cgstAmount)}</span>
                         </div>
                          <div className="flex justify-between">
-                            <span>SGST {wasEnteredAsAmount(invoice.sgstRate) ? '' : `(${invoice.sgstRate || 0}%)`}</span>
+                            <span>SGST {wasEnteredAsAmount(invoice.sgstRate) ? `(in ${currency})` : `(${invoice.sgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(sgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>IGST {wasEnteredAsAmount(invoice.igstRate) ? '' : `(${invoice.igstRate || 0}%)`}</span>
+                            <span>IGST {wasEnteredAsAmount(invoice.igstRate) ? `(in ${currency})` : `(${invoice.igstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(igstAmount)}</span>
                         </div>
                          <div className="flex justify-between">

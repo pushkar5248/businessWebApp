@@ -46,7 +46,7 @@ export default function PurchaseDetailsPage() {
     const params = useParams();
     const { user } = useAuth();
     const { purchaseId } = params;
-    const { formatCurrency, formatCurrencyValue } = useCurrency();
+    const { currency, formatCurrency, formatCurrencyValue } = useCurrency();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [purchase, setPurchase] = useState<Purchase | null>(null);
@@ -254,19 +254,19 @@ export default function PurchaseDetailsPage() {
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>CGST {wasEnteredAsAmount(purchase.cgstRate) ? '' : `(${purchase.cgstRate || 0}%)`}</span>
+                            <span>CGST {wasEnteredAsAmount(purchase.cgstRate) ? `(in ${currency})` : `(${purchase.cgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(cgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>SGST {wasEnteredAsAmount(purchase.sgstRate) ? '' : `(${purchase.sgstRate || 0}%)`}</span>
+                            <span>SGST {wasEnteredAsAmount(purchase.sgstRate) ? `(in ${currency})` : `(${purchase.sgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(sgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>IGST {wasEnteredAsAmount(purchase.igstRate) ? '' : `(${purchase.igstRate || 0}%)`}</span>
+                            <span>IGST {wasEnteredAsAmount(purchase.igstRate) ? `(in ${currency})` : `(${purchase.igstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(igstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Insurance & Others {wasEnteredAsAmount(purchase.insuranceAndOthersRate) ? '' : `(${purchase.insuranceAndOthersRate || 0}%)`}</span>
+                            <span>Insurance & Others {wasEnteredAsAmount(purchase.insuranceAndOthersRate) ? `(in ${currency})` : `(${purchase.insuranceAndOthersRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
                         </div>
                         <div className="flex justify-between">
