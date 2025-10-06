@@ -30,7 +30,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
-import { updateStockOnSale } from '@/services/inventory-service';
+import { updateStockOnSale, revertStockOnSale } from '@/services/inventory-service';
 import { formatDate } from '@/lib/utils';
 
 
@@ -108,6 +108,11 @@ export default function InvoiceDetailsPage() {
                     toast({ title: "Inventory Updated", description: `Stock levels have been successfully updated.` });
                 } else {
                      toast({ title: "Inventory Skipped", description: `Stock not updated for sale #${updatedInvoice.id} because some items are not linked to inventory. This may be an older sale record or items were added manually without selecting from inventory.` });
+                }
+            } else if (oldStatus === 'Paid' && newStatus !== 'Paid') {
+                if(invoice.items && invoice.items.every(item => item.inventoryId)){
+                    await revertStockOnSale(invoice.items);
+                    toast({ title: "Inventory Reverted", description: `Stock levels have been reverted for this sale.` });
                 }
             }
 
@@ -220,6 +225,11 @@ export default function InvoiceDetailsPage() {
         }
     };
     
+    const wasEnteredAsAmount = (rate?: number) => {
+        if (rate === undefined || rate === 0) return false;
+        // If the rate is not a clean integer, it was likely calculated from an amount
+        return rate % 1 !== 0;
+    };
 
     return (
         <MainLayout>
@@ -337,15 +347,15 @@ export default function InvoiceDetailsPage() {
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>CGST ({invoice.cgstRate || 0}%)</span>
+                            <span>CGST {wasEnteredAsAmount(invoice.cgstRate) ? '' : `(${invoice.cgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(cgstAmount)}</span>
                         </div>
                          <div className="flex justify-between">
-                            <span>SGST ({invoice.sgstRate || 0}%)</span>
+                            <span>SGST {wasEnteredAsAmount(invoice.sgstRate) ? '' : `(${invoice.sgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(sgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>IGST ({invoice.igstRate || 0}%)</span>
+                            <span>IGST {wasEnteredAsAmount(invoice.igstRate) ? '' : `(${invoice.igstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(igstAmount)}</span>
                         </div>
                          <div className="flex justify-between">
@@ -363,3 +373,5 @@ export default function InvoiceDetailsPage() {
         </MainLayout>
     );
 }
+
+    

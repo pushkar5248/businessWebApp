@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-context';
-import { updateStockOnPurchase } from '@/services/inventory-service';
+import { updateStockOnPurchase, revertStockOnPurchase } from '@/services/inventory-service';
 import { formatDate } from '@/lib/utils';
 
 
@@ -102,6 +102,15 @@ export default function PurchaseDetailsPage() {
                         description: "Stock levels have been successfully updated.",
                     });
                 }
+            } else if (oldStatus === 'Received' && newStatus !== 'Received') {
+                // If status changes from Received to something else, revert stock
+                if (purchase.items) {
+                    await revertStockOnPurchase(purchase.items, user.uid);
+                    toast({
+                        title: "Inventory Reverted",
+                        description: "Stock levels have been reverted for this purchase.",
+                    });
+                }
             }
         } catch (error) {
              console.error("Error updating status or inventory:", error);
@@ -134,7 +143,12 @@ export default function PurchaseDetailsPage() {
     const totalAmount = purchase.amount;
     const roundedTotal = Math.round(totalAmount);
     const roundOff = roundedTotal - totalAmount;
-
+    
+    const wasEnteredAsAmount = (rate?: number) => {
+        if (rate === undefined || rate === 0) return false;
+        // If the rate is not a clean integer, it was likely calculated from an amount
+        return rate % 1 !== 0;
+    };
 
     return (
         <MainLayout>
@@ -240,19 +254,19 @@ export default function PurchaseDetailsPage() {
                             <span>{formatCurrencyValue(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>CGST ({purchase.cgstRate || 0}%)</span>
+                            <span>CGST {wasEnteredAsAmount(purchase.cgstRate) ? '' : `(${purchase.cgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(cgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>SGST ({purchase.sgstRate || 0}%)</span>
+                            <span>SGST {wasEnteredAsAmount(purchase.sgstRate) ? '' : `(${purchase.sgstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(sgstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>IGST ({purchase.igstRate || 0}%)</span>
+                            <span>IGST {wasEnteredAsAmount(purchase.igstRate) ? '' : `(${purchase.igstRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(igstAmount)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Insurance & Others ({purchase.insuranceAndOthersRate || 0}%)</span>
+                            <span>Insurance & Others {wasEnteredAsAmount(purchase.insuranceAndOthersRate) ? '' : `(${purchase.insuranceAndOthersRate || 0}%)`}</span>
                             <span>{formatCurrencyValue(insuranceAndOthersAmount)}</span>
                         </div>
                         <div className="flex justify-between">
@@ -270,3 +284,5 @@ export default function PurchaseDetailsPage() {
         </MainLayout>
     );
 }
+
+    
