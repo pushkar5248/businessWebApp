@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
-import type { UserSettings } from '@/lib/types';
+import type { UserSettings, LineItem, Sale, Purchase } from '@/lib/types';
 import { Loader2, Trash2, Upload, Search, Download, UploadCloud } from 'lucide-react';
 import { updateProfile, updateEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -474,6 +474,37 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     throw new Error("Invalid backup file structure.");
                 }
 
+                // --- Data Sanitization Step ---
+                const sanitizedData = JSON.parse(JSON.stringify(backupData)); // Deep copy
+
+                const sanitizeItems = (items: Partial<LineItem>[]) => {
+                    return items.map(item => ({
+                        name: item.name || '',
+                        quantity: item.quantity || 0,
+                        price: item.price || 0,
+                        inventoryId: item.inventoryId || '',
+                        hsnCode: item.hsnCode || '',
+                        unit: item.unit || '',
+                        discount: item.discount ?? 0,
+                        total: item.total ?? 0,
+                    }));
+                };
+
+                if (sanitizedData.sales) {
+                    sanitizedData.sales = sanitizedData.sales.map((sale: Sale) => ({
+                        ...sale,
+                        items: sale.items ? sanitizeItems(sale.items) : [],
+                    }));
+                }
+
+                if (sanitizedData.purchases) {
+                    sanitizedData.purchases = sanitizedData.purchases.map((purchase: Purchase) => ({
+                        ...purchase,
+                        items: purchase.items ? sanitizeItems(purchase.items) : [],
+                    }));
+                }
+                // --- End Sanitization Step ---
+
                 const batch = writeBatch(db);
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
                 for (const collectionName of collectionsToDelete) {
@@ -481,28 +512,24 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     const snapshot = await getDocs(q);
                     snapshot.docs.forEach(doc => batch.delete(doc.ref));
                 }
+                await batch.commit(); // Commit deletions first
 
-                for (const collectionName in backupData) {
-                    if (Object.prototype.hasOwnProperty.call(backupData, collectionName)) {
-                        const documents = backupData[collectionName];
+                // New batch for writes
+                const writeBatch = writeBatch(db);
+                for (const collectionName in sanitizedData) {
+                    if (Object.prototype.hasOwnProperty.call(sanitizedData, collectionName)) {
+                        const documents = sanitizedData[collectionName];
                         for (const docData of documents) {
                             const { id, ...data } = docData;
-
-                            if ((collectionName === 'sales' || collectionName === 'purchases') && data.items) {
-                                data.items = data.items.map((item: any) => ({
-                                    ...item,
-                                    discount: item.discount ?? 0,
-                                    total: item.total ?? 0
-                                }));
+                            if (id) { // Ensure there's an ID
+                               const docRef = doc(db, collectionName, id);
+                               writeBatch.set(docRef, data);
                             }
-
-                            const docRef = doc(db, collectionName, id);
-                            batch.set(docRef, data);
                         }
                     }
                 }
                 
-                await batch.commit();
+                await writeBatch.commit();
                 
                 toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
                 setTimeout(() => window.location.reload(), 2000);
