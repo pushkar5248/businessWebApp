@@ -475,20 +475,20 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
         if (!file || !user) return;
 
         setIsRestoring(true);
-        console.log(`[Restore] Starting restore from file: ${file.name}`);
         const reader = new FileReader();
 
         reader.onload = async (e) => {
             try {
-                console.log("[Restore] File read successfully. Parsing JSON...");
+                console.log("[Restore] Starting restore process...");
                 const backupData = JSON.parse(e.target?.result as string);
-
+                
+                console.log("[Restore] JSON parsed successfully.");
+                
                 if (!backupData || typeof backupData !== 'object') {
                     throw new Error("Invalid backup file format.");
                 }
 
-                // --- Sanitization Step ---
-                console.log("[Restore] Sanitizing data...");
+                // --- Sanitization Helper ---
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
                     const quantity = item.quantity ?? 0;
                     const price = item.price ?? 0;
@@ -506,29 +506,27 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         total: total,
                     };
                 };
-
-                const sanitizedSales = (backupData.sales || []).map((sale: Partial<Sale>) => ({
-                    ...sale,
-                    items: Array.isArray(sale.items) ? sale.items.map(sanitizeLineItem) : [],
-                }));
-
-                const sanitizedPurchases = (backupData.purchases || []).map((purchase: Partial<Purchase>) => ({
-                    ...purchase,
-                    items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
-                }));
-
+                
                 const sanitizedInventory = (backupData.inventory || []).map((item: any) => ({
                     ...item,
                     stock: item.stock ?? 0,
                     price: item.price ?? 0,
                 }));
+                const sanitizedSales = (backupData.sales || []).map((sale: Partial<Sale>) => ({
+                    ...sale,
+                    items: Array.isArray(sale.items) ? sale.items.map(sanitizeLineItem) : [],
+                }));
+                 const sanitizedPurchases = (backupData.purchases || []).map((purchase: Partial<Purchase>) => ({
+                    ...purchase,
+                    items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
+                }));
 
-                console.log(`[Restore] Sanitized ${sanitizedInventory.length} inventory items, ${sanitizedSales.length} sales, ${sanitizedPurchases.length} purchases.`);
-                // --- End Sanitization Step ---
+                console.log(`[Restore] Data sanitized. Counts: ${sanitizedInventory.length} inventory, ${sanitizedSales.length} sales, ${sanitizedPurchases.length} purchases.`);
+                console.log("[Restore] About to start database operations.");
+
 
                 // --- Deletion Phase ---
                 console.log("[Restore] Phase 1: Deleting old data.");
-                const deleteBatch = writeBatch(db);
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
                 for (const collectionName of collectionsToDelete) {
                     const q = query(collection(db, collectionName), where("userId", "==", user.uid));
@@ -537,12 +535,12 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         console.log(`[Restore] No documents to delete in "${collectionName}". Skipping.`);
                         continue;
                     }
+                    const deleteBatch = writeBatch(db);
                     snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
-                    console.log(`[Restore] Queued ${snapshot.size} documents for deletion from "${collectionName}".`);
+                    await deleteBatch.commit();
+                    console.log(`[Restore] Deleted ${snapshot.size} documents from "${collectionName}".`);
                 }
-                await deleteBatch.commit();
                 console.log("[Restore] Phase 1: Deletion complete.");
-                // --- End Deletion Phase ---
 
                 // --- Writing Phase ---
                 console.log("[Restore] Phase 2: Writing new data.");
@@ -557,9 +555,8 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         console.log(`[Restore] No data to restore for "${name}". Skipping.`);
                         continue;
                     }
-                    console.log(`[Restore] Restoring ${data.length} documents to "${name}"...`);
                     
-                    // Split into chunks of 499
+                    const totalBatches = Math.ceil(data.length / 499);
                     for (let i = 0; i < data.length; i += 499) {
                         const chunk = data.slice(i, i + 499);
                         const chunkBatch = writeBatch(db);
@@ -567,15 +564,19 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                             const { id, ...restData } = docData;
                             if (id) {
                                 chunkBatch.set(doc(db, name, id), restData);
+                            } else {
+                                // If ID is missing, create a new doc, though this should be rare.
+                                chunkBatch.set(doc(collection(db, name)), restData);
                             }
                         });
-                        console.log(`[Restore] Committing batch ${Math.floor(i / 499) + 1} for "${name}" with ${chunk.length} documents.`);
+                        const currentBatchNum = Math.floor(i / 499) + 1;
+                        console.log(`[Restore] Committing batch ${currentBatchNum} of ${totalBatches} for "${name}" with ${chunk.length} documents.`);
                         await chunkBatch.commit();
+                        console.log(`[Restore] Batch ${currentBatchNum} committed successfully.`);
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Delay between batches
                     }
                 }
                 console.log("[Restore] Phase 2: Data writing complete.");
-                // --- End Writing Phase ---
-
 
                 // --- User Settings Phase ---
                 if (backupData.users && backupData.users.length > 0) {
@@ -585,10 +586,12 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         const { id, ...settingsData } = userData;
                         const mergedSettings = deepmerge(defaultSettings, settingsData);
                         await setDoc(doc(db, "users", user.uid), mergedSettings);
-                        console.log("[Restore] User settings updated.");
+                        console.log("[Restore] User settings updated successfully.");
                     } else {
                         console.warn("[Restore] User ID in backup does not match current user. Skipping settings restore.");
                     }
+                } else {
+                    console.log("[Restore] No user settings found in backup file.");
                 }
                 // --- End User Settings Phase ---
 
@@ -598,7 +601,8 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 setTimeout(() => window.location.reload(), 2000);
 
             } catch (error: any) {
-                console.error("[Restore] A critical error occurred during the restore process:", error);
+                console.error("[Restore] A critical error occurred during the restore process.");
+                console.error("[Restore] Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
                 toast({ 
                     variant: 'destructive', 
                     title: 'Restore Failed', 
