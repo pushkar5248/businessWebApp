@@ -486,12 +486,15 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 if (!backupData || typeof backupData !== 'object') {
                     throw new Error("Invalid backup file format.");
                 }
-                console.log("[Restore] JSON parsed. Starting data sanitization...");
-                
+
+                // --- Sanitization Step ---
+                console.log("[Restore] Sanitizing data...");
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
                     const quantity = item.quantity ?? 0;
                     const price = item.price ?? 0;
                     const discount = item.discount ?? 0;
+                    const total = item.total ?? (quantity * price) * (1 - discount / 100);
+
                     return {
                         inventoryId: item.inventoryId ?? '',
                         name: item.name ?? 'Unnamed Item',
@@ -500,7 +503,7 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         hsnCode: item.hsnCode ?? '',
                         unit: item.unit ?? '',
                         discount: discount,
-                        total: item.total ?? (quantity * price) * (1 - discount / 100),
+                        total: total,
                     };
                 };
 
@@ -513,12 +516,19 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     ...purchase,
                     items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
                 }));
-                
-                const sanitizedInventory = backupData.inventory || [];
-                console.log("[Restore] Sanitization complete.");
-                
+
+                const sanitizedInventory = (backupData.inventory || []).map((item: any) => ({
+                    ...item,
+                    stock: item.stock ?? 0,
+                    price: item.price ?? 0,
+                }));
+
+                console.log(`[Restore] Sanitized ${sanitizedInventory.length} inventory items, ${sanitizedSales.length} sales, ${sanitizedPurchases.length} purchases.`);
+                // --- End Sanitization Step ---
+
                 // --- Deletion Phase ---
                 console.log("[Restore] Phase 1: Deleting old data.");
+                const deleteBatch = writeBatch(db);
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
                 for (const collectionName of collectionsToDelete) {
                     const q = query(collection(db, collectionName), where("userId", "==", user.uid));
@@ -527,13 +537,12 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         console.log(`[Restore] No documents to delete in "${collectionName}". Skipping.`);
                         continue;
                     }
-                    
-                    const deleteBatch = writeBatch(db);
                     snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
-                    await deleteBatch.commit();
-                    console.log(`[Restore] Deleted ${snapshot.size} documents from "${collectionName}".`);
+                    console.log(`[Restore] Queued ${snapshot.size} documents for deletion from "${collectionName}".`);
                 }
+                await deleteBatch.commit();
                 console.log("[Restore] Phase 1: Deletion complete.");
+                // --- End Deletion Phase ---
 
                 // --- Writing Phase ---
                 console.log("[Restore] Phase 2: Writing new data.");
@@ -543,7 +552,7 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     { name: 'purchases', data: sanitizedPurchases },
                 ];
                 
-                 for (const { name, data } of dataToRestore) {
+                for (const { name, data } of dataToRestore) {
                     if (!Array.isArray(data) || data.length === 0) {
                         console.log(`[Restore] No data to restore for "${name}". Skipping.`);
                         continue;
@@ -553,32 +562,36 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     // Split into chunks of 499
                     for (let i = 0; i < data.length; i += 499) {
                         const chunk = data.slice(i, i + 499);
-                        const writeBatch = writeBatch(db);
+                        const chunkBatch = writeBatch(db);
                         chunk.forEach((docData: any) => {
                             const { id, ...restData } = docData;
                             if (id) {
-                                writeBatch.set(doc(db, name, id), restData);
+                                chunkBatch.set(doc(db, name, id), restData);
                             }
                         });
                         console.log(`[Restore] Committing batch ${Math.floor(i / 499) + 1} for "${name}" with ${chunk.length} documents.`);
-                        await writeBatch.commit();
+                        await chunkBatch.commit();
                     }
                 }
                 console.log("[Restore] Phase 2: Data writing complete.");
+                // --- End Writing Phase ---
+
 
                 // --- User Settings Phase ---
                 if (backupData.users && backupData.users.length > 0) {
                     console.log("[Restore] Phase 3: Restoring user settings.");
-                    const userSettingsFromFile = backupData.users[0];
-                    if (userSettingsFromFile.id === user.uid) {
-                        // Merge with defaults to ensure all fields are present
-                        const mergedSettings = deepmerge(defaultSettings, userSettingsFromFile);
+                    const userData = backupData.users[0];
+                    if (userData.id === user.uid) {
+                        const { id, ...settingsData } = userData;
+                        const mergedSettings = deepmerge(defaultSettings, settingsData);
                         await setDoc(doc(db, "users", user.uid), mergedSettings);
                         console.log("[Restore] User settings updated.");
                     } else {
                         console.warn("[Restore] User ID in backup does not match current user. Skipping settings restore.");
                     }
                 }
+                // --- End User Settings Phase ---
+
 
                 toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
                 console.log("[Restore] Process complete. Reloading page in 2 seconds...");
@@ -807,4 +820,3 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
-
