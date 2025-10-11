@@ -488,7 +488,6 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         for (const docData of documents) {
                             const { id, ...data } = docData;
 
-                            // Sanitize items in sales and purchases
                             if ((collectionName === 'sales' || collectionName === 'purchases') && data.items) {
                                 data.items = data.items.map((item: any) => ({
                                     ...item,
