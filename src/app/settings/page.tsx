@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
-import { useSettings } from '@/context/settings-context';
+import { useSettings, defaultSettings } from '@/context/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSettings, LineItem, Sale, Purchase } from '@/lib/types';
 import { Loader2, Trash2, Upload, Search, Download, UploadCloud } from 'lucide-react';
@@ -37,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { fetchGstinDetails } from '@/ai/flows/fetch-gstin-details';
 import { saveAs } from 'file-saver';
+import deepmerge from 'deepmerge';
 
 
 const currencies = [
@@ -475,16 +476,14 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     throw new Error("Invalid backup file structure. Required collections (inventory, sales, purchases) are missing.");
                 }
 
+                // --- Sanitization Step ---
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
                     const quantity = item.quantity ?? 0;
                     const price = item.price ?? 0;
                     const discount = item.discount ?? 0;
                     
-                    let total = item.total;
                     // Recalculate total if it's missing or seems incorrect
-                    if (typeof total !== 'number' || isNaN(total)) {
-                        total = (quantity * price) * (1 - discount / 100);
-                    }
+                    const total = item.total ?? (quantity * price) * (1 - discount / 100);
 
                     return {
                         inventoryId: item.inventoryId ?? '',
@@ -518,38 +517,33 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 await deleteBatch.commit(); 
 
                 const dataWriteBatch = writeBatch(db);
+                const collectionsToRestore = ['inventory', 'sales', 'purchases'];
 
-                // Restore Inventory
-                (backupData.inventory || []).forEach((docData: any) => {
-                    const { id, ...data } = docData;
-                    if (id) {
-                        dataWriteBatch.set(doc(db, "inventory", id), data);
+                for (const collectionName of collectionsToRestore) {
+                    let dataToRestore;
+                    if (collectionName === 'sales') {
+                        dataToRestore = sanitizedSales;
+                    } else if (collectionName === 'purchases') {
+                        dataToRestore = sanitizedPurchases;
+                    } else {
+                        dataToRestore = backupData[collectionName] || [];
                     }
-                });
 
-                // Restore Sales
-                sanitizedSales.forEach((docData: any) => {
-                    const { id, ...data } = docData;
-                    if (id) {
-                        dataWriteBatch.set(doc(db, "sales", id), data);
-                    }
-                });
-
-                // Restore Purchases
-                sanitizedPurchases.forEach((docData: any) => {
-                    const { id, ...data } = docData;
-                    if (id) {
-                        dataWriteBatch.set(doc(db, "purchases", id), data);
-                    }
-                });
+                    dataToRestore.forEach((docData: any) => {
+                        const { id, ...data } = docData;
+                        if (id) {
+                            dataWriteBatch.set(doc(db, collectionName, id), data);
+                        }
+                    });
+                }
                 
                 await dataWriteBatch.commit();
                 
-                // Separately restore user settings
                 if (backupData.users && backupData.users.length > 0) {
-                    const { id, ...userData } = backupData.users[0];
-                    if (id === user.uid) { // Ensure we're not overwriting a different user's settings
-                       await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+                    const { id, ...userDataFromFile } = backupData.users[0];
+                    if (id === user.uid) {
+                        const mergedSettings = deepmerge(defaultSettings, userDataFromFile);
+                        await setDoc(doc(db, "users", user.uid), mergedSettings, { merge: true });
                     }
                 }
 
@@ -774,3 +768,4 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
