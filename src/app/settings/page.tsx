@@ -471,37 +471,35 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
             try {
                 const backupData = JSON.parse(e.target?.result as string);
                 
-                if (!backupData.users || !backupData.inventory) {
-                    throw new Error("Invalid backup file structure.");
+                if (!backupData.inventory || !backupData.sales || !backupData.purchases || !backupData.users) {
+                    throw new Error("Invalid backup file structure. Required collections are missing.");
                 }
 
                 // --- Data Sanitization Step ---
-                const sanitizedData = JSON.parse(JSON.stringify(backupData)); // Deep copy
+                const sanitizedData = JSON.parse(JSON.stringify(backupData)); 
 
-                const sanitizeItems = (items: Partial<LineItem>[]) => {
-                    return items.map(item => ({
-                        name: item.name || '',
-                        quantity: item.quantity || 0,
-                        price: item.price || 0,
-                        inventoryId: item.inventoryId || '',
-                        hsnCode: item.hsnCode || '',
-                        unit: item.unit || '',
-                        discount: item.discount ?? 0,
-                        total: item.total ?? 0,
-                    }));
-                };
+                const sanitizeLineItem = (item: Partial<LineItem>): LineItem => ({
+                    name: item.name || '',
+                    quantity: item.quantity || 0,
+                    price: item.price || 0,
+                    inventoryId: item.inventoryId || '',
+                    hsnCode: item.hsnCode || '',
+                    unit: item.unit || '',
+                    discount: item.discount ?? 0,
+                    total: item.total ?? 0,
+                });
 
-                if (sanitizedData.sales) {
+                if (sanitizedData.sales && Array.isArray(sanitizedData.sales)) {
                     sanitizedData.sales = sanitizedData.sales.map((sale: Sale) => ({
                         ...sale,
-                        items: sale.items ? sanitizeItems(sale.items) : [],
+                        items: Array.isArray(sale.items) ? sale.items.map(sanitizeLineItem) : [],
                     }));
                 }
 
-                if (sanitizedData.purchases) {
+                if (sanitizedData.purchases && Array.isArray(sanitizedData.purchases)) {
                     sanitizedData.purchases = sanitizedData.purchases.map((purchase: Purchase) => ({
                         ...purchase,
-                        items: purchase.items ? sanitizeItems(purchase.items) : [],
+                        items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
                     }));
                 }
                 // --- End Sanitization Step ---
@@ -513,18 +511,19 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     const snapshot = await getDocs(q);
                     snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
                 }
-                await deleteBatch.commit(); // Commit deletions first
+                await deleteBatch.commit(); 
 
-                // New batch for writes
                 const dataWriteBatch = writeBatch(db);
                 for (const collectionName in sanitizedData) {
                     if (Object.prototype.hasOwnProperty.call(sanitizedData, collectionName)) {
                         const documents = sanitizedData[collectionName];
-                        for (const docData of documents) {
-                            const { id, ...data } = docData;
-                            if (id) { // Ensure there's an ID
-                               const docRef = doc(db, collectionName, id);
-                               dataWriteBatch.set(docRef, data);
+                        if (Array.isArray(documents)) {
+                           for (const docData of documents) {
+                                const { id, ...data } = docData;
+                                if (id) { 
+                                   const docRef = doc(db, collectionName, id);
+                                   dataWriteBatch.set(docRef, data);
+                                }
                             }
                         }
                     }
@@ -753,4 +752,3 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
-
