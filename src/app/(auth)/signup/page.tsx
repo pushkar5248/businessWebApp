@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 
 const signupSchema = z
@@ -40,6 +40,8 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
 
@@ -95,12 +97,44 @@ export default function SignupPage() {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" suppressHydrationWarning={true} {...register('password')} />
+                <div className="relative">
+                    <Input 
+                        id="password" 
+                        type={showPassword ? 'text' : 'password'} 
+                        suppressHydrationWarning={true} 
+                        {...register('password')} 
+                    />
+                     <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        onClick={() => setShowPassword(prev => !prev)}
+                      >
+                        {showPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input id="confirmPassword" type="password" suppressHydrationWarning={true} {...register('confirmPassword')} />
+                <div className="relative">
+                    <Input 
+                        id="confirmPassword" 
+                        type={showConfirmPassword ? 'text' : 'password'} 
+                        suppressHydrationWarning={true} 
+                        {...register('confirmPassword')} 
+                    />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        onClick={() => setShowConfirmPassword(prev => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                </div>
                 {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
