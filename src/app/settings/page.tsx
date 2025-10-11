@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -505,17 +506,17 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 }
                 // --- End Sanitization Step ---
 
-                const batch = writeBatch(db);
+                const deleteBatch = writeBatch(db);
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
                 for (const collectionName of collectionsToDelete) {
                     const q = query(collection(db, collectionName), where("userId", "==", user.uid));
                     const snapshot = await getDocs(q);
-                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
                 }
-                await batch.commit(); // Commit deletions first
+                await deleteBatch.commit(); // Commit deletions first
 
                 // New batch for writes
-                const writeBatch = writeBatch(db);
+                const dataWriteBatch = writeBatch(db);
                 for (const collectionName in sanitizedData) {
                     if (Object.prototype.hasOwnProperty.call(sanitizedData, collectionName)) {
                         const documents = sanitizedData[collectionName];
@@ -523,13 +524,13 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                             const { id, ...data } = docData;
                             if (id) { // Ensure there's an ID
                                const docRef = doc(db, collectionName, id);
-                               writeBatch.set(docRef, data);
+                               dataWriteBatch.set(docRef, data);
                             }
                         }
                     }
                 }
                 
-                await writeBatch.commit();
+                await dataWriteBatch.commit();
                 
                 toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
                 setTimeout(() => window.location.reload(), 2000);
@@ -752,3 +753,4 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
