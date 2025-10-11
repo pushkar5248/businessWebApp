@@ -45,7 +45,7 @@ const currencies = [
   { value: 'JPY', label: '¥ (JPY)' },
   { value: 'GBP', label: '£ (GBP)' },
   { value: 'AUD', label: 'A$ (AUD)' },
-  { value: 'CAD', label: 'C$ (CAD)' },
+  { value: 'CAD', 'label': 'C$ (CAD)' },
   { value: 'CHF', label: 'Fr (CHF)' },
   { value: 'CNY', 'label': '¥ (CNY)' },
   { value: 'INR', 'label': '₹ (INR)' },
@@ -476,19 +476,19 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 }
 
                 // --- Data Sanitization Step ---
-                const sanitizedData = JSON.parse(JSON.stringify(backupData)); 
-
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => ({
-                    name: item.name || '',
-                    quantity: item.quantity || 0,
-                    price: item.price || 0,
-                    inventoryId: item.inventoryId || '',
-                    hsnCode: item.hsnCode || '',
-                    unit: item.unit || '',
+                    inventoryId: item.inventoryId ?? '',
+                    name: item.name ?? 'Unnamed Item',
+                    quantity: item.quantity ?? 0,
+                    price: item.price ?? 0,
+                    hsnCode: item.hsnCode ?? '',
+                    unit: item.unit ?? '',
                     discount: item.discount ?? 0,
                     total: item.total ?? 0,
                 });
 
+                const sanitizedData = JSON.parse(JSON.stringify(backupData));
+                
                 if (sanitizedData.sales && Array.isArray(sanitizedData.sales)) {
                     sanitizedData.sales = sanitizedData.sales.map((sale: Sale) => ({
                         ...sale,
