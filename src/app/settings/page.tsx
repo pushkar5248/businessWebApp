@@ -475,7 +475,7 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
         if (!file || !user) return;
 
         setIsRestoring(true);
-        console.log(`[Restore] Starting restore process from file: ${file.name}`);
+        console.log(`[Restore] Starting restore from file: ${file.name}`);
         const reader = new FileReader();
 
         reader.onload = async (e) => {
@@ -484,16 +484,14 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 const backupData = JSON.parse(e.target?.result as string);
 
                 if (!backupData || typeof backupData !== 'object') {
-                    throw new Error("Invalid backup file. The file is not a valid JSON object.");
+                    throw new Error("Invalid backup file format.");
                 }
-
                 console.log("[Restore] JSON parsed. Starting data sanitization...");
                 
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
                     const quantity = item.quantity ?? 0;
                     const price = item.price ?? 0;
                     const discount = item.discount ?? 0;
-
                     return {
                         inventoryId: item.inventoryId ?? '',
                         name: item.name ?? 'Unnamed Item',
@@ -515,50 +513,66 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                     ...purchase,
                     items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
                 }));
-
+                
                 const sanitizedInventory = backupData.inventory || [];
-                console.log("[Restore] Sanitization complete. Proceeding to delete old data.");
-
-                const deleteBatch = writeBatch(db);
+                console.log("[Restore] Sanitization complete.");
+                
+                // --- Deletion Phase ---
+                console.log("[Restore] Phase 1: Deleting old data.");
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
                 for (const collectionName of collectionsToDelete) {
-                    console.log(`[Restore] Querying existing documents in "${collectionName}" for deletion...`);
                     const q = query(collection(db, collectionName), where("userId", "==", user.uid));
                     const snapshot = await getDocs(q);
+                    if (snapshot.empty) {
+                        console.log(`[Restore] No documents to delete in "${collectionName}". Skipping.`);
+                        continue;
+                    }
+                    
+                    const deleteBatch = writeBatch(db);
                     snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
-                    console.log(`[Restore] Staged ${snapshot.size} documents from "${collectionName}" for deletion.`);
+                    await deleteBatch.commit();
+                    console.log(`[Restore] Deleted ${snapshot.size} documents from "${collectionName}".`);
                 }
-                await deleteBatch.commit(); 
-                console.log("[Restore] Old data deleted successfully.");
-                
-                console.log("[Restore] Staging new data for write...");
-                const dataWriteBatch = writeBatch(db);
-                const collectionsToRestore = {
-                    inventory: sanitizedInventory,
-                    sales: sanitizedSales,
-                    purchases: sanitizedPurchases
-                };
+                console.log("[Restore] Phase 1: Deletion complete.");
 
-                for (const [collectionName, dataToRestore] of Object.entries(collectionsToRestore)) {
-                     if (Array.isArray(dataToRestore)) {
-                        console.log(`[Restore] Staging ${dataToRestore.length} documents for "${collectionName}"...`);
-                        dataToRestore.forEach((docData: any) => {
-                            const { id, ...data } = docData;
+                // --- Writing Phase ---
+                console.log("[Restore] Phase 2: Writing new data.");
+                const dataToRestore: { name: string, data: any[] }[] = [
+                    { name: 'inventory', data: sanitizedInventory },
+                    { name: 'sales', data: sanitizedSales },
+                    { name: 'purchases', data: sanitizedPurchases },
+                ];
+                
+                 for (const { name, data } of dataToRestore) {
+                    if (!Array.isArray(data) || data.length === 0) {
+                        console.log(`[Restore] No data to restore for "${name}". Skipping.`);
+                        continue;
+                    }
+                    console.log(`[Restore] Restoring ${data.length} documents to "${name}"...`);
+                    
+                    // Split into chunks of 499
+                    for (let i = 0; i < data.length; i += 499) {
+                        const chunk = data.slice(i, i + 499);
+                        const writeBatch = writeBatch(db);
+                        chunk.forEach((docData: any) => {
+                            const { id, ...restData } = docData;
                             if (id) {
-                                dataWriteBatch.set(doc(db, collectionName, id), data);
+                                writeBatch.set(doc(db, name, id), restData);
                             }
                         });
+                        console.log(`[Restore] Committing batch ${Math.floor(i / 499) + 1} for "${name}" with ${chunk.length} documents.`);
+                        await writeBatch.commit();
                     }
                 }
-                
-                await dataWriteBatch.commit();
-                console.log("[Restore] New data written successfully.");
+                console.log("[Restore] Phase 2: Data writing complete.");
 
+                // --- User Settings Phase ---
                 if (backupData.users && backupData.users.length > 0) {
-                    console.log("[Restore] Found user settings in backup. Merging and updating...");
-                    const { id, ...userDataFromFile } = backupData.users[0];
-                    if (id === user.uid) {
-                        const mergedSettings = deepmerge(defaultSettings, userDataFromFile);
+                    console.log("[Restore] Phase 3: Restoring user settings.");
+                    const userSettingsFromFile = backupData.users[0];
+                    if (userSettingsFromFile.id === user.uid) {
+                        // Merge with defaults to ensure all fields are present
+                        const mergedSettings = deepmerge(defaultSettings, userSettingsFromFile);
                         await setDoc(doc(db, "users", user.uid), mergedSettings);
                         console.log("[Restore] User settings updated.");
                     } else {
@@ -571,8 +585,13 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 setTimeout(() => window.location.reload(), 2000);
 
             } catch (error: any) {
-                console.error("[Restore] An error occurred during the restore process:", error);
-                toast({ variant: 'destructive', title: 'Restore Failed', description: error.message || 'Could not restore data from file.' });
+                console.error("[Restore] A critical error occurred during the restore process:", error);
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Restore Failed', 
+                    description: `An error occurred: ${error.message}. Please check the console for details.`,
+                    duration: 10000,
+                });
             } finally {
                 setIsRestoring(false);
                 setIsRestoreAlertOpen(false);
@@ -788,3 +807,4 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
