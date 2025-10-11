@@ -487,6 +487,16 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                         const documents = backupData[collectionName];
                         for (const docData of documents) {
                             const { id, ...data } = docData;
+
+                            // Sanitize items in sales and purchases
+                            if ((collectionName === 'sales' || collectionName === 'purchases') && data.items) {
+                                data.items = data.items.map((item: any) => ({
+                                    ...item,
+                                    discount: item.discount ?? 0,
+                                    total: item.total ?? 0
+                                }));
+                            }
+
                             const docRef = doc(db, collectionName, id);
                             batch.set(docRef, data);
                         }
