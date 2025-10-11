@@ -476,16 +476,28 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 }
 
                 // --- Data Sanitization Step ---
-                const sanitizeLineItem = (item: Partial<LineItem>): LineItem => ({
-                    inventoryId: item.inventoryId ?? '',
-                    name: item.name ?? 'Unnamed Item',
-                    quantity: item.quantity ?? 0,
-                    price: item.price ?? 0,
-                    hsnCode: item.hsnCode ?? '',
-                    unit: item.unit ?? '',
-                    discount: item.discount ?? 0,
-                    total: item.total ?? 0,
-                });
+                const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
+                    const quantity = item.quantity ?? 0;
+                    const price = item.price ?? 0;
+                    const discount = item.discount ?? 0;
+                    
+                    // Recalculate total if it's missing or seems incorrect
+                    let total = item.total;
+                    if (typeof total !== 'number') {
+                        total = (quantity * price) * (1 - discount / 100);
+                    }
+
+                    return {
+                        inventoryId: item.inventoryId ?? '',
+                        name: item.name ?? 'Unnamed Item',
+                        quantity: quantity,
+                        price: price,
+                        hsnCode: item.hsnCode ?? '',
+                        unit: item.unit ?? '',
+                        discount: discount,
+                        total: total,
+                    };
+                };
 
                 const sanitizedData = JSON.parse(JSON.stringify(backupData));
                 
