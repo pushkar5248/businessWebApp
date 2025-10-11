@@ -471,50 +471,42 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
             try {
                 const backupData = JSON.parse(e.target?.result as string);
                 
-                if (!backupData.inventory || !backupData.sales || !backupData.purchases || !backupData.users) {
-                    throw new Error("Invalid backup file structure. Required collections are missing.");
+                if (!backupData.inventory || !backupData.sales || !backupData.purchases) {
+                    throw new Error("Invalid backup file structure. Required collections (inventory, sales, purchases) are missing.");
                 }
 
-                // --- Data Sanitization Step ---
                 const sanitizeLineItem = (item: Partial<LineItem>): LineItem => {
                     const quantity = item.quantity ?? 0;
                     const price = item.price ?? 0;
                     const discount = item.discount ?? 0;
                     
-                    // Recalculate total if it's missing or seems incorrect
                     let total = item.total;
-                    if (typeof total !== 'number') {
+                    // Recalculate total if it's missing or seems incorrect
+                    if (typeof total !== 'number' || isNaN(total)) {
                         total = (quantity * price) * (1 - discount / 100);
                     }
 
                     return {
                         inventoryId: item.inventoryId ?? '',
                         name: item.name ?? 'Unnamed Item',
-                        quantity: quantity,
-                        price: price,
+                        quantity,
+                        price,
                         hsnCode: item.hsnCode ?? '',
                         unit: item.unit ?? '',
-                        discount: discount,
-                        total: total,
+                        discount,
+                        total,
                     };
                 };
 
-                const sanitizedData = JSON.parse(JSON.stringify(backupData));
+                const sanitizedSales = (backupData.sales || []).map((sale: Sale) => ({
+                    ...sale,
+                    items: Array.isArray(sale.items) ? sale.items.map(sanitizeLineItem) : [],
+                }));
                 
-                if (sanitizedData.sales && Array.isArray(sanitizedData.sales)) {
-                    sanitizedData.sales = sanitizedData.sales.map((sale: Sale) => ({
-                        ...sale,
-                        items: Array.isArray(sale.items) ? sale.items.map(sanitizeLineItem) : [],
-                    }));
-                }
-
-                if (sanitizedData.purchases && Array.isArray(sanitizedData.purchases)) {
-                    sanitizedData.purchases = sanitizedData.purchases.map((purchase: Purchase) => ({
-                        ...purchase,
-                        items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
-                    }));
-                }
-                // --- End Sanitization Step ---
+                const sanitizedPurchases = (backupData.purchases || []).map((purchase: Purchase) => ({
+                    ...purchase,
+                    items: Array.isArray(purchase.items) ? purchase.items.map(sanitizeLineItem) : [],
+                }));
 
                 const deleteBatch = writeBatch(db);
                 const collectionsToDelete = ['inventory', 'sales', 'purchases'];
@@ -526,23 +518,41 @@ function AdvancedSettings({ onReset, isResetting, isGuest, user }: { onReset: ()
                 await deleteBatch.commit(); 
 
                 const dataWriteBatch = writeBatch(db);
-                for (const collectionName in sanitizedData) {
-                    if (Object.prototype.hasOwnProperty.call(sanitizedData, collectionName)) {
-                        const documents = sanitizedData[collectionName];
-                        if (Array.isArray(documents)) {
-                           for (const docData of documents) {
-                                const { id, ...data } = docData;
-                                if (id) { 
-                                   const docRef = doc(db, collectionName, id);
-                                   dataWriteBatch.set(docRef, data);
-                                }
-                            }
-                        }
+
+                // Restore Inventory
+                (backupData.inventory || []).forEach((docData: any) => {
+                    const { id, ...data } = docData;
+                    if (id) {
+                        dataWriteBatch.set(doc(db, "inventory", id), data);
                     }
-                }
+                });
+
+                // Restore Sales
+                sanitizedSales.forEach((docData: any) => {
+                    const { id, ...data } = docData;
+                    if (id) {
+                        dataWriteBatch.set(doc(db, "sales", id), data);
+                    }
+                });
+
+                // Restore Purchases
+                sanitizedPurchases.forEach((docData: any) => {
+                    const { id, ...data } = docData;
+                    if (id) {
+                        dataWriteBatch.set(doc(db, "purchases", id), data);
+                    }
+                });
                 
                 await dataWriteBatch.commit();
                 
+                // Separately restore user settings
+                if (backupData.users && backupData.users.length > 0) {
+                    const { id, ...userData } = backupData.users[0];
+                    if (id === user.uid) { // Ensure we're not overwriting a different user's settings
+                       await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+                    }
+                }
+
                 toast({ title: 'Restore Successful', description: 'Your data has been restored. The page will now reload.' });
                 setTimeout(() => window.location.reload(), 2000);
 
