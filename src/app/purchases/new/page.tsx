@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import { PurchaseOrderForm } from "@/components/purchase-order-form";
@@ -37,20 +35,16 @@ export default function NewPurchasePage() {
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
     let total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
-    if (data.manualTotal !== undefined) {
-      total = data.manualTotal;
-    }
-
-    const finalAmount = isNaN(total) ? 0 : Math.round(total);
+    const finalAmount = data.manualTotal !== undefined ? data.manualTotal : isNaN(total) ? 0 : Math.round(total);
 
     const sanitizedItems = data.items.map(item => {
         const cleanedItem: any = {
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            discount: item.discount || 0,
-            total: item.total || 0,
         };
+        if (item.discount) cleanedItem.discount = item.discount;
+        if (item.total) cleanedItem.total = item.total;
         if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
         if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
         if (item.unit) cleanedItem.unit = item.unit;
@@ -61,11 +55,11 @@ export default function NewPurchasePage() {
         vendor: data.vendorName,
         vendorAddress: data.vendorAddress,
         date: data.poDate,
-        amount: finalAmount,
         status: status,
         items: sanitizedItems,
         userId: user.uid,
         deletedAt: null,
+        amount: finalAmount,
     };
     
     if (data.vendorGstin) newPurchaseData.vendorGstin = data.vendorGstin;
@@ -76,7 +70,9 @@ export default function NewPurchasePage() {
     if (data.igstRate !== undefined) newPurchaseData.igstRate = data.igstRate;
     if (data.insuranceAndOthersRate !== undefined) newPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
     if (data.eWayBillNumber) newPurchaseData.eWayBillNumber = data.eWayBillNumber;
-    if (data.manualTotal !== undefined) newPurchaseData.manualTotal = data.manualTotal;
+    if (data.manualTotal !== undefined) {
+      newPurchaseData.manualTotal = data.manualTotal;
+    }
     
 
     const newPurchase = {
@@ -156,5 +152,3 @@ export default function NewPurchasePage() {
     </MainLayout>
   );
 }
-
-    

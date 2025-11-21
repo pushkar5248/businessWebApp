@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -63,31 +61,27 @@ export default function EditPurchasePage() {
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
     let total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
-    if (data.manualTotal !== undefined) {
-      total = data.manualTotal;
-    }
-
-    const finalAmount = isNaN(total) ? 0 : Math.round(total);
+    const finalAmount = data.manualTotal !== undefined ? data.manualTotal : isNaN(total) ? 0 : Math.round(total);
 
     const updatedPurchaseData: { [key: string]: any } = {
         vendor: data.vendorName,
         date: data.poDate,
-        amount: finalAmount,
         status: status,
+        amount: finalAmount,
+        deletedAt: null,
         items: data.items.map(item => {
             const cleanedItem: any = {
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
-                discount: item.discount || 0,
-                total: item.total || 0,
             };
+            if (item.discount) cleanedItem.discount = item.discount;
+            if (item.total) cleanedItem.total = item.total;
             if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
             if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
             if (item.unit) cleanedItem.unit = item.unit;
             return cleanedItem;
         }),
-        deletedAt: null,
     };
 
     if (data.vendorGstin) updatedPurchaseData.vendorGstin = data.vendorGstin;
@@ -99,7 +93,11 @@ export default function EditPurchasePage() {
     if (data.igstRate !== undefined) updatedPurchaseData.igstRate = data.igstRate;
     if (data.insuranceAndOthersRate !== undefined) updatedPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
     if (data.eWayBillNumber) updatedPurchaseData.eWayBillNumber = data.eWayBillNumber;
-    if (data.manualTotal !== undefined) updatedPurchaseData.manualTotal = data.manualTotal;
+    if (data.manualTotal !== undefined) {
+        updatedPurchaseData.manualTotal = data.manualTotal;
+    } else {
+        updatedPurchaseData.manualTotal = null;
+    }
 
 
     try {
@@ -143,5 +141,3 @@ export default function EditPurchasePage() {
     </MainLayout>
   );
 }
-
-    

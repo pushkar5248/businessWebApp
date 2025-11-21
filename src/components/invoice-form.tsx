@@ -298,33 +298,31 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("User not authenticated");
     }
     
-    const finalItems = data.items.map((item, index) => {
-        const cleanedItem: any = {
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-            discount: item.discount || 0,
-            total: getValues(`items.${index}`).total || 0,
-        };
-        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
-        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
-        if (item.unit) cleanedItem.unit = item.unit;
-        return cleanedItem;
-    });
-
-    const finalTotal = isNaN(roundedTotal) ? 0 : roundedTotal;
+    const finalTotal = data.manualTotal !== undefined ? data.manualTotal : isNaN(roundedTotal) ? 0 : roundedTotal;
 
     const saleData: { [key: string]: any } = {
         customer: data.customerName,
         date: data.invoiceDate,
-        amount: finalTotal,
         status: status,
-        items: finalItems,
-        customerAddress: data.customerAddress,
         userId: user.uid,
-        deletedAt: null
+        deletedAt: null,
+        amount: finalTotal,
+        items: data.items.map((item) => {
+            const cleanedItem: any = {
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+            };
+            if (item.discount) cleanedItem.discount = item.discount;
+            if (item.total) cleanedItem.total = item.total;
+            if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+            if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+            if (item.unit) cleanedItem.unit = item.unit;
+            return cleanedItem;
+        }),
     };
 
+    if (data.customerAddress) saleData.customerAddress = data.customerAddress;
     if (data.customerPhone) saleData.customerPhone = data.customerPhone;
     if (data.customerState) saleData.customerState = data.customerState;
     if (data.customerGstin) saleData.customerGstin = data.customerGstin;
@@ -340,7 +338,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     if (data.cgstRate !== undefined) saleData.cgstRate = data.cgstRate;
     if (data.sgstRate !== undefined) saleData.sgstRate = data.sgstRate;
     if (data.igstRate !== undefined) saleData.igstRate = data.igstRate;
-    if (isManualGrandTotal && data.manualTotal !== undefined) {
+    if (data.manualTotal !== undefined) {
       saleData.manualTotal = data.manualTotal;
     }
 
@@ -366,7 +364,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("Settings not loaded");
     }
     try {
-       const finalTotal = isManualGrandTotal ? (data.manualTotal || 0) : roundedTotal;
+       const finalTotal = data.manualTotal !== undefined ? data.manualTotal : isNaN(roundedTotal) ? 0 : roundedTotal;
 
       const input: GenerateInvoicePdfInput = {
         businessName: settings.general.businessName,

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -61,31 +60,27 @@ export default function EditSalePage() {
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
     let total = subtotal + cgstAmount + sgstAmount + igstAmount;
     
-    if (data.manualTotal !== undefined) {
-      total = data.manualTotal;
-    }
-
-    const finalAmount = isNaN(total) ? 0 : Math.round(total);
+    const finalAmount = data.manualTotal !== undefined ? data.manualTotal : isNaN(total) ? 0 : Math.round(total);
 
     const updatedSaleData: { [key: string]: any } = {
         customer: data.customerName,
         date: data.invoiceDate,
-        amount: finalAmount,
         status: status,
+        deletedAt: null,
+        amount: finalAmount,
         items: data.items.map(item => {
             const cleanedItem: any = {
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
-                discount: item.discount || 0,
-                total: item.total || 0,
             };
+            if (item.discount) cleanedItem.discount = item.discount;
+            if (item.total) cleanedItem.total = item.total;
             if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
             if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
             if (item.unit) cleanedItem.unit = item.unit;
             return cleanedItem;
         }),
-        deletedAt: null,
     };
     
     // Add optional fields only if they have a value
@@ -105,7 +100,11 @@ export default function EditSalePage() {
     if (data.cgstRate !== undefined) updatedSaleData.cgstRate = data.cgstRate;
     if (data.sgstRate !== undefined) updatedSaleData.sgstRate = data.sgstRate;
     if (data.igstRate !== undefined) updatedSaleData.igstRate = data.igstRate;
-    if (data.manualTotal !== undefined) updatedSaleData.manualTotal = data.manualTotal;
+    if (data.manualTotal !== undefined) {
+        updatedSaleData.manualTotal = data.manualTotal;
+    } else {
+        updatedSaleData.manualTotal = null;
+    }
     
 
     try {
@@ -149,5 +148,3 @@ export default function EditSalePage() {
     </MainLayout>
   );
 }
-
-    
