@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -67,7 +68,7 @@ export default function EditPurchasePage() {
         unit: item.unit ?? ''
     }));
 
-    const updatedPurchaseData: Partial<Purchase> = {
+    const updatedPurchaseData: Omit<Purchase, 'id' | 'userId'> & { id?: string; userId?: string } = {
         vendor: data.vendorName,
         vendorGstin: data.vendorGstin,
         vendorAddress: data.vendorAddress,
@@ -81,12 +82,11 @@ export default function EditPurchasePage() {
         sgstRate: data.sgstRate || 0,
         igstRate: data.igstRate || 0,
         insuranceAndOthersRate: data.insuranceAndOthersRate || 0,
-        userId: user.uid,
         deletedAt: null,
         eWayBillNumber: data.eWayBillNumber || '',
     };
     
-    if (data.manualTotal) {
+    if (data.manualTotal !== undefined) {
         updatedPurchaseData.manualTotal = data.manualTotal;
         updatedPurchaseData.amount = data.manualTotal;
     }
@@ -94,7 +94,10 @@ export default function EditPurchasePage() {
 
     try {
         const docRef = doc(db, "purchases", purchaseId as string);
-        await updateDoc(docRef, updatedPurchaseData);
+        const cleanedData = Object.fromEntries(
+            Object.entries(updatedPurchaseData).filter(([_, v]) => v !== undefined)
+        );
+        await updateDoc(docRef, cleanedData);
         toast({
             title: `Purchase Order ${status === 'Draft' ? 'Draft Updated' : 'Updated'}`,
             description: `PO #${data.poNumber} has been successfully updated.`,
@@ -134,3 +137,6 @@ export default function EditPurchasePage() {
   );
 }
 
+
+
+    

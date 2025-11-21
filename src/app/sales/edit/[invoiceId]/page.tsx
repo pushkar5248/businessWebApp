@@ -61,7 +61,7 @@ export default function EditSalePage() {
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
     let total = subtotal + cgstAmount + sgstAmount + igstAmount;
 
-    const updatedSaleData: Omit<Sale, 'id' | 'userId'> = {
+    const updatedSaleData: Omit<Sale, 'id' | 'userId'> & { id?: string; userId?: string } = {
         customer: data.customerName,
         date: data.invoiceDate,
         amount: total,
@@ -140,5 +140,7 @@ export default function EditSalePage() {
 }
 
 
+
+    
 
     

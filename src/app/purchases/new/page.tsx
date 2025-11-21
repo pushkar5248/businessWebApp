@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { PurchaseOrderForm } from "@/components/purchase-order-form";
@@ -63,7 +64,7 @@ export default function NewPurchasePage() {
         eWayBillNumber: data.eWayBillNumber || '',
     };
     
-    if (data.manualTotal) {
+    if (data.manualTotal !== undefined) {
         (newPurchaseData as Purchase).manualTotal = data.manualTotal;
         newPurchaseData.amount = data.manualTotal;
     }
@@ -77,7 +78,10 @@ export default function NewPurchasePage() {
     try {
         const batch = writeBatch(db);
         const purchaseDocRef = doc(db, "purchases", newPurchase.id);
-        batch.set(purchaseDocRef, newPurchaseData);
+        const cleanedData = Object.fromEntries(
+            Object.entries(newPurchaseData).filter(([_, v]) => v !== undefined)
+        );
+        batch.set(purchaseDocRef, cleanedData);
         
         const newItemsToCreate = data.items.filter(item => !item.inventoryId);
 
@@ -147,3 +151,6 @@ export default function NewPurchasePage() {
   );
 }
 
+
+
+    
