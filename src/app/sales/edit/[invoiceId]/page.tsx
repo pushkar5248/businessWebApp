@@ -55,51 +55,50 @@ export default function EditSalePage() {
   const handleUpdateSale = async (data: InvoiceFormValues, status: SaleStatus) => {
     if (!user || !invoiceId) return;
 
-    const subtotal = data.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+    const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.price * (1 - (item.discount || 0)/100)), 0);
     const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
     let total = subtotal + cgstAmount + sgstAmount + igstAmount;
+    
+    if (data.manualTotal !== undefined) {
+      total = data.manualTotal;
+    }
 
-    const updatedSaleData: Omit<Sale, 'id' | 'userId'> & { id?: string; userId?: string } = {
+    const finalAmount = isNaN(total) ? 0 : Math.round(total);
+
+    const updatedSaleData: { [key: string]: any } = {
         customer: data.customerName,
         date: data.invoiceDate,
-        amount: total,
+        amount: finalAmount,
         status: status,
         items: data.items,
-        customerAddress: data.customerAddress,
-        customerPhone: data.customerPhone,
-        customerState: data.customerState,
-        customerGstin: data.customerGstin,
-        deliveryPlaceName: data.deliveryPlaceName,
-        deliveryAddress: data.deliveryAddress,
-        deliveryState: data.deliveryState,
-        deliveryGstin: data.deliveryGstin,
-        transporterName: data.transporterName,
-        transporterVehicleNumber: data.transporterVehicleNumber,
-        placeOfSupply: data.placeOfSupply,
-        transportDate: data.transportDate,
-        eWayBillNumber: data.eWayBillNumber,
-        cgstRate: data.cgstRate,
-        sgstRate: data.sgstRate,
-        igstRate: data.igstRate,
         deletedAt: null,
     };
     
-    if (data.manualTotal !== undefined) {
-        updatedSaleData.manualTotal = data.manualTotal;
-        updatedSaleData.amount = data.manualTotal;
-    }
+    // Add optional fields only if they have a value
+    if (data.customerAddress) updatedSaleData.customerAddress = data.customerAddress;
+    if (data.customerPhone) updatedSaleData.customerPhone = data.customerPhone;
+    if (data.customerState) updatedSaleData.customerState = data.customerState;
+    if (data.customerGstin) updatedSaleData.customerGstin = data.customerGstin;
+    if (data.deliveryPlaceName) updatedSaleData.deliveryPlaceName = data.deliveryPlaceName;
+    if (data.deliveryAddress) updatedSaleData.deliveryAddress = data.deliveryAddress;
+    if (data.deliveryState) updatedSaleData.deliveryState = data.deliveryState;
+    if (data.deliveryGstin) updatedSaleData.deliveryGstin = data.deliveryGstin;
+    if (data.transporterName) updatedSaleData.transporterName = data.transporterName;
+    if (data.transporterVehicleNumber) updatedSaleData.transporterVehicleNumber = data.transporterVehicleNumber;
+    if (data.placeOfSupply) updatedSaleData.placeOfSupply = data.placeOfSupply;
+    if (data.transportDate) updatedSaleData.transportDate = data.transportDate;
+    if (data.eWayBillNumber) updatedSaleData.eWayBillNumber = data.eWayBillNumber;
+    if (data.cgstRate !== undefined) updatedSaleData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) updatedSaleData.sgstRate = data.sgstRate;
+    if (data.igstRate !== undefined) updatedSaleData.igstRate = data.igstRate;
+    if (data.manualTotal !== undefined) updatedSaleData.manualTotal = data.manualTotal;
+    
 
     try {
         const docRef = doc(db, "sales", invoiceId as string);
-        
-        // Clean the object before sending to Firestore
-        const cleanedData = Object.fromEntries(
-            Object.entries(updatedSaleData).filter(([_, v]) => v !== undefined)
-        );
-        
-        await updateDoc(docRef, cleanedData);
+        await updateDoc(docRef, updatedSaleData);
         toast({
             title: `Invoice ${status === 'Draft' ? 'Draft Updated' : 'Updated'}`,
             description: `Invoice #${data.invoiceNumber} has been successfully updated.`,
@@ -138,3 +137,5 @@ export default function EditSalePage() {
     </MainLayout>
   );
 }
+
+    

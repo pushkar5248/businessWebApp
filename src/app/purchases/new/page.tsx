@@ -29,12 +29,18 @@ export default function NewPurchasePage() {
       return;
     }
 
-    const subtotal = data.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+    const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.price * (1- (item.discount || 0)/100)), 0);
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
     const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
-    const total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
+    let total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
+
+    if (data.manualTotal !== undefined) {
+      total = data.manualTotal;
+    }
+
+    const finalAmount = isNaN(total) ? 0 : Math.round(total);
 
     const sanitizedItems = data.items.map(item => ({
         name: item.name,
@@ -45,30 +51,27 @@ export default function NewPurchasePage() {
         unit: item.unit ?? ''
     }));
 
-    const newPurchaseData: Omit<Purchase, 'id'> = {
+    const newPurchaseData: { [key: string]: any } = {
         vendor: data.vendorName,
-        vendorGstin: data.vendorGstin,
         vendorAddress: data.vendorAddress,
-        shippingAddress: data.shippingAddress,
         date: data.poDate,
-        amount: total,
+        amount: finalAmount,
         status: status,
         items: sanitizedItems,
-        transporterVehicleNumber: data.transporterVehicleNumber || '',
-        cgstRate: data.cgstRate || 0,
-        sgstRate: data.sgstRate || 0,
-        igstRate: data.igstRate || 0,
-        insuranceAndOthersRate: data.insuranceAndOthersRate || 0,
         userId: user.uid,
         deletedAt: null,
-        eWayBillNumber: data.eWayBillNumber || '',
     };
     
-    if (data.manualTotal !== undefined) {
-        (newPurchaseData as Purchase).manualTotal = data.manualTotal;
-        newPurchaseData.amount = data.manualTotal;
-    }
-
+    if (data.vendorGstin) newPurchaseData.vendorGstin = data.vendorGstin;
+    if (data.shippingAddress) newPurchaseData.shippingAddress = data.shippingAddress;
+    if (data.transporterVehicleNumber) newPurchaseData.transporterVehicleNumber = data.transporterVehicleNumber;
+    if (data.cgstRate !== undefined) newPurchaseData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) newPurchaseData.sgstRate = data.sgstRate;
+    if (data.igstRate !== undefined) newPurchaseData.igstRate = data.igstRate;
+    if (data.insuranceAndOthersRate !== undefined) newPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
+    if (data.eWayBillNumber) newPurchaseData.eWayBillNumber = data.eWayBillNumber;
+    if (data.manualTotal !== undefined) newPurchaseData.manualTotal = data.manualTotal;
+    
 
     const newPurchase = {
         id: data.poNumber,
@@ -78,10 +81,7 @@ export default function NewPurchasePage() {
     try {
         const batch = writeBatch(db);
         const purchaseDocRef = doc(db, "purchases", newPurchase.id);
-        const cleanedData = Object.fromEntries(
-            Object.entries(newPurchaseData).filter(([_, v]) => v !== undefined)
-        );
-        batch.set(purchaseDocRef, cleanedData);
+        batch.set(purchaseDocRef, newPurchaseData);
         
         const newItemsToCreate = data.items.filter(item => !item.inventoryId);
 
@@ -150,7 +150,5 @@ export default function NewPurchasePage() {
     </MainLayout>
   );
 }
-
-
 
     

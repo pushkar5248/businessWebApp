@@ -55,49 +55,43 @@ export default function EditPurchasePage() {
   const handleUpdatePurchase = async (data: PurchaseOrderFormValues, status: PurchaseStatus) => {
     if (!user || !purchaseId) return;
 
-    const subtotal = data.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+    const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.price * (1- (item.discount || 0)/100)), 0);
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
     const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
     let total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
-    const sanitizedItems = data.items.map(item => ({
-        ...item,
-        hsnCode: item.hsnCode ?? '',
-        unit: item.unit ?? ''
-    }));
-
-    const updatedPurchaseData: Omit<Purchase, 'id' | 'userId'> & { id?: string; userId?: string } = {
-        vendor: data.vendorName,
-        vendorGstin: data.vendorGstin,
-        vendorAddress: data.vendorAddress,
-        shippingAddress: data.shippingAddress,
-        date: data.poDate,
-        amount: total,
-        status: status,
-        items: sanitizedItems,
-        transporterVehicleNumber: data.transporterVehicleNumber || '',
-        cgstRate: data.cgstRate || 0,
-        sgstRate: data.sgstRate || 0,
-        igstRate: data.igstRate || 0,
-        insuranceAndOthersRate: data.insuranceAndOthersRate || 0,
-        deletedAt: null,
-        eWayBillNumber: data.eWayBillNumber || '',
-    };
-    
     if (data.manualTotal !== undefined) {
-        updatedPurchaseData.manualTotal = data.manualTotal;
-        updatedPurchaseData.amount = data.manualTotal;
+      total = data.manualTotal;
     }
+
+    const finalAmount = isNaN(total) ? 0 : Math.round(total);
+
+    const updatedPurchaseData: { [key: string]: any } = {
+        vendor: data.vendorName,
+        date: data.poDate,
+        amount: finalAmount,
+        status: status,
+        items: data.items,
+        deletedAt: null,
+    };
+
+    if (data.vendorGstin) updatedPurchaseData.vendorGstin = data.vendorGstin;
+    if (data.vendorAddress) updatedPurchaseData.vendorAddress = data.vendorAddress;
+    if (data.shippingAddress) updatedPurchaseData.shippingAddress = data.shippingAddress;
+    if (data.transporterVehicleNumber) updatedPurchaseData.transporterVehicleNumber = data.transporterVehicleNumber;
+    if (data.cgstRate !== undefined) updatedPurchaseData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) updatedPurchaseData.sgstRate = data.sgstRate;
+    if (data.igstRate !== undefined) updatedPurchaseData.igstRate = data.igstRate;
+    if (data.insuranceAndOthersRate !== undefined) updatedPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
+    if (data.eWayBillNumber) updatedPurchaseData.eWayBillNumber = data.eWayBillNumber;
+    if (data.manualTotal !== undefined) updatedPurchaseData.manualTotal = data.manualTotal;
 
 
     try {
         const docRef = doc(db, "purchases", purchaseId as string);
-        const cleanedData = Object.fromEntries(
-            Object.entries(updatedPurchaseData).filter(([_, v]) => v !== undefined)
-        );
-        await updateDoc(docRef, cleanedData);
+        await updateDoc(docRef, updatedPurchaseData);
         toast({
             title: `Purchase Order ${status === 'Draft' ? 'Draft Updated' : 'Updated'}`,
             description: `PO #${data.poNumber} has been successfully updated.`,
@@ -136,7 +130,5 @@ export default function EditPurchasePage() {
     </MainLayout>
   );
 }
-
-
 
     

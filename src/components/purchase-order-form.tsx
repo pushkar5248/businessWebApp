@@ -1,5 +1,5 @@
 
-      
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -108,13 +108,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
 
   const methods = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData ? {
-        ...initialData,
-        poNumber: initialData.id,
-        vendorName: initialData.vendor,
-        poDate: initialData.date,
-        manualTotal: initialData.manualTotal,
-    } : {
+    defaultValues: {
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
       items: [{ name: "", quantity: 1, price: 0, discount: 0, total: 0, hsnCode: "", unit: "" }],
@@ -734,9 +728,5 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
-
-    
-
-    
 
     
