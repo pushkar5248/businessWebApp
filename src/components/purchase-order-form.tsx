@@ -189,38 +189,38 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     
     if (inputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        setValue('cgstAmount', cgst, { shouldValidate: true });
+        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
     } else {
         cgst = values.cgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        setValue('cgstRate', newRate, { shouldValidate: true });
+        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
     }
     
     if (inputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        setValue('sgstAmount', sgst, { shouldValidate: true });
+        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
     } else {
         sgst = values.sgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        setValue('sgstRate', newRate, { shouldValidate: true });
+        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
     }
 
     if (inputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        setValue('igstAmount', igst, { shouldValidate: true });
+        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
     } else {
         igst = values.igstAmount || 0;
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        setValue('igstRate', newRate, { shouldValidate: true });
+        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
     }
 
     if (inputModes.insuranceAndOthers === 'percentage') {
         insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
-        setValue('insuranceAndOthersAmount', insuranceAndOthers, { shouldValidate: true });
+        if (getValues('insuranceAndOthersAmount') !== insuranceAndOthers) setValue('insuranceAndOthersAmount', insuranceAndOthers);
     } else {
         insuranceAndOthers = values.insuranceAndOthersAmount || 0;
         const newRate = currentSubtotal > 0 ? (insuranceAndOthers / currentSubtotal) * 100 : 0;
-        setValue('insuranceAndOthersRate', newRate, { shouldValidate: true });
+        if (getValues('insuranceAndOthersRate') !== newRate) setValue('insuranceAndOthersRate', newRate);
     }
     
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
@@ -248,7 +248,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     const price = item.price || 0;
     const discount = item.discount || 0;
     const newTotal = (quantity * price) * (1 - discount / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    const currentTotal = getValues(`items.${index}.total`);
+    if (newTotal !== currentTotal) {
+        setValue(`items.${index}.total`, newTotal, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    }
     calculateTotals();
   }, [getValues, setValue, calculateTotals]);
 
@@ -258,7 +261,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         const parts = name.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
-        if (field === 'quantity' || field === 'price' || field === 'discount' || field === 'name') {
+        if (field === 'quantity' || field === 'price' || field === 'discount') {
             handleLineItemChange(index);
         }
       } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
@@ -734,3 +737,4 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   );
 }
 
+    

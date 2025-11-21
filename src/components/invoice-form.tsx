@@ -162,29 +162,29 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     if (gstInputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        setValue('cgstAmount', cgst, { shouldValidate: true });
+        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
     } else {
         cgst = values.cgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        setValue('cgstRate', newRate, { shouldValidate: true });
+        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
     }
     
     if (gstInputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        setValue('sgstAmount', sgst, { shouldValidate: true });
+        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
     } else {
         sgst = values.sgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        setValue('sgstRate', newRate, { shouldValidate: true });
+        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
     }
     
     if (gstInputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        setValue('igstAmount', igst, { shouldValidate: true });
+        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
     } else {
         igst = values.igstAmount || 0;
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        setValue('igstRate', newRate, { shouldValidate: true });
+        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
     }
 
     const newTotalTaxes = cgst + sgst + igst;
@@ -208,13 +208,16 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
   const handleLineItemChange = useCallback((index: number) => {
     if (manualOverrideIndex === index) {
-      // If a manual override is active for this row, don't recalculate its total
       calculateGrandTotal();
       return;
     }
     const item = getValues(`items.${index}`);
     const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
-    setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
+    const currentTotal = getValues(`items.${index}.total`);
+    
+    if (newTotal !== currentTotal) {
+      setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
+    }
     calculateGrandTotal();
   }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
 
@@ -273,8 +276,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         const parts = name.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
-        // Only trigger recalculation for fields that affect the total
-        if (field === 'quantity' || field === 'price' || field === 'discount' || field === 'name') {
+        if (field === 'quantity' || field === 'price' || field === 'discount') {
             handleLineItemChange(index);
         }
       } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
@@ -1050,3 +1052,4 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   );
 }
 
+    
