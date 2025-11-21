@@ -227,11 +227,12 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     const newTotal = currentSubtotal + newTotalTaxes;
 
     let finalTotal = newTotal;
+    const newRoundedTotal = Math.round(isManualGrandTotal ? (values.manualTotal || newTotal) : newTotal);
+
     if (isManualGrandTotal) {
-      finalTotal = values.manualTotal || newTotal;
+      finalTotal = values.manualTotal || newRoundedTotal;
     }
     
-    const newRoundedTotal = Math.round(finalTotal);
     const newRoundOff = newRoundedTotal - newTotal;
 
     setSubtotal(currentSubtotal);
@@ -256,7 +257,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
       if (name?.startsWith('items')) {
         const parts = name.split('.');
         const index = parseInt(parts[1], 10);
-        handleLineItemChange(index);
+        const field = parts[2];
+        if (field === 'quantity' || field === 'price' || field === 'discount' || field === 'name') {
+            handleLineItemChange(index);
+        }
       } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
         calculateTotals();
       }
@@ -729,3 +733,4 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
+
