@@ -1,4 +1,5 @@
 
+      
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -268,14 +269,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       const fieldName = name as string;
-      if (fieldName.startsWith('items.')) {
+      if (fieldName && fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
-        if (field === 'quantity' || field === 'price' || field === 'discount') {
+        if (['quantity', 'price', 'discount'].includes(field)) {
             handleLineItemChange(index);
         }
-      } else if (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal') {
+      } else if (fieldName && (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal')) {
         calculateGrandTotal();
       }
     });
@@ -333,7 +334,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     };
 
     if (isManualGrandTotal) {
-      (newSaleData as Sale).manualTotal = finalTotal;
+      newSaleData.manualTotal = finalTotal;
     }
 
     try {
