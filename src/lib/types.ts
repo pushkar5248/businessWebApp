@@ -29,6 +29,7 @@ export type Sale = {
   customer: string;
   date: string;
   amount: number;
+  manualTotal?: number;
   status: SaleStatus;
   items: LineItem[];
   customerAddress: string;
@@ -59,6 +60,7 @@ export type Purchase = {
     shippingAddress?: string;
     date: string;
     amount: number;
+    manualTotal?: number;
     status: PurchaseStatus;
     items: LineItem[];
     transporterVehicleNumber?: string;

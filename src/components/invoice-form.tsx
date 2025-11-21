@@ -84,6 +84,7 @@ const formSchema = z.object({
   cgstAmount: z.coerce.number().min(0).optional(),
   sgstAmount: z.coerce.number().min(0).optional(),
   igstAmount: z.coerce.number().min(0).optional(),
+  manualTotal: z.coerce.number().optional(),
 });
 
 export type InvoiceFormValues = z.infer<typeof formSchema>;
@@ -112,6 +113,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
   const [manualOverrideIndex, setManualOverrideIndex] = useState<number | null>(null);
   const manualTotalRef = useRef<HTMLInputElement | null>(null);
+  const manualGrandTotalRef = useRef<HTMLInputElement | null>(null);
+  const [isManualGrandTotal, setIsManualGrandTotal] = useState(false);
   
   const [gstInputModes, setGstInputModes] = useState({
     cgst: 'percentage',
@@ -139,6 +142,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     reset,
     setValue,
     getValues,
+    watch,
     formState: { errors },
   } = methods;
 
@@ -185,7 +189,12 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     const newTotalTaxes = cgst + sgst + igst;
     const newTotal = currentSubtotal + newTotalTaxes;
-    const newRoundedTotal = Math.round(newTotal);
+    
+    let finalTotal = newTotal;
+    if (isManualGrandTotal) {
+      finalTotal = values.manualTotal || newRoundedTotal;
+    }
+    const newRoundedTotal = Math.round(isManualGrandTotal ? finalTotal : newTotal);
     const newRoundOff = newRoundedTotal - newTotal;
     
     setSubtotal(currentSubtotal);
@@ -193,7 +202,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, gstInputModes]);
+  }, [getValues, setValue, gstInputModes, isManualGrandTotal]);
 
   const handleLineItemChange = useCallback((index: number) => {
     if (manualOverrideIndex === index) {
@@ -257,6 +266,19 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   }, [sortedInventoryItems]);
 
   useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      if (name?.startsWith('items')) {
+        const parts = name.split('.');
+        const index = parseInt(parts[1], 10);
+        handleLineItemChange(index);
+      } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
+        calculateGrandTotal();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, handleLineItemChange, calculateGrandTotal]);
+
+  useEffect(() => {
     // Initial calculation
     const items = getValues('items');
     items.forEach((_, index) => handleLineItemChange(index));
@@ -278,11 +300,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         total: getValues(`items.${index}`).total
     }));
 
+    const finalTotal = isManualGrandTotal ? data.manualTotal! : roundedTotal;
+
     const newSale: Omit<Sale, 'id'> & { id: string } = {
       id: data.invoiceNumber,
       customer: data.customerName,
       date: data.invoiceDate,
-      amount: roundedTotal,
+      amount: finalTotal,
+      manualTotal: isManualGrandTotal ? finalTotal : undefined,
       status: status,
       items: finalItems,
       customerAddress: data.customerAddress,
@@ -326,6 +351,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("Settings not loaded");
     }
     try {
+       const finalTotal = isManualGrandTotal ? data.manualTotal! : roundedTotal;
+
       const input: GenerateInvoicePdfInput = {
         businessName: settings.general.businessName,
         businessAddress: settings.general.businessAddress,
@@ -334,7 +361,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         businessGstin: settings.general.businessGstin,
         ...data,
         items: data.items.map((item, index) => ({ ...item, discount: item.discount || 0 })),
-        total: roundedTotal,
+        total: finalTotal,
         currency: currency,
       };
 
@@ -488,8 +515,12 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             items: initialData.items.map(item => ({
               ...item,
               total: item.total ?? ((item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100))
-            }))
+            })),
+            manualTotal: initialData.manualTotal,
         });
+        if (initialData.manualTotal) {
+          setIsManualGrandTotal(true);
+        }
     }
   }, [settings, reset, initialData]);
   
@@ -524,10 +555,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     type="number"
                     step="any"
                     {...methods.register(mode === 'percentage' ? rateName : amountName)}
-                    onChange={(e) => {
-                        methods.setValue(mode === 'percentage' ? rateName : amountName, parseFloat(e.target.value));
-                        calculateGrandTotal();
-                    }}
                     placeholder={mode === 'percentage' ? 'Rate %' : `Amount ${currency}`}
                 />
                  <Button
@@ -539,7 +566,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                             ...prev,
                             [name]: prev[name] === 'percentage' ? 'amount' : 'percentage'
                         }));
-                        setTimeout(calculateGrandTotal, 0);
                     }}
                 >
                     {mode === 'percentage' ? <Percent className="h-4 w-4" /> : <span className="font-bold">{currency}</span>}
@@ -789,7 +815,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                         setValue(`items.${index}.inventoryId`, undefined);
                                         setValue(`items.${index}.name`, value);
                                     }
-                                    handleLineItemChange(index);
                                 }}
                                 placeholder="Select item..."
                                 emptyText="No items found in inventory."
@@ -818,10 +843,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.quantity`)}
-                        onChange={(e) => {
-                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                      <TableCell>
@@ -842,10 +863,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
-                         onChange={(e) => {
-                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -853,10 +870,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
-                        onChange={(e) => {
-                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
@@ -871,10 +884,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                                     step="any"
                                     className="w-28 text-right border-none read-only:bg-transparent"
                                     readOnly={manualOverrideIndex !== index}
-                                    onChange={(e) => {
-                                        field.onChange(parseFloat(e.target.value));
-                                        calculateGrandTotal();
-                                    }}
                                     ref={manualOverrideIndex === index ? manualTotalRef : null}
                                 />
                             )}
@@ -945,9 +954,39 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     <span>Round Off</span>
                     <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg">
-                    <span>Grand Total</span>
-                    <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
+                <div className="flex justify-between items-center font-bold text-lg">
+                    <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
+                    <div className="flex items-center gap-1">
+                      {isManualGrandTotal ? (
+                        <Input
+                          id="manualTotal"
+                          type="number"
+                          step="any"
+                          className="w-32 font-bold text-lg h-9 text-right"
+                          {...methods.register("manualTotal")}
+                          ref={manualGrandTotalRef}
+                        />
+                      ) : (
+                        <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
+                      )}
+                      <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            if (isManualGrandTotal) {
+                              setIsManualGrandTotal(false);
+                            } else {
+                              setIsManualGrandTotal(true);
+                              setValue("manualTotal", roundedTotal);
+                              setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
+                            }
+                          }}
+                        >
+                          {isManualGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
+                        </Button>
+                    </div>
                 </div>
             </div>
           </CardFooter>

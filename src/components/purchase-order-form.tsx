@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -26,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search, Percent } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Search, Percent, Edit2, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
@@ -67,6 +68,7 @@ const formSchema = z.object({
   sgstAmount: z.coerce.number().min(0).optional(),
   igstAmount: z.coerce.number().min(0).optional(),
   insuranceAndOthersAmount: z.coerce.number().min(0).optional(),
+  manualTotal: z.coerce.number().optional(),
 });
 
 export type PurchaseOrderFormValues = z.infer<typeof formSchema>;
@@ -91,6 +93,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [totalTaxes, setTotalTaxes] = useState(0);
   const [roundOff, setRoundOff] = useState(0);
   const [roundedTotal, setRoundedTotal] = useState(0);
+  const [isManualGrandTotal, setIsManualGrandTotal] = useState(false);
+  const manualGrandTotalRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
    const [inputModes, setInputModes] = useState({
@@ -108,6 +112,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         poNumber: initialData.id,
         vendorName: initialData.vendor,
         poDate: initialData.date,
+        manualTotal: initialData.manualTotal,
     } : {
       poDate: new Date().toISOString().split("T")[0],
       poNumber: `PO-${Date.now().toString().slice(-6)}`,
@@ -220,14 +225,21 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
     const newTotal = currentSubtotal + newTotalTaxes;
-    const newRoundedTotal = Math.round(newTotal);
+
+    let finalTotal = newTotal;
+    if (isManualGrandTotal) {
+      finalTotal = values.manualTotal || newTotal;
+    }
+    
+    const newRoundedTotal = Math.round(finalTotal);
     const newRoundOff = newRoundedTotal - newTotal;
+
     setSubtotal(currentSubtotal);
     setTotalTaxes(newTotalTaxes);
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, inputModes]);
+  }, [getValues, setValue, inputModes, isManualGrandTotal]);
   
   const handleLineItemChange = useCallback((index: number) => {
     const item = getValues(`items.${index}`);
@@ -238,6 +250,19 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setValue(`items.${index}.total`, newTotal, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     calculateTotals();
   }, [getValues, setValue, calculateTotals]);
+
+   useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      if (name?.startsWith('items')) {
+        const parts = name.split('.');
+        const index = parseInt(parts[1], 10);
+        handleLineItemChange(index);
+      } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
+        calculateTotals();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, handleLineItemChange, calculateTotals]);
 
 
   useEffect(() => {
@@ -259,7 +284,11 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             poNumber: initialData.id,
             poDate: initialData.date,
             vendorName: initialData.vendor,
+            manualTotal: initialData.manualTotal,
         });
+        if (initialData.manualTotal) {
+          setIsManualGrandTotal(true);
+        }
     }
   }, [settings, reset, getValues, initialData]);
 
@@ -341,10 +370,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     type="number"
                     step="any"
                     {...methods.register(mode === 'percentage' ? rateName : amountName)}
-                    onChange={(e) => {
-                        methods.setValue(mode === 'percentage' ? rateName : amountName, parseFloat(e.target.value));
-                        calculateTotals();
-                    }}
                     placeholder={mode === 'percentage' ? 'Rate %' : `Amount ${currency}`}
                 />
                  <Button
@@ -356,7 +381,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                             ...prev,
                             [name]: prev[name] === 'percentage' ? 'amount' : 'percentage'
                         }));
-                        setTimeout(calculateTotals, 0);
                     }}
                 >
                     {mode === 'percentage' ? <Percent className="h-4 w-4" /> : <span className="font-bold">{currency}</span>}
@@ -516,7 +540,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                                       setValue(`items.${index}.inventoryId`, undefined);
                                       setValue(`items.${index}.name`, newValue);
                                     }
-                                    handleLineItemChange(index);
                                 }}
                                 placeholder="Select or type new item..."
                                 emptyText="No items found. Type to add."
@@ -545,10 +568,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.quantity`)}
-                        onChange={(e) => {
-                            methods.setValue(`items.${index}.quantity`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -569,10 +588,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.price`)}
-                         onChange={(e) => {
-                            methods.setValue(`items.${index}.price`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -580,10 +595,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                         type="number"
                         step="any"
                         {...methods.register(`items.${index}.discount`)}
-                        onChange={(e) => {
-                            methods.setValue(`items.${index}.discount`, parseFloat(e.target.value));
-                            handleLineItemChange(index);
-                        }}
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
@@ -642,9 +653,39 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     <span>Round Off</span>
                     <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg">
-                    <span>Grand Total</span>
-                    <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
+                 <div className="flex justify-between items-center font-bold text-lg">
+                    <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
+                    <div className="flex items-center gap-1">
+                      {isManualGrandTotal ? (
+                        <Input
+                          id="manualTotal"
+                          type="number"
+                          step="any"
+                          className="w-32 font-bold text-lg h-9 text-right"
+                          {...methods.register("manualTotal")}
+                          ref={manualGrandTotalRef}
+                        />
+                      ) : (
+                        <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
+                      )}
+                      <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            if (isManualGrandTotal) {
+                              setIsManualGrandTotal(false);
+                            } else {
+                              setIsManualGrandTotal(true);
+                              setValue("manualTotal", roundedTotal);
+                              setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
+                            }
+                          }}
+                        >
+                          {isManualGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
+                        </Button>
+                    </div>
                 </div>
             </div>
           </CardFooter>

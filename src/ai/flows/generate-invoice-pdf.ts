@@ -455,7 +455,7 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     const sgstAmount = subtotal * ((input.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((input.igstRate || 0) / 100);
     const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount;
-    const roundedTotal = Math.round(totalAmount);
+    const roundedTotal = input.total; // Use the final total passed from the form
     const roundOffAmount = roundedTotal - totalAmount;
 
     function toWords(num: number): string {
@@ -516,5 +516,3 @@ const generateInvoiceHtmlFlow = ai.defineFlow(
     }
   }
 );
-
-    
