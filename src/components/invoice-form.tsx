@@ -1,5 +1,4 @@
 
-      
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -163,29 +162,29 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     if (gstInputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst, { shouldValidate: true });
+        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
     } else {
         cgst = values.cgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate, { shouldValidate: true });
+        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
     }
     
     if (gstInputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst, { shouldValidate: true });
+        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
     } else {
         sgst = values.sgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate, { shouldValidate: true });
+        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
     }
     
     if (gstInputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst, { shouldValidate: true });
+        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
     } else {
         igst = values.igstAmount || 0;
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate, { shouldValidate: true });
+        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
     }
 
     const newTotalTaxes = cgst + sgst + igst;
@@ -306,7 +305,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         total: getValues(`items.${index}`).total
     }));
 
-    const finalTotal = isManualGrandTotal ? data.manualTotal! : roundedTotal;
+    const finalTotal = isManualGrandTotal ? (data.manualTotal || 0) : roundedTotal;
 
     const newSaleData: Omit<Sale, 'id'> = {
       customer: data.customerName,
@@ -365,7 +364,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("Settings not loaded");
     }
     try {
-       const finalTotal = isManualGrandTotal ? data.manualTotal! : roundedTotal;
+       const finalTotal = isManualGrandTotal ? (data.manualTotal || 0) : roundedTotal;
 
       const input: GenerateInvoicePdfInput = {
         businessName: settings.general.businessName,
@@ -1057,9 +1056,3 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
-
-    
-
-    
-
-    

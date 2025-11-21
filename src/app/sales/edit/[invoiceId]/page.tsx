@@ -87,7 +87,7 @@ export default function EditSalePage() {
     };
     
     if (data.manualTotal !== undefined) {
-        (updatedSaleData as Sale).manualTotal = data.manualTotal;
+        updatedSaleData.manualTotal = data.manualTotal;
         updatedSaleData.amount = data.manualTotal;
     }
 
@@ -138,9 +138,3 @@ export default function EditSalePage() {
     </MainLayout>
   );
 }
-
-
-
-    
-
-    
