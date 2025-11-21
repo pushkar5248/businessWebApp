@@ -269,12 +269,15 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     const subscription = watch((value, { name, type }) => {
       const fieldName = name as string;
       if (!fieldName) return;
+      
       if (fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
-        const index = parseInt(parts[1], 10);
-        const field = parts[2];
-        if (['quantity', 'price', 'discount'].includes(field)) {
-            handleLineItemChange(index);
+        if (parts.length === 3) {
+            const index = parseInt(parts[1], 10);
+            const field = parts[2];
+            if (['quantity', 'price', 'discount'].includes(field)) {
+                handleLineItemChange(index);
+            }
         }
       } else if (fieldName && (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal')) {
         calculateGrandTotal();
@@ -294,22 +297,22 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a sale." });
         throw new Error("User not authenticated");
     }
-    const finalItems = data.items.map((i, index) => ({
-        name: i.name,
-        quantity: i.quantity,
-        price: i.price,
-        inventoryId: i.inventoryId,
-        hsnCode: i.hsnCode,
-        unit: i.unit,
-        discount: i.discount || 0,
-        total: getValues(`items.${index}`).total
-    }));
+    
+    const finalItems = data.items.map((item, index) => {
+        const cleanedItem: any = {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            discount: item.discount || 0,
+            total: getValues(`items.${index}`).total || 0,
+        };
+        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+        if (item.unit) cleanedItem.unit = item.unit;
+        return cleanedItem;
+    });
 
-    const finalTotal = isManualGrandTotal ? (data.manualTotal || 0) : roundedTotal;
-    if(isNaN(finalTotal)) {
-        toast({ variant: "destructive", title: "Error", description: "Invalid Grand Total amount." });
-        throw new Error("Invalid Grand Total amount");
-    }
+    const finalTotal = isNaN(roundedTotal) ? 0 : roundedTotal;
 
     const saleData: { [key: string]: any } = {
         customer: data.customerName,
@@ -1055,4 +1058,3 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
-

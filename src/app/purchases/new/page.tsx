@@ -1,5 +1,6 @@
 
 
+
 "use client";
 
 import { PurchaseOrderForm } from "@/components/purchase-order-form";
@@ -42,14 +43,19 @@ export default function NewPurchasePage() {
 
     const finalAmount = isNaN(total) ? 0 : Math.round(total);
 
-    const sanitizedItems = data.items.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        inventoryId: item.inventoryId ?? '',
-        hsnCode: item.hsnCode ?? '',
-        unit: item.unit ?? ''
-    }));
+    const sanitizedItems = data.items.map(item => {
+        const cleanedItem: any = {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            discount: item.discount || 0,
+            total: item.total || 0,
+        };
+        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+        if (item.unit) cleanedItem.unit = item.unit;
+        return cleanedItem;
+    });
 
     const newPurchaseData: { [key: string]: any } = {
         vendor: data.vendorName,
