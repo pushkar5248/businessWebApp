@@ -59,7 +59,7 @@ export default function EditPurchasePage() {
     const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
     const insuranceAndOthersAmount = subtotal * ((data.insuranceAndOthersRate || 0) / 100);
-    const total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
+    let total = subtotal + igstAmount + cgstAmount + sgstAmount + insuranceAndOthersAmount;
 
     const sanitizedItems = data.items.map(item => ({
         ...item,
@@ -67,8 +67,7 @@ export default function EditPurchasePage() {
         unit: item.unit ?? ''
     }));
 
-    const updatedPurchase = {
-        id: data.poNumber,
+    const updatedPurchaseData: Partial<Purchase> = {
         vendor: data.vendorName,
         vendorGstin: data.vendorGstin,
         vendorAddress: data.vendorAddress,
@@ -86,10 +85,16 @@ export default function EditPurchasePage() {
         deletedAt: null,
         eWayBillNumber: data.eWayBillNumber || '',
     };
+    
+    if (data.manualTotal) {
+        updatedPurchaseData.manualTotal = data.manualTotal;
+        updatedPurchaseData.amount = data.manualTotal;
+    }
+
 
     try {
         const docRef = doc(db, "purchases", purchaseId as string);
-        await updateDoc(docRef, updatedPurchase);
+        await updateDoc(docRef, updatedPurchaseData);
         toast({
             title: `Purchase Order ${status === 'Draft' ? 'Draft Updated' : 'Updated'}`,
             description: `PO #${data.poNumber} has been successfully updated.`,
@@ -128,3 +133,4 @@ export default function EditPurchasePage() {
     </MainLayout>
   );
 }
+

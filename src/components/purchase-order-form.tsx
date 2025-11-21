@@ -189,49 +189,44 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     
     if (inputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
+        if(getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst, { shouldValidate: true });
     } else {
         cgst = values.cgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
+        if(getValues('cgstRate') !== newRate) setValue('cgstRate', newRate, { shouldValidate: true });
     }
     
     if (inputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
+        if(getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst, { shouldValidate: true });
     } else {
         sgst = values.sgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
+        if(getValues('sgstRate') !== newRate) setValue('sgstRate', newRate, { shouldValidate: true });
     }
 
     if (inputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
+        if(getValues('igstAmount') !== igst) setValue('igstAmount', igst, { shouldValidate: true });
     } else {
         igst = values.igstAmount || 0;
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
+        if(getValues('igstRate') !== newRate) setValue('igstRate', newRate, { shouldValidate: true });
     }
 
     if (inputModes.insuranceAndOthers === 'percentage') {
         insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
-        if (getValues('insuranceAndOthersAmount') !== insuranceAndOthers) setValue('insuranceAndOthersAmount', insuranceAndOthers);
+        if(getValues('insuranceAndOthersAmount') !== insuranceAndOthers) setValue('insuranceAndOthersAmount', insuranceAndOthers, { shouldValidate: true });
     } else {
         insuranceAndOthers = values.insuranceAndOthersAmount || 0;
         const newRate = currentSubtotal > 0 ? (insuranceAndOthers / currentSubtotal) * 100 : 0;
-        if (getValues('insuranceAndOthersRate') !== newRate) setValue('insuranceAndOthersRate', newRate);
+        if(getValues('insuranceAndOthersRate') !== newRate) setValue('insuranceAndOthersRate', newRate, { shouldValidate: true });
     }
     
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
     const newTotal = currentSubtotal + newTotalTaxes;
 
-    let finalTotal = newTotal;
     const newRoundedTotal = Math.round(isManualGrandTotal ? (values.manualTotal || newTotal) : newTotal);
-
-    if (isManualGrandTotal) {
-      finalTotal = values.manualTotal || newRoundedTotal;
-    }
     
     const newRoundOff = newRoundedTotal - newTotal;
 
@@ -257,14 +252,15 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
 
    useEffect(() => {
     const subscription = watch((value, { name, type }) => {
-      if (name?.startsWith('items')) {
-        const parts = name.split('.');
+      const fieldName = name as string;
+      if (fieldName.startsWith('items.')) {
+        const parts = fieldName.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
         if (field === 'quantity' || field === 'price' || field === 'discount') {
             handleLineItemChange(index);
         }
-      } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
+      } else if (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal') {
         calculateTotals();
       }
     });

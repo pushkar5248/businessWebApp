@@ -58,16 +58,13 @@ export default function EditSalePage() {
     const cgstAmount = subtotal * ((data.cgstRate || 0) / 100);
     const sgstAmount = subtotal * ((data.sgstRate || 0) / 100);
     const igstAmount = subtotal * ((data.igstRate || 0) / 100);
-    const total = subtotal + cgstAmount + sgstAmount + igstAmount;
+    let total = subtotal + cgstAmount + sgstAmount + igstAmount;
 
-    const updatedSaleData = {
-        // We spread all of `data` to ensure all fields from the form are included.
-        // Then we overwrite/add specific fields.
+    const updatedSaleData: Omit<Sale, 'id' | 'userId'> = {
         customer: data.customerName,
         date: data.invoiceDate,
         amount: total,
         status: status,
-        userId: user.uid,
         items: data.items,
         customerAddress: data.customerAddress,
         customerPhone: data.customerPhone,
@@ -87,6 +84,11 @@ export default function EditSalePage() {
         igstRate: data.igstRate,
         deletedAt: null,
     };
+    
+    if (data.manualTotal) {
+        (updatedSaleData as Sale).manualTotal = data.manualTotal;
+        updatedSaleData.amount = data.manualTotal;
+    }
 
     try {
         const docRef = doc(db, "sales", invoiceId as string);
@@ -129,3 +131,4 @@ export default function EditSalePage() {
     </MainLayout>
   );
 }
+

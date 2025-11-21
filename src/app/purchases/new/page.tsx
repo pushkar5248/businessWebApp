@@ -10,7 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc, collection, writeBatch, query, where, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { PurchaseStatus } from "@/lib/types";
+import { Purchase, PurchaseStatus } from "@/lib/types";
 
 
 export default function NewPurchasePage() {
@@ -44,8 +44,7 @@ export default function NewPurchasePage() {
         unit: item.unit ?? ''
     }));
 
-    const newPurchase = {
-        id: data.poNumber,
+    const newPurchaseData: Omit<Purchase, 'id'> = {
         vendor: data.vendorName,
         vendorGstin: data.vendorGstin,
         vendorAddress: data.vendorAddress,
@@ -64,10 +63,21 @@ export default function NewPurchasePage() {
         eWayBillNumber: data.eWayBillNumber || '',
     };
     
+    if (data.manualTotal) {
+        (newPurchaseData as Purchase).manualTotal = data.manualTotal;
+        newPurchaseData.amount = data.manualTotal;
+    }
+
+
+    const newPurchase = {
+        id: data.poNumber,
+        ...newPurchaseData,
+    }
+    
     try {
         const batch = writeBatch(db);
         const purchaseDocRef = doc(db, "purchases", newPurchase.id);
-        batch.set(purchaseDocRef, newPurchase);
+        batch.set(purchaseDocRef, newPurchaseData);
         
         const newItemsToCreate = data.items.filter(item => !item.inventoryId);
 
@@ -136,3 +146,4 @@ export default function NewPurchasePage() {
     </MainLayout>
   );
 }
+

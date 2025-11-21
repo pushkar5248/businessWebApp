@@ -162,40 +162,35 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     if (gstInputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
+        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst, { shouldValidate: true });
     } else {
         cgst = values.cgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
+        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate, { shouldValidate: true });
     }
     
     if (gstInputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
+        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst, { shouldValidate: true });
     } else {
         sgst = values.sgstAmount || 0;
         const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
+        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate, { shouldValidate: true });
     }
     
     if (gstInputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
+        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst, { shouldValidate: true });
     } else {
         igst = values.igstAmount || 0;
         const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
+        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate, { shouldValidate: true });
     }
 
     const newTotalTaxes = cgst + sgst + igst;
     const newTotal = currentSubtotal + newTotalTaxes;
     
-    let finalTotal = newTotal;
     const newRoundedTotal = Math.round(isManualGrandTotal ? (values.manualTotal || newTotal) : newTotal);
-    
-    if (isManualGrandTotal) {
-      finalTotal = values.manualTotal || newRoundedTotal;
-    }
     
     const newRoundOff = newRoundedTotal - newTotal;
     
@@ -216,7 +211,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     const currentTotal = getValues(`items.${index}.total`);
     
     if (newTotal !== currentTotal) {
-      setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true });
+      setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
     calculateGrandTotal();
   }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
@@ -272,14 +267,15 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
-      if (name?.startsWith('items')) {
-        const parts = name.split('.');
+      const fieldName = name as string;
+      if (fieldName.startsWith('items.')) {
+        const parts = fieldName.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
         if (field === 'quantity' || field === 'price' || field === 'discount') {
             handleLineItemChange(index);
         }
-      } else if (name?.endsWith('Rate') || name?.endsWith('Amount') || name === 'manualTotal') {
+      } else if (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal') {
         calculateGrandTotal();
       }
     });
@@ -310,12 +306,10 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     const finalTotal = isManualGrandTotal ? data.manualTotal! : roundedTotal;
 
-    const newSale: Omit<Sale, 'id'> & { id: string } = {
-      id: data.invoiceNumber,
+    const newSaleData: Omit<Sale, 'id'> = {
       customer: data.customerName,
       date: data.invoiceDate,
       amount: finalTotal,
-      manualTotal: isManualGrandTotal ? finalTotal : undefined,
       status: status,
       items: finalItems,
       customerAddress: data.customerAddress,
@@ -338,9 +332,13 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       deletedAt: null
     };
 
+    if (isManualGrandTotal) {
+      (newSaleData as Sale).manualTotal = finalTotal;
+    }
+
     try {
-        const saleDocRef = doc(db, "sales", newSale.id);
-        await setDoc(saleDocRef, newSale);
+        const saleDocRef = doc(db, "sales", data.invoiceNumber);
+        await setDoc(saleDocRef, newSaleData);
 
         toast({
           title: `Sale ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,
