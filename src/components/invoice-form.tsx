@@ -269,7 +269,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       const fieldName = name as string;
-      if (fieldName && fieldName.startsWith('items.')) {
+      if (!fieldName) return;
+      if (fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
@@ -333,13 +334,19 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       deletedAt: null
     };
 
-    if (isManualGrandTotal) {
-      newSaleData.manualTotal = finalTotal;
+    if (isManualGrandTotal && data.manualTotal !== undefined) {
+      newSaleData.manualTotal = data.manualTotal;
     }
 
     try {
         const saleDocRef = doc(db, "sales", data.invoiceNumber);
-        await setDoc(saleDocRef, newSaleData);
+        
+        // Clean the object before sending to Firestore
+        const cleanedData = Object.fromEntries(
+            Object.entries(newSaleData).filter(([_, v]) => v !== undefined)
+        );
+
+        await setDoc(saleDocRef, cleanedData);
 
         toast({
           title: `Sale ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,
@@ -525,7 +532,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             })),
             manualTotal: initialData.manualTotal,
         });
-        if (initialData.manualTotal) {
+        if (initialData.manualTotal !== undefined) {
           setIsManualGrandTotal(true);
         }
     }
@@ -1050,5 +1057,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     </FormProvider>
   );
 }
+
+    
 
     

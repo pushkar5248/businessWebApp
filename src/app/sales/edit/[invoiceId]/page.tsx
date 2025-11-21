@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -85,14 +86,20 @@ export default function EditSalePage() {
         deletedAt: null,
     };
     
-    if (data.manualTotal) {
+    if (data.manualTotal !== undefined) {
         (updatedSaleData as Sale).manualTotal = data.manualTotal;
         updatedSaleData.amount = data.manualTotal;
     }
 
     try {
         const docRef = doc(db, "sales", invoiceId as string);
-        await updateDoc(docRef, updatedSaleData);
+        
+        // Clean the object before sending to Firestore
+        const cleanedData = Object.fromEntries(
+            Object.entries(updatedSaleData).filter(([_, v]) => v !== undefined)
+        );
+        
+        await updateDoc(docRef, cleanedData);
         toast({
             title: `Invoice ${status === 'Draft' ? 'Draft Updated' : 'Updated'}`,
             description: `Invoice #${data.invoiceNumber} has been successfully updated.`,
@@ -132,3 +139,6 @@ export default function EditSalePage() {
   );
 }
 
+
+
+    

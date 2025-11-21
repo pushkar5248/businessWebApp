@@ -254,7 +254,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
    useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       const fieldName = name as string;
-      if (fieldName && fieldName.startsWith('items.')) {
+      if (!fieldName) return;
+      if (fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
         const index = parseInt(parts[1], 10);
         const field = parts[2];
@@ -290,7 +291,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             vendorName: initialData.vendor,
             manualTotal: initialData.manualTotal,
         });
-        if (initialData.manualTotal) {
+        if (initialData.manualTotal !== undefined) {
           setIsManualGrandTotal(true);
         }
     }
@@ -733,5 +734,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     </FormProvider>
   );
 }
+
+    
 
     
