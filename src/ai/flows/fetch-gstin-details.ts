@@ -76,6 +76,10 @@ const localGstinData: Record<string, GstinOutput> = {
     businessName: 'ISCON CERAMIC PRIVATE LIMITED',
     businessAddress: 'PANELI ROAD, 8 A NATIONAL HIGHWAY, AT MORBI, TA MORBI, Morbi, Gujarat, 363642',
   },
+  '24AAWCS5194E1ZV': {
+    businessName: 'SAVINO GRANITO PVT LTD',
+    businessAddress: 'JETPAR ROAD, SR NO 58 1P 582, OPP SUB STATION, RANGPAR, MORBI, Morbi, Gujarat, 363641',
+  },
 };
 
 
