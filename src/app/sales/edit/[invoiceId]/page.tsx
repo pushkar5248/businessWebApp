@@ -68,44 +68,42 @@ export default function EditSalePage() {
         status: status,
         deletedAt: null,
         amount: finalAmount,
-        items: data.items.map(item => {
-            const cleanedItem: any = {
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-            };
-            if (item.discount) cleanedItem.discount = item.discount;
-            if (item.total) cleanedItem.total = item.total;
-            if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
-            if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
-            if (item.unit) cleanedItem.unit = item.unit;
-            return cleanedItem;
-        }),
     };
     
-    // Add optional fields only if they have a value
-    if (data.customerAddress) updatedSaleData.customerAddress = data.customerAddress;
-    if (data.customerPhone) updatedSaleData.customerPhone = data.customerPhone;
-    if (data.customerState) updatedSaleData.customerState = data.customerState;
-    if (data.customerGstin) updatedSaleData.customerGstin = data.customerGstin;
-    if (data.deliveryPlaceName) updatedSaleData.deliveryPlaceName = data.deliveryPlaceName;
-    if (data.deliveryAddress) updatedSaleData.deliveryAddress = data.deliveryAddress;
-    if (data.deliveryState) updatedSaleData.deliveryState = data.deliveryState;
-    if (data.deliveryGstin) updatedSaleData.deliveryGstin = data.deliveryGstin;
-    if (data.transporterName) updatedSaleData.transporterName = data.transporterName;
-    if (data.transporterVehicleNumber) updatedSaleData.transporterVehicleNumber = data.transporterVehicleNumber;
-    if (data.placeOfSupply) updatedSaleData.placeOfSupply = data.placeOfSupply;
-    if (data.transportDate) updatedSaleData.transportDate = data.transportDate;
-    if (data.eWayBillNumber) updatedSaleData.eWayBillNumber = data.eWayBillNumber;
+    const optionalFields = [
+        'customerAddress', 'customerPhone', 'customerState', 'customerGstin',
+        'deliveryPlaceName', 'deliveryAddress', 'deliveryState', 'deliveryGstin',
+        'transporterName', 'transporterVehicleNumber', 'placeOfSupply',
+        'transportDate', 'eWayBillNumber'
+    ];
+    optionalFields.forEach(field => {
+        const value = data[field as keyof InvoiceFormValues];
+        if (value) {
+            updatedSaleData[field] = value;
+        }
+    });
+    
     if (data.cgstRate !== undefined) updatedSaleData.cgstRate = data.cgstRate;
     if (data.sgstRate !== undefined) updatedSaleData.sgstRate = data.sgstRate;
     if (data.igstRate !== undefined) updatedSaleData.igstRate = data.igstRate;
     if (data.manualTotal !== undefined) {
         updatedSaleData.manualTotal = data.manualTotal;
-    } else {
-        updatedSaleData.manualTotal = null;
     }
-    
+
+    const finalItems = data.items.map(item => {
+        const cleanedItem: { [key: string]: any } = {};
+        cleanedItem.name = item.name;
+        cleanedItem.quantity = item.quantity;
+        cleanedItem.price = item.price;
+        if (item.discount) cleanedItem.discount = item.discount;
+        if (item.total) cleanedItem.total = item.total;
+        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+        if (item.unit) cleanedItem.unit = item.unit;
+        return cleanedItem;
+    });
+
+    updatedSaleData.items = finalItems;
 
     try {
         const docRef = doc(db, "sales", invoiceId as string);

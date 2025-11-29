@@ -37,12 +37,40 @@ export default function NewPurchasePage() {
 
     const finalAmount = data.manualTotal !== undefined ? data.manualTotal : isNaN(total) ? 0 : Math.round(total);
 
-    const sanitizedItems = data.items.map(item => {
-        const cleanedItem: any = {
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-        };
+    const newPurchaseData: { [key: string]: any } = {
+        vendor: data.vendorName,
+        date: data.poDate,
+        status: status,
+        userId: user.uid,
+        deletedAt: null,
+        amount: finalAmount,
+    };
+    
+    const optionalFields = [
+        'vendorGstin', 'vendorAddress', 'shippingAddress',
+        'transporterVehicleNumber', 'eWayBillNumber'
+    ];
+    optionalFields.forEach(field => {
+        const value = data[field as keyof PurchaseOrderFormValues];
+        if (value) {
+            newPurchaseData[field] = value;
+        }
+    });
+
+    if (data.cgstRate !== undefined) newPurchaseData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) newPurchaseData.sgstRate = data.sgstRate;
+    if (data.igstRate !== undefined) newPurchaseData.igstRate = data.igstRate;
+    if (data.insuranceAndOthersRate !== undefined) newPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
+    
+    if (data.manualTotal !== undefined) {
+      newPurchaseData.manualTotal = data.manualTotal;
+    }
+    
+    const finalItems = data.items.map(item => {
+        const cleanedItem: { [key: string]: any } = {};
+        cleanedItem.name = item.name;
+        cleanedItem.quantity = item.quantity;
+        cleanedItem.price = item.price;
         if (item.discount) cleanedItem.discount = item.discount;
         if (item.total) cleanedItem.total = item.total;
         if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
@@ -51,38 +79,11 @@ export default function NewPurchasePage() {
         return cleanedItem;
     });
 
-    const newPurchaseData: { [key: string]: any } = {
-        vendor: data.vendorName,
-        vendorAddress: data.vendorAddress,
-        date: data.poDate,
-        status: status,
-        items: sanitizedItems,
-        userId: user.uid,
-        deletedAt: null,
-        amount: finalAmount,
-    };
-    
-    if (data.vendorGstin) newPurchaseData.vendorGstin = data.vendorGstin;
-    if (data.shippingAddress) newPurchaseData.shippingAddress = data.shippingAddress;
-    if (data.transporterVehicleNumber) newPurchaseData.transporterVehicleNumber = data.transporterVehicleNumber;
-    if (data.cgstRate !== undefined) newPurchaseData.cgstRate = data.cgstRate;
-    if (data.sgstRate !== undefined) newPurchaseData.sgstRate = data.sgstRate;
-    if (data.igstRate !== undefined) newPurchaseData.igstRate = data.igstRate;
-    if (data.insuranceAndOthersRate !== undefined) newPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
-    if (data.eWayBillNumber) newPurchaseData.eWayBillNumber = data.eWayBillNumber;
-    if (data.manualTotal !== undefined) {
-      newPurchaseData.manualTotal = data.manualTotal;
-    }
-    
+    newPurchaseData.items = finalItems;
 
-    const newPurchase = {
-        id: data.poNumber,
-        ...newPurchaseData,
-    }
-    
     try {
         const batch = writeBatch(db);
-        const purchaseDocRef = doc(db, "purchases", newPurchase.id);
+        const purchaseDocRef = doc(db, "purchases", data.poNumber);
         batch.set(purchaseDocRef, newPurchaseData);
         
         const newItemsToCreate = data.items.filter(item => !item.inventoryId);

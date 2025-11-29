@@ -93,7 +93,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [totalTaxes, setTotalTaxes] = useState(0);
   const [roundOff, setRoundOff] = useState(0);
   const [roundedTotal, setRoundedTotal] = useState(0);
-  const [isManualGrandTotal, setIsManualGrandTotal] = useState(false);
+  const [isEditingGrandTotal, setIsEditingGrandTotal] = useState(false);
   const manualGrandTotalRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
@@ -220,7 +220,10 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
     const newTotal = currentSubtotal + newTotalTaxes;
 
-    const newRoundedTotal = Math.round(isManualGrandTotal ? (values.manualTotal || newTotal) : newTotal);
+    const manualTotalValue = getValues('manualTotal');
+    const newRoundedTotal = isEditingGrandTotal && manualTotalValue !== undefined
+      ? manualTotalValue
+      : Math.round(newTotal);
     
     const newRoundOff = newRoundedTotal - newTotal;
 
@@ -229,7 +232,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, inputModes, isManualGrandTotal]);
+  }, [getValues, setValue, inputModes, isEditingGrandTotal]);
   
   const handleLineItemChange = useCallback((index: number) => {
     const item = getValues(`items.${index}`);
@@ -250,10 +253,12 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
       if (!fieldName) return;
       if (fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
-        const index = parseInt(parts[1], 10);
-        const field = parts[2];
-        if (field === 'quantity' || field === 'price' || field === 'discount') {
-            handleLineItemChange(index);
+        if (parts.length >= 3) {
+            const index = parseInt(parts[1], 10);
+            const field = parts[2];
+            if (field === 'quantity' || field === 'price' || field === 'discount') {
+                handleLineItemChange(index);
+            }
         }
       } else if (fieldName && (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal')) {
         calculateTotals();
@@ -285,7 +290,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             manualTotal: initialData.manualTotal,
         });
         if (initialData.manualTotal !== undefined) {
-          setIsManualGrandTotal(true);
+          setIsEditingGrandTotal(true);
         }
     }
   }, [settings, reset, getValues, initialData]);
@@ -386,6 +391,16 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             </div>
         </div>
     );
+  };
+  
+  const handleManualTotalToggle = () => {
+    if (isEditingGrandTotal) {
+      setIsEditingGrandTotal(false);
+    } else {
+      setValue("manualTotal", roundedTotal);
+      setIsEditingGrandTotal(true);
+      setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
+    }
   };
 
 
@@ -654,7 +669,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                  <div className="flex justify-between items-center font-bold text-lg">
                     <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
                     <div className="flex items-center gap-1">
-                      {isManualGrandTotal ? (
+                      {isEditingGrandTotal ? (
                         <Input
                           id="manualTotal"
                           type="number"
@@ -671,17 +686,9 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => {
-                            if (isManualGrandTotal) {
-                              setIsManualGrandTotal(false);
-                            } else {
-                              setIsManualGrandTotal(true);
-                              setValue("manualTotal", roundedTotal);
-                              setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
-                            }
-                          }}
+                          onClick={handleManualTotalToggle}
                         >
-                          {isManualGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
+                          {isEditingGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
                         </Button>
                     </div>
                 </div>

@@ -69,35 +69,42 @@ export default function EditPurchasePage() {
         status: status,
         amount: finalAmount,
         deletedAt: null,
-        items: data.items.map(item => {
-            const cleanedItem: any = {
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-            };
-            if (item.discount) cleanedItem.discount = item.discount;
-            if (item.total) cleanedItem.total = item.total;
-            if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
-            if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
-            if (item.unit) cleanedItem.unit = item.unit;
-            return cleanedItem;
-        }),
     };
+    
+    const optionalFields = [
+        'vendorGstin', 'vendorAddress', 'shippingAddress',
+        'transporterVehicleNumber', 'eWayBillNumber'
+    ];
+    optionalFields.forEach(field => {
+        const value = data[field as keyof PurchaseOrderFormValues];
+        if (value) {
+            updatedPurchaseData[field] = value;
+        }
+    });
 
-    if (data.vendorGstin) updatedPurchaseData.vendorGstin = data.vendorGstin;
-    if (data.vendorAddress) updatedPurchaseData.vendorAddress = data.vendorAddress;
-    if (data.shippingAddress) updatedPurchaseData.shippingAddress = data.shippingAddress;
-    if (data.transporterVehicleNumber) updatedPurchaseData.transporterVehicleNumber = data.transporterVehicleNumber;
     if (data.cgstRate !== undefined) updatedPurchaseData.cgstRate = data.cgstRate;
     if (data.sgstRate !== undefined) updatedPurchaseData.sgstRate = data.sgstRate;
     if (data.igstRate !== undefined) updatedPurchaseData.igstRate = data.igstRate;
     if (data.insuranceAndOthersRate !== undefined) updatedPurchaseData.insuranceAndOthersRate = data.insuranceAndOthersRate;
-    if (data.eWayBillNumber) updatedPurchaseData.eWayBillNumber = data.eWayBillNumber;
+
     if (data.manualTotal !== undefined) {
-        updatedPurchaseData.manualTotal = data.manualTotal;
-    } else {
-        updatedPurchaseData.manualTotal = null;
+      updatedPurchaseData.manualTotal = data.manualTotal;
     }
+
+    const finalItems = data.items.map(item => {
+        const cleanedItem: { [key: string]: any } = {};
+        cleanedItem.name = item.name;
+        cleanedItem.quantity = item.quantity;
+        cleanedItem.price = item.price;
+        if (item.discount) cleanedItem.discount = item.discount;
+        if (item.total) cleanedItem.total = item.total;
+        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+        if (item.unit) cleanedItem.unit = item.unit;
+        return cleanedItem;
+    });
+
+    updatedPurchaseData.items = finalItems;
 
 
     try {

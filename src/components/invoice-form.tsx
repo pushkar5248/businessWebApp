@@ -113,8 +113,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
   const [manualOverrideIndex, setManualOverrideIndex] = useState<number | null>(null);
   const manualTotalRef = useRef<HTMLInputElement | null>(null);
-  const manualGrandTotalRef = useRef<HTMLInputElement | null>(null);
-  const [isManualGrandTotal, setIsManualGrandTotal] = useState(false);
+  const [isEditingGrandTotal, setIsEditingGrandTotal] = useState(false);
   
   const [gstInputModes, setGstInputModes] = useState({
     cgst: 'percentage',
@@ -190,8 +189,11 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     const newTotalTaxes = cgst + sgst + igst;
     const newTotal = currentSubtotal + newTotalTaxes;
     
-    const newRoundedTotal = Math.round(isManualGrandTotal ? (values.manualTotal || newTotal) : newTotal);
-    
+    const manualTotalValue = getValues('manualTotal');
+    const newRoundedTotal = isEditingGrandTotal && manualTotalValue !== undefined
+      ? manualTotalValue
+      : Math.round(newTotal);
+
     const newRoundOff = newRoundedTotal - newTotal;
     
     setSubtotal(currentSubtotal);
@@ -199,7 +201,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, gstInputModes, isManualGrandTotal]);
+  }, [getValues, setValue, gstInputModes, isEditingGrandTotal]);
 
   const handleLineItemChange = useCallback((index: number) => {
     if (manualOverrideIndex === index) {
@@ -272,7 +274,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       
       if (fieldName.startsWith('items.')) {
         const parts = fieldName.split('.');
-        if (parts.length === 3) {
+        if (parts.length >= 3) {
             const index = parseInt(parts[1], 10);
             const field = parts[2];
             if (['quantity', 'price', 'discount'].includes(field)) {
@@ -298,54 +300,58 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("User not authenticated");
     }
     
-    const finalTotal = data.manualTotal !== undefined ? data.manualTotal : isNaN(roundedTotal) ? 0 : roundedTotal;
+    const finalAmount = data.manualTotal !== undefined && isEditingGrandTotal
+      ? data.manualTotal
+      : isNaN(roundedTotal) ? 0 : roundedTotal;
 
-    const saleData: { [key: string]: any } = {
+    const newSaleData: { [key: string]: any } = {
         customer: data.customerName,
         date: data.invoiceDate,
         status: status,
         userId: user.uid,
         deletedAt: null,
-        amount: finalTotal,
-        items: data.items.map((item) => {
-            const cleanedItem: any = {
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-            };
-            if (item.discount) cleanedItem.discount = item.discount;
-            if (item.total) cleanedItem.total = item.total;
-            if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
-            if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
-            if (item.unit) cleanedItem.unit = item.unit;
-            return cleanedItem;
-        }),
+        amount: finalAmount,
     };
+    
+    const optionalFields = [
+        'customerAddress', 'customerPhone', 'customerState', 'customerGstin',
+        'deliveryPlaceName', 'deliveryAddress', 'deliveryState', 'deliveryGstin',
+        'transporterName', 'transporterVehicleNumber', 'placeOfSupply',
+        'transportDate', 'eWayBillNumber'
+    ];
+    optionalFields.forEach(field => {
+        const value = data[field as keyof InvoiceFormValues];
+        if (value) {
+            newSaleData[field] = value;
+        }
+    });
 
-    if (data.customerAddress) saleData.customerAddress = data.customerAddress;
-    if (data.customerPhone) saleData.customerPhone = data.customerPhone;
-    if (data.customerState) saleData.customerState = data.customerState;
-    if (data.customerGstin) saleData.customerGstin = data.customerGstin;
-    if (data.deliveryPlaceName) saleData.deliveryPlaceName = data.deliveryPlaceName;
-    if (data.deliveryAddress) saleData.deliveryAddress = data.deliveryAddress;
-    if (data.deliveryState) saleData.deliveryState = data.deliveryState;
-    if (data.deliveryGstin) saleData.deliveryGstin = data.deliveryGstin;
-    if (data.transporterName) saleData.transporterName = data.transporterName;
-    if (data.transporterVehicleNumber) saleData.transporterVehicleNumber = data.transporterVehicleNumber;
-    if (data.placeOfSupply) saleData.placeOfSupply = data.placeOfSupply;
-    if (data.transportDate) saleData.transportDate = data.transportDate;
-    if (data.eWayBillNumber) saleData.eWayBillNumber = data.eWayBillNumber;
-    if (data.cgstRate !== undefined) saleData.cgstRate = data.cgstRate;
-    if (data.sgstRate !== undefined) saleData.sgstRate = data.sgstRate;
-    if (data.igstRate !== undefined) saleData.igstRate = data.igstRate;
-    if (data.manualTotal !== undefined) {
-      saleData.manualTotal = data.manualTotal;
+    if (data.cgstRate !== undefined) newSaleData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) newSaleData.sgstRate = data.sgstRate;
+    if (data.igstRate !== undefined) newSaleData.igstRate = data.igstRate;
+    
+    if (isEditingGrandTotal && data.manualTotal !== undefined) {
+      newSaleData.manualTotal = data.manualTotal;
     }
 
+    const finalItems = data.items.map(item => {
+        const cleanedItem: Partial<typeof item> = {};
+        cleanedItem.name = item.name;
+        cleanedItem.quantity = item.quantity;
+        cleanedItem.price = item.price;
+        if (item.discount) cleanedItem.discount = item.discount;
+        if (item.total) cleanedItem.total = item.total;
+        if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
+        if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
+        if (item.unit) cleanedItem.unit = item.unit;
+        return cleanedItem;
+    });
+
+    newSaleData.items = finalItems;
 
     try {
         const saleDocRef = doc(db, "sales", data.invoiceNumber);
-        await setDoc(saleDocRef, saleData);
+        await setDoc(saleDocRef, newSaleData);
 
         toast({
           title: `Sale ${status === 'Draft' ? 'Draft Saved' : 'Created'}`,
@@ -364,7 +370,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("Settings not loaded");
     }
     try {
-       const finalTotal = data.manualTotal !== undefined ? data.manualTotal : isNaN(roundedTotal) ? 0 : roundedTotal;
+      const finalTotal = isEditingGrandTotal && data.manualTotal !== undefined ? data.manualTotal : roundedTotal;
 
       const input: GenerateInvoicePdfInput = {
         businessName: settings.general.businessName,
@@ -532,7 +538,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             manualTotal: initialData.manualTotal,
         });
         if (initialData.manualTotal !== undefined) {
-          setIsManualGrandTotal(true);
+          setIsEditingGrandTotal(true);
         }
     }
   }, [settings, reset, initialData]);
@@ -586,6 +592,19 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             </div>
         </div>
     );
+  };
+
+  const handleManualTotalToggle = () => {
+    if (isEditingGrandTotal) {
+      // When finishing edit, set the manualTotal value from the input
+      // The watch effect will recalculate everything
+      setIsEditingGrandTotal(false);
+    } else {
+      // When starting edit, pre-fill the input with the current rounded total
+      setValue("manualTotal", roundedTotal);
+      setIsEditingGrandTotal(true);
+      setTimeout(() => manualTotalRef.current?.focus(), 0);
+    }
   };
 
 
@@ -970,14 +989,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                 <div className="flex justify-between items-center font-bold text-lg">
                     <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
                     <div className="flex items-center gap-1">
-                      {isManualGrandTotal ? (
+                      {isEditingGrandTotal ? (
                         <Input
                           id="manualTotal"
                           type="number"
                           step="any"
                           className="w-32 font-bold text-lg h-9 text-right"
                           {...methods.register("manualTotal")}
-                          ref={manualGrandTotalRef}
+                          ref={manualTotalRef}
                         />
                       ) : (
                         <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
@@ -987,17 +1006,9 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => {
-                            if (isManualGrandTotal) {
-                              setIsManualGrandTotal(false);
-                            } else {
-                              setIsManualGrandTotal(true);
-                              setValue("manualTotal", roundedTotal);
-                              setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
-                            }
-                          }}
+                          onClick={handleManualTotalToggle}
                         >
-                          {isManualGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
+                          {isEditingGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
                         </Button>
                     </div>
                 </div>
