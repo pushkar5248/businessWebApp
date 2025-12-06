@@ -27,7 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search, Percent, Edit2, Check } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PlusCircle, Trash2, Loader2, Search, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
@@ -93,8 +94,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const [totalTaxes, setTotalTaxes] = useState(0);
   const [roundOff, setRoundOff] = useState(0);
   const [roundedTotal, setRoundedTotal] = useState(0);
-  const [isEditingGrandTotal, setIsEditingGrandTotal] = useState(false);
-  const manualGrandTotalRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
    const [inputModes, setInputModes] = useState({
@@ -103,6 +102,8 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     igst: 'percentage',
     insuranceAndOthers: 'percentage',
   });
+
+  const [totalMode, setTotalMode] = useState<'auto' | 'manual'>('auto');
 
 
   const methods = useForm<PurchaseOrderFormValues>({
@@ -175,7 +176,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
   const calculateTotals = useCallback(() => {
     const values = getValues();
     const currentSubtotal = (values.items || []).reduce(
-      (acc, item) => acc + (item.total || 0),
+      (acc, item) => acc + ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0)/100)),
       0
     );
     
@@ -183,45 +184,33 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     
     if (inputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        if(getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst, { shouldValidate: true });
     } else {
         cgst = values.cgstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        if(getValues('cgstRate') !== newRate) setValue('cgstRate', newRate, { shouldValidate: true });
     }
     
     if (inputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        if(getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst, { shouldValidate: true });
     } else {
         sgst = values.sgstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        if(getValues('sgstRate') !== newRate) setValue('sgstRate', newRate, { shouldValidate: true });
     }
 
     if (inputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        if(getValues('igstAmount') !== igst) setValue('igstAmount', igst, { shouldValidate: true });
     } else {
         igst = values.igstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        if(getValues('igstRate') !== newRate) setValue('igstRate', newRate, { shouldValidate: true });
     }
 
     if (inputModes.insuranceAndOthers === 'percentage') {
         insuranceAndOthers = currentSubtotal * ((values.insuranceAndOthersRate || 0) / 100);
-        if(getValues('insuranceAndOthersAmount') !== insuranceAndOthers) setValue('insuranceAndOthersAmount', insuranceAndOthers, { shouldValidate: true });
     } else {
         insuranceAndOthers = values.insuranceAndOthersAmount || 0;
-        const newRate = currentSubtotal > 0 ? (insuranceAndOthers / currentSubtotal) * 100 : 0;
-        if(getValues('insuranceAndOthersRate') !== newRate) setValue('insuranceAndOthersRate', newRate, { shouldValidate: true });
     }
     
     const newTotalTaxes = igst + cgst + sgst + insuranceAndOthers;
     const newTotal = currentSubtotal + newTotalTaxes;
 
     const manualTotalValue = getValues('manualTotal');
-    const newRoundedTotal = isEditingGrandTotal && manualTotalValue !== undefined
+    const newRoundedTotal = totalMode === 'manual' && manualTotalValue !== undefined
       ? manualTotalValue
       : Math.round(newTotal);
     
@@ -232,7 +221,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, inputModes, isEditingGrandTotal]);
+  }, [getValues, inputModes, totalMode]);
   
   const handleLineItemChange = useCallback((index: number) => {
     const item = getValues(`items.${index}`);
@@ -255,10 +244,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
         const parts = fieldName.split('.');
         if (parts.length >= 3) {
             const index = parseInt(parts[1], 10);
-            const field = parts[2];
-            if (field === 'quantity' || field === 'price' || field === 'discount') {
-                handleLineItemChange(index);
-            }
+            handleLineItemChange(index);
         }
       } else if (fieldName && (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal')) {
         calculateTotals();
@@ -290,7 +276,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
             manualTotal: initialData.manualTotal,
         });
         if (initialData.manualTotal !== undefined) {
-          setIsEditingGrandTotal(true);
+          setTotalMode('manual');
         }
     }
   }, [settings, reset, getValues, initialData]);
@@ -393,17 +379,6 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
     );
   };
   
-  const handleManualTotalToggle = () => {
-    if (isEditingGrandTotal) {
-      setIsEditingGrandTotal(false);
-    } else {
-      setValue("manualTotal", roundedTotal);
-      setIsEditingGrandTotal(true);
-      setTimeout(() => manualGrandTotalRef.current?.focus(), 0);
-    }
-  };
-
-
   return (
     <FormProvider {...methods}>
       <form className="space-y-8">
@@ -611,12 +586,7 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                       <Input
-                        type="number"
-                        step="any"
-                        readOnly
-                        {...methods.register(`items.${index}.total`)}
-                      />
+                        {formatCurrencyValue(getValues(`items.${index}.total`) || 0)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -666,32 +636,25 @@ export function PurchaseOrderForm({ onSubmit, initialData }: PurchaseOrderFormPr
                     <span>Round Off</span>
                     <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
                 </div>
-                 <div className="flex justify-between items-center font-bold text-lg">
-                    <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
-                    <div className="flex items-center gap-1">
-                      {isEditingGrandTotal ? (
-                        <Input
-                          id="manualTotal"
-                          type="number"
-                          step="any"
-                          className="w-32 font-bold text-lg h-9 text-right"
-                          {...methods.register("manualTotal")}
-                          ref={manualGrandTotalRef}
-                        />
-                      ) : (
-                        <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
-                      )}
-                      <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={handleManualTotalToggle}
-                        >
-                          {isEditingGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
-                        </Button>
+                 <RadioGroup value={totalMode} onValueChange={(value) => setTotalMode(value as 'auto' | 'manual')} className="pt-2">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="auto" id="auto-po" />
+                        <Label htmlFor="auto-po" className="flex-grow font-bold text-lg">Grand Total (Automatic)</Label>
+                         <span className="font-bold text-lg">{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
                     </div>
-                </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="manual" id="manual-po" />
+                        <Label htmlFor="manual-po" className="font-bold text-lg">Grand Total (Manual)</Label>
+                        <Input
+                            id="manualTotal-po"
+                            type="number"
+                            step="any"
+                            className="w-32 font-bold text-lg h-9 text-right"
+                            {...methods.register("manualTotal")}
+                            disabled={totalMode !== 'manual'}
+                        />
+                    </div>
+                </RadioGroup>
             </div>
           </CardFooter>
         </Card>

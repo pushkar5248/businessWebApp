@@ -33,7 +33,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Loader2, Search, Edit2, Check, Percent } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PlusCircle, Trash2, Loader2, Search, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { type Sale, type SaleStatus, type InventoryItem } from "@/lib/types";
 import { useCurrency } from "@/context/currency-context";
@@ -111,15 +112,14 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const { currency, formatCurrencyValue } = useCurrency();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryOptions, setInventoryOptions] = useState<{value: string, label: string}[]>([]);
-  const [manualOverrideIndex, setManualOverrideIndex] = useState<number | null>(null);
-  const manualTotalRef = useRef<HTMLInputElement | null>(null);
-  const [isEditingGrandTotal, setIsEditingGrandTotal] = useState(false);
   
   const [gstInputModes, setGstInputModes] = useState({
     cgst: 'percentage',
     sgst: 'percentage',
     igst: 'percentage',
   });
+
+  const [totalMode, setTotalMode] = useState<'auto' | 'manual'>('auto');
 
 
   const methods = useForm<InvoiceFormValues>({
@@ -153,7 +153,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   const calculateGrandTotal = useCallback(() => {
     const values = getValues();
     const currentSubtotal = (values.items || []).reduce((acc, item) => {
-      const itemTotal = item.total ?? ((item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100));
+      const itemTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
       return acc + itemTotal;
     }, 0);
 
@@ -161,36 +161,27 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
 
     if (gstInputModes.cgst === 'percentage') {
         cgst = currentSubtotal * ((values.cgstRate || 0) / 100);
-        if (getValues('cgstAmount') !== cgst) setValue('cgstAmount', cgst);
     } else {
         cgst = values.cgstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (cgst / currentSubtotal) * 100 : 0;
-        if (getValues('cgstRate') !== newRate) setValue('cgstRate', newRate);
     }
     
     if (gstInputModes.sgst === 'percentage') {
         sgst = currentSubtotal * ((values.sgstRate || 0) / 100);
-        if (getValues('sgstAmount') !== sgst) setValue('sgstAmount', sgst);
     } else {
         sgst = values.sgstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (sgst / currentSubtotal) * 100 : 0;
-        if (getValues('sgstRate') !== newRate) setValue('sgstRate', newRate);
     }
     
     if (gstInputModes.igst === 'percentage') {
         igst = currentSubtotal * ((values.igstRate || 0) / 100);
-        if (getValues('igstAmount') !== igst) setValue('igstAmount', igst);
     } else {
         igst = values.igstAmount || 0;
-        const newRate = currentSubtotal > 0 ? (igst / currentSubtotal) * 100 : 0;
-        if (getValues('igstRate') !== newRate) setValue('igstRate', newRate);
     }
 
     const newTotalTaxes = cgst + sgst + igst;
     const newTotal = currentSubtotal + newTotalTaxes;
     
     const manualTotalValue = getValues('manualTotal');
-    const newRoundedTotal = isEditingGrandTotal && manualTotalValue !== undefined
+    const newRoundedTotal = totalMode === 'manual' && manualTotalValue !== undefined
       ? manualTotalValue
       : Math.round(newTotal);
 
@@ -201,13 +192,9 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     setTotal(newTotal);
     setRoundOff(newRoundOff);
     setRoundedTotal(newRoundedTotal);
-  }, [getValues, setValue, gstInputModes, isEditingGrandTotal]);
+  }, [getValues, gstInputModes, totalMode]);
 
   const handleLineItemChange = useCallback((index: number) => {
-    if (manualOverrideIndex === index) {
-      calculateGrandTotal();
-      return;
-    }
     const item = getValues(`items.${index}`);
     const newTotal = (item.quantity || 0) * (item.price || 0) * (1 - (item.discount || 0) / 100);
     const currentTotal = getValues(`items.${index}.total`);
@@ -216,7 +203,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
       setValue(`items.${index}.total`, newTotal, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
     calculateGrandTotal();
-  }, [getValues, setValue, calculateGrandTotal, manualOverrideIndex]);
+  }, [getValues, setValue, calculateGrandTotal]);
 
   const fetchInventory = useCallback(async () => {
     if (!user) return;
@@ -276,10 +263,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         const parts = fieldName.split('.');
         if (parts.length >= 3) {
             const index = parseInt(parts[1], 10);
-            const field = parts[2];
-            if (['quantity', 'price', 'discount'].includes(field)) {
-                handleLineItemChange(index);
-            }
+            handleLineItemChange(index);
         }
       } else if (fieldName && (fieldName.endsWith('Rate') || fieldName.endsWith('Amount') || fieldName === 'manualTotal')) {
         calculateGrandTotal();
@@ -289,7 +273,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
   }, [watch, handleLineItemChange, calculateGrandTotal]);
 
   useEffect(() => {
-    // Initial calculation
     const items = getValues('items');
     items.forEach((_, index) => handleLineItemChange(index));
   }, []);
@@ -299,8 +282,8 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         toast({ variant: "destructive", title: "Error", description: "You must be logged in to create a sale." });
         throw new Error("User not authenticated");
     }
-    
-    const finalAmount = data.manualTotal !== undefined && isEditingGrandTotal
+
+    const finalAmount = totalMode === 'manual' && data.manualTotal !== undefined
       ? data.manualTotal
       : isNaN(roundedTotal) ? 0 : roundedTotal;
 
@@ -330,17 +313,18 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
     if (data.sgstRate !== undefined) newSaleData.sgstRate = data.sgstRate;
     if (data.igstRate !== undefined) newSaleData.igstRate = data.igstRate;
     
-    if (isEditingGrandTotal && data.manualTotal !== undefined) {
+    if (totalMode === 'manual' && data.manualTotal !== undefined) {
       newSaleData.manualTotal = data.manualTotal;
     }
 
     const finalItems = data.items.map(item => {
-        const cleanedItem: Partial<typeof item> = {};
-        cleanedItem.name = item.name;
-        cleanedItem.quantity = item.quantity;
-        cleanedItem.price = item.price;
+        const cleanedItem: { [key: string]: any } = {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+        };
         if (item.discount) cleanedItem.discount = item.discount;
-        if (item.total) cleanedItem.total = item.total;
         if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
         if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
         if (item.unit) cleanedItem.unit = item.unit;
@@ -370,7 +354,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         throw new Error("Settings not loaded");
     }
     try {
-      const finalTotal = isEditingGrandTotal && data.manualTotal !== undefined ? data.manualTotal : roundedTotal;
+      const finalTotal = totalMode === 'manual' && data.manualTotal !== undefined ? data.manualTotal : roundedTotal;
 
       const input: GenerateInvoicePdfInput = {
         businessName: settings.general.businessName,
@@ -533,12 +517,12 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
             invoiceDate: initialData.date,
             items: initialData.items.map(item => ({
               ...item,
-              total: item.total ?? ((item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100))
+              total: (item.quantity || 0) * (item.price || 0) * (1- (item.discount || 0)/100)
             })),
             manualTotal: initialData.manualTotal,
         });
         if (initialData.manualTotal !== undefined) {
-          setIsEditingGrandTotal(true);
+          setTotalMode('manual');
         }
     }
   }, [settings, reset, initialData]);
@@ -593,20 +577,6 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
         </div>
     );
   };
-
-  const handleManualTotalToggle = () => {
-    if (isEditingGrandTotal) {
-      // When finishing edit, set the manualTotal value from the input
-      // The watch effect will recalculate everything
-      setIsEditingGrandTotal(false);
-    } else {
-      // When starting edit, pre-fill the input with the current rounded total
-      setValue("manualTotal", roundedTotal);
-      setIsEditingGrandTotal(true);
-      setTimeout(() => manualTotalRef.current?.focus(), 0);
-    }
-  };
-
 
   return (
     <FormProvider {...methods}>
@@ -905,39 +875,7 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                       />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                       <div className="flex items-center justify-end gap-1">
-                          <Controller
-                            control={control}
-                            name={`items.${index}.total`}
-                            render={({ field }) => (
-                                <Input
-                                    {...field}
-                                    type="number"
-                                    step="any"
-                                    className="w-28 text-right border-none read-only:bg-transparent"
-                                    readOnly={manualOverrideIndex !== index}
-                                    ref={manualOverrideIndex === index ? manualTotalRef : null}
-                                />
-                            )}
-                          />
-                           <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => {
-                                    if (manualOverrideIndex === index) {
-                                        setManualOverrideIndex(null);
-                                        handleLineItemChange(index); // Recalculate
-                                    } else {
-                                        setManualOverrideIndex(index);
-                                        setTimeout(() => manualTotalRef.current?.focus(), 0);
-                                    }
-                                }}
-                            >
-                                {manualOverrideIndex === index ? <Check className="h-4 w-4 text-green-600" /> : <Edit2 className="h-4 w-4" />}
-                            </Button>
-                        </div>
+                        {formatCurrencyValue(getValues(`items.${index}.total`) || 0)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -986,32 +924,26 @@ export function InvoiceForm({ onSubmit, initialData }: InvoiceFormProps) {
                     <span>Round Off</span>
                     <span>{currency}{formatCurrencyValue(roundOff).replace(currency, '')}</span>
                 </div>
-                <div className="flex justify-between items-center font-bold text-lg">
-                    <Label htmlFor="manualTotal" className="text-lg">Grand Total</Label>
-                    <div className="flex items-center gap-1">
-                      {isEditingGrandTotal ? (
-                        <Input
-                          id="manualTotal"
-                          type="number"
-                          step="any"
-                          className="w-32 font-bold text-lg h-9 text-right"
-                          {...methods.register("manualTotal")}
-                          ref={manualTotalRef}
-                        />
-                      ) : (
-                        <span>{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
-                      )}
-                      <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={handleManualTotalToggle}
-                        >
-                          {isEditingGrandTotal ? <Check className="h-5 w-5 text-green-600" /> : <Edit2 className="h-5 w-5" />}
-                        </Button>
+
+                <RadioGroup value={totalMode} onValueChange={(value) => setTotalMode(value as 'auto' | 'manual')} className="pt-2">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="auto" id="auto" />
+                        <Label htmlFor="auto" className="flex-grow font-bold text-lg">Grand Total (Automatic)</Label>
+                         <span className="font-bold text-lg">{currency}{formatCurrencyValue(roundedTotal).replace(currency, '')}</span>
                     </div>
-                </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="manual" id="manual" />
+                        <Label htmlFor="manual" className="font-bold text-lg">Grand Total (Manual)</Label>
+                        <Input
+                            id="manualTotal"
+                            type="number"
+                            step="any"
+                            className="w-32 font-bold text-lg h-9 text-right"
+                            {...methods.register("manualTotal")}
+                            disabled={totalMode !== 'manual'}
+                        />
+                    </div>
+                </RadioGroup>
             </div>
           </CardFooter>
         </Card>

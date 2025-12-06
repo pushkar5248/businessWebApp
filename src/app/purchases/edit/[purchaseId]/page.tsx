@@ -92,12 +92,13 @@ export default function EditPurchasePage() {
     }
 
     const finalItems = data.items.map(item => {
-        const cleanedItem: { [key: string]: any } = {};
-        cleanedItem.name = item.name;
-        cleanedItem.quantity = item.quantity;
-        cleanedItem.price = item.price;
+        const cleanedItem: { [key: string]: any } = {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+        };
         if (item.discount) cleanedItem.discount = item.discount;
-        if (item.total) cleanedItem.total = item.total;
         if (item.inventoryId) cleanedItem.inventoryId = item.inventoryId;
         if (item.hsnCode) cleanedItem.hsnCode = item.hsnCode;
         if (item.unit) cleanedItem.unit = item.unit;
